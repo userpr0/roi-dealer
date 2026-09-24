@@ -103,6 +103,7 @@ docs/           архитектура, конституция, протокол
 | [`docs/TECH_STACK.md`](docs/TECH_STACK.md)                           | Канонический стек и конкретные инструменты / версии                                  |
 | [`docs/CLAUDE_WORKING_PROTOCOL.md`](docs/CLAUDE_WORKING_PROTOCOL.md) | Как ведётся работа по Phase, отчёты, проверки                                        |
 | [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)                     | Текущая Phase и её статус                                                            |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                 | Что собрано и путь к рабочему состоянию                                              |
 | [`docs/ADR/`](docs/ADR/README.md)                                    | Architecture Decision Records                                                        |
 | [`docs/phases/`](docs/phases/README.md)                              | Спецификации и отчёты Phase                                                          |
 | [`docs/deploy/`](docs/deploy/telegram-bot.md)                        | Развёртывание бота-пульта в облаке                                                   |

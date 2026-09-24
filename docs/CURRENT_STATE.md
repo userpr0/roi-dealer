@@ -10,7 +10,7 @@ Updated: 2026-09-24
 
 Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md), [PHASE 01 — Core Domain](phases/01_core_domain.report.md)
 
-Решения владельца: [`docs/OWNER_DECISIONS.md`](OWNER_DECISIONS.md)
+Решения владельца: [`docs/OWNER_DECISIONS.md`](OWNER_DECISIONS.md) · План до рабочего состояния: [`docs/ROADMAP.md`](ROADMAP.md)
 
 ## Implemented
 
