@@ -1,0 +1,20 @@
+{
+  "name": "@roi-dealer/observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Structured logging, health checks and correlation ids",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

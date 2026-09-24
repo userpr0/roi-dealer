@@ -1,0 +1,40 @@
+# ROI Dealer — local development infrastructure.
+#
+# Usage (from the repository root):
+#   pnpm infra:up     # start and wait until healthy
+#   pnpm infra:down   # stop (data volume is kept)
+#
+# DEV ONLY. Credentials below are non-production defaults and may be overridden
+# from the shell environment. Never reuse them anywhere else.
+#
+# Planned services (NOT started in PHASE 00, see infra/README.md):
+#   - temporal        — workflow engine
+#   - object-storage  — S3-compatible storage
+
+name: roi-dealer
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-roi_dealer_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-roi_dealer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-roi_dealer_dev_only}
+      # All timestamps are stored and reported in UTC.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # Bound to loopback only: the dev database is not reachable from the network.
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:

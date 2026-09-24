@@ -1,0 +1,53 @@
+{
+  "name": "roi-dealer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ROI Dealer — AI operating system (TypeScript monorepo)",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "tsc -b && pnpm --filter @roi-dealer/miniapp run build",
+    "dev": "pnpm -r --parallel run dev",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -b",
+    "clean": "tsc -b --clean && pnpm -r --if-present run clean",
+    "infra:up": "docker compose -f infra/docker/compose.yaml up -d --wait",
+    "infra:down": "docker compose -f infra/docker/compose.yaml down",
+    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@roi-dealer/agents": "workspace:*",
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/economics": "workspace:*",
+    "@roi-dealer/events": "workspace:*",
+    "@roi-dealer/judges": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/policies": "workspace:*",
+    "@roi-dealer/rewards": "workspace:*",
+    "@roi-dealer/schemas": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/skills": "workspace:*",
+    "@types/node": "^22.19.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1",
+    "zod": "^4.6.5"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@roi-dealer/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ROI Dealer background worker (PHASE 00: lifecycle skeleton, no workflows)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch --conditions=@roi-dealer/source --env-file-if-exists=../../.env src/main.ts",
+    "start": "node --enable-source-maps dist/main.js"
+  },
+  "dependencies": {
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@roi-dealer/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cross-cutting utilities without domain knowledge: config validation, process lifecycle",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

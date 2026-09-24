@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+.vite/
+
+# Test output
+coverage/
+
+# Environment and secrets — never commit real values
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+.secrets/
+*.secret
+credentials*.json
+service-account*.json
+
+# Local data and container volumes
+.data/
+volumes/
+tmp/
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE temporary files
+.idea/
+.vscode/
+.fleet/
+*.swp
+*.swo
+*~
+
+# OS temporary files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code personal settings
+.claude/settings.local.json

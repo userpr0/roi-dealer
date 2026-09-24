@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Security: dependency lifecycle (install/postinstall) scripts are NOT executed
+# unless a package is explicitly allow-listed in `onlyBuiltDependencies` after review.
+onlyBuiltDependencies: []
+
+# Reviewed and intentionally not executed:
+# - esbuild: postinstall only verifies the native binary, which is installed
+#   through its platform-specific optional dependency (@esbuild/<platform>).
+ignoredBuiltDependencies:
+  - esbuild
