@@ -19,6 +19,7 @@ Updated: 2026-09-24
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
 - GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → integration tests → compose validation. Первый запуск на GitHub — success ([run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452)).
 - Документация: конституция, архитектура, стек, протокол, ADR (процесс, шаблон, ADR-0001 Proposed), phases, playbook v1.1.
+- **По запросу владельца после PHASE 00:** публикация placeholder miniapp на GitHub Pages (https://userpr0.github.io/roi-dealer/) для открытия в Telegram — [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md), workflow `.github/workflows/miniapp-pages.yml`.
 
 ## Not Implemented
 
@@ -27,7 +28,7 @@ Updated: 2026-09-24
 - Event History (PHASE 03), RBAC (PHASE 04), AI runtime и провайдеры (PHASE 09), agents / judges (PHASE 10–11).
 - Telegram-интеграция miniapp / bot (PHASE 13).
 - Temporal и S3-compatible storage (placeholders в `infra/README.md`).
-- Metrics, tracing, alerts; deployment; production cloud resources.
+- Metrics, tracing, alerts; deployment backend-сервисов; production cloud resources.
 
 ## Applications
 

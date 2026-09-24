@@ -26,22 +26,23 @@
 
 ## Инструменты, используемые сейчас (PHASE 00)
 
-| Область         | Инструмент                            | Версия                    | Примечание                                                                            |
-| --------------- | ------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------- |
-| Runtime         | Node.js                               | 22 LTS (`>=22.12`)        | `.nvmrc`, `engines`                                                                   |
-| Package manager | pnpm workspaces                       | 10.33 (`packageManager`)  | lifecycle-скрипты зависимостей заблокированы                                          |
-| Язык            | TypeScript                            | `~6.0.3`                  | **Не 7.x:** typescript-eslint 8.x поддерживает только `<6.1`                          |
-| Validation      | Zod                                   | `^4.6`                    | конфигурация процессов; далее — все контракты                                         |
-| Tests           | Vitest                                | `^5.0`                    | проекты `unit` и `integration`                                                        |
-| Lint            | ESLint + typescript-eslint            | `^10.11` / `^8.70`        | flat config, type-aware правила                                                       |
-| Format          | Prettier                              | `^3.9`                    | `eslint-config-prettier` отключает конфликтующие правила                              |
-| Dev runner      | tsx                                   | `^4.23`                   | `pnpm dev` для api / worker, integration-тесты процессов                              |
-| Frontend        | React + Vite + `@vitejs/plugin-react` | `^19.3` / `^8.3` / `^6.1` | только `apps/miniapp`                                                                 |
-| HTTP            | `node:http`                           | встроен                   | фреймворк не выбран — решение через ADR в Phase, где понадобится routing / middleware |
-| Logging         | собственный JSON logger               | —                         | `@roi-dealer/observability`, без зависимостей                                         |
-| Database        | PostgreSQL                            | 18 (`postgres:18-alpine`) | нативный `uuidv7()`; драйвер и инструмент миграций — PHASE 02                         |
-| Local infra     | Docker Compose                        | v2+                       | `infra/docker/compose.yaml`                                                           |
-| CI              | GitHub Actions                        | —                         | `.github/workflows/ci.yml`, без deployment                                            |
+| Область         | Инструмент                            | Версия                    | Примечание                                                                                                    |
+| --------------- | ------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Runtime         | Node.js                               | 22 LTS (`>=22.12`)        | `.nvmrc`, `engines`                                                                                           |
+| Package manager | pnpm workspaces                       | 10.33 (`packageManager`)  | lifecycle-скрипты зависимостей заблокированы                                                                  |
+| Язык            | TypeScript                            | `~6.0.3`                  | **Не 7.x:** typescript-eslint 8.x поддерживает только `<6.1`                                                  |
+| Validation      | Zod                                   | `^4.6`                    | конфигурация процессов; далее — все контракты                                                                 |
+| Tests           | Vitest                                | `^5.0`                    | проекты `unit` и `integration`                                                                                |
+| Lint            | ESLint + typescript-eslint            | `^10.11` / `^8.70`        | flat config, type-aware правила                                                                               |
+| Format          | Prettier                              | `^3.9`                    | `eslint-config-prettier` отключает конфликтующие правила                                                      |
+| Dev runner      | tsx                                   | `^4.23`                   | `pnpm dev` для api / worker, integration-тесты процессов                                                      |
+| Frontend        | React + Vite + `@vitejs/plugin-react` | `^19.3` / `^8.3` / `^6.1` | только `apps/miniapp`                                                                                         |
+| HTTP            | `node:http`                           | встроен                   | фреймворк не выбран — решение через ADR в Phase, где понадобится routing / middleware                         |
+| Logging         | собственный JSON logger               | —                         | `@roi-dealer/observability`, без зависимостей                                                                 |
+| Database        | PostgreSQL                            | 18 (`postgres:18-alpine`) | нативный `uuidv7()`; драйвер и инструмент миграций — PHASE 02                                                 |
+| Local infra     | Docker Compose                        | v2+                       | `infra/docker/compose.yaml`                                                                                   |
+| CI              | GitHub Actions                        | —                         | `.github/workflows/ci.yml`                                                                                    |
+| Hosting miniapp | GitHub Pages                          | —                         | `.github/workflows/miniapp-pages.yml` после зелёного CI; [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md) |
 
 ### Ещё не подключено (по плану)
 

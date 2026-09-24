@@ -69,7 +69,9 @@ pnpm format:check   # Prettier (pnpm format — исправить)
 pnpm build          # tsc -b + vite build (miniapp)
 ```
 
-CI (`.github/workflows/ci.yml`) на каждый push и PR: install → typecheck → lint → format check → unit tests → build → integration tests. Deployment не выполняется.
+CI (`.github/workflows/ci.yml`) на каждый push и PR: install → typecheck → lint → format check → unit tests → build → integration tests.
+
+Miniapp после зелёного CI в default branch публикуется на GitHub Pages: https://userpr0.github.io/roi-dealer/ ([ADR-0002](docs/ADR/0002-miniapp-hosting-github-pages.md)).
 
 ## Repository structure
 
