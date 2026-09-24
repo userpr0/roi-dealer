@@ -17,7 +17,7 @@ Updated: 2026-09-24
 - Config validation (Zod), structured JSON logging с редактированием секретов, correlation id, health registry, graceful shutdown.
 - `GET /health` → `{"status":"ok","service":"api"}`.
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
-- GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → integration tests → compose validation.
+- GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → integration tests → compose validation. Первый запуск на GitHub — success ([run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452)).
 - Документация: конституция, архитектура, стек, протокол, ADR (процесс, шаблон, ADR-0001 Proposed), phases, playbook v1.1.
 
 ## Not Implemented
@@ -63,7 +63,6 @@ Integration-тесты запускают реальные процессы api 
 
 ## Known Issues
 
-- CI workflow создан; прохождение на GitHub проверяется после первого push (локально все шаги CI проходят, в том числе на свежем клоне).
 - Для miniapp нет автоматического теста рендеринга (проверено вручную: build + Chromium, ошибок в консоли нет).
 - ADR-0001 (инструменты и версии PHASE 00) в статусе **Proposed** — ожидает решения владельца.
 

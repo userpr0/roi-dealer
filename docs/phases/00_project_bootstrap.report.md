@@ -49,6 +49,8 @@ Date: 2026-09-24
 
 Все команды также выполнены на **свежем `git clone`**: результат тот же, `pnpm install` не меняет lockfile.
 
+GitHub Actions CI (все шаги, включая integration tests и проверку compose) — **success**: [run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452).
+
 Добавленные тесты:
 
 - **unit:** импорт всех 12 пакетов; `loadConfig` (defaults, пустые строки, coercion, ошибки без значений); shutdown manager (порядок LIFO, идемпотентность, падающий hook, timeout, сигналы, повторный сигнал, unhandled rejection); logger (поля, уровни, child / correlation_id, reserved keys, редактирование, Error / bigint / circular, падающий sink); health registry (ok / degraded / down, timeout, скрытие ошибок); correlation id (валидация, log injection); router `/health` (200 / 405 / 404 / 503); конфигурация api; lifecycle worker.
@@ -124,7 +126,6 @@ Date: 2026-09-24
 
 ## Known limitations
 
-- CI workflow создан, но проверяется на GitHub только после push (локально все шаги CI проходят).
 - В этой облачной среде Docker daemon не запущен по умолчанию; для проверки он был запущен вручную (`dockerd`). На машине разработчика нужен установленный Docker.
 - `pnpm typecheck` (`tsc -b`) обновляет `dist/` пакетов — особенность project references.
 - Heartbeat worker — только лог; реальной работы worker не выполняет (по спецификации).
