@@ -11,6 +11,8 @@ This repository is built phase by phase under an owner-approval protocol. Before
 - **No silent architecture changes.** If a stack or architecture decision should change: write an ADR proposal in `docs/ADR/`, explain reason, impact and alternatives, and stop for approval.
 - **Never commit secrets.** `.env` is git-ignored; `.env.example` holds safe local placeholders only.
 - **Do not disable or skip failing tests.** Report failures as they are.
+- **Abstract the pattern, do not copy the artifact** (constitution §2.20): check rights first (audio separately from video), store structured parameters, never publish copied material.
+- **Permitted access only** (§2.21): official APIs and allowed plans; no multi-accounting, anti-detect or limit circumvention.
 - **No business logic ahead of its phase.** Placeholder packages stay placeholders until their phase is approved.
 - Apply the Feature Kill Gate (constitution §2.15) to optional scope; no "just in case" features.
 

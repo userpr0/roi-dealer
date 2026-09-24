@@ -25,7 +25,7 @@
 | 16    | Economics                                                     | —                                                      | Не начата                                                            |
 | 17    | Reward Engine                                                 | —                                                      | Не начата                                                            |
 | 18    | Skill Registry                                                | —                                                      | Не начата                                                            |
-| 19    | Media Factory                                                 | —                                                      | Не начата                                                            |
+| 19    | Media Factory                                                 | [требования и план](19_media_factory.plan.md)          | Не начата (требования владельца D-012)                               |
 | 20    | CRM / Customer / Outcomes                                     | —                                                      | Не начата                                                            |
 | 21    | Solution Factory                                              | —                                                      | Не начата                                                            |
 | 22    | Product & Portfolio                                           | —                                                      | Не начата                                                            |
