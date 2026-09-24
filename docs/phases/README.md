@@ -10,18 +10,18 @@
 | 02    | PostgreSQL Foundation                                         | —                                                      | Не начата (только после approval PHASE 01)                           |
 | 03    | Event History                                                 | —                                                      | Не начата                                                            |
 | 04    | Identity / RBAC / Security                                    | —                                                      | Не начата                                                            |
-| 05    | Evidence Engine                                               | —                                                      | Не начата                                                            |
+| 05    | Evidence Engine                                               | [требования](05_evidence_engine.plan.md)               | Не начата (требования D-014)                                         |
 | 06    | Signals & Pain                                                | —                                                      | Не начата                                                            |
 | 07    | Opportunity Engine                                            | —                                                      | Не начата                                                            |
 | 08    | Company Brain v0.1                                            | —                                                      | Не начата                                                            |
-| 09    | AI Runtime                                                    | —                                                      | Не начата                                                            |
-| 10    | Agents                                                        | —                                                      | Не начата                                                            |
+| 09    | AI Runtime                                                    | [требования](09_ai_runtime.plan.md)                    | Не начата (требования D-012, D-014)                                  |
+| 10    | Agents                                                        | [требования](09_ai_runtime.plan.md)                    | Не начата (evals — D-014)                                            |
 | 11    | Judges                                                        | —                                                      | Не начата                                                            |
 | 12    | Decision Engine                                               | —                                                      | Не начата                                                            |
 | 13a   | Telegram owner bot (ранний шаг PHASE 13 по запросу владельца) | [13a_telegram_owner_bot.md](13a_telegram_owner_bot.md) | Реализована ([ADR-0003](../ADR/0003-early-telegram-owner-bot.md))    |
 | 13    | Owner Command Center                                          | [план кнопок](13_owner_command_center.plan.md)         | Не начата (бот-пульт — 13a; одобрения и стоп-кран — после 03, D-002) |
 | 14    | Five Hypothesis Engine                                        | —                                                      | Не начата                                                            |
-| 15    | Experiment Engine                                             | —                                                      | Не начата                                                            |
+| 15    | Experiment Engine                                             | [требования](15_experiment_engine.plan.md)             | Не начата (требования D-014)                                         |
 | 16    | Economics                                                     | —                                                      | Не начата                                                            |
 | 17    | Reward Engine                                                 | —                                                      | Не начата                                                            |
 | 18    | Skill Registry                                                | —                                                      | Не начата                                                            |

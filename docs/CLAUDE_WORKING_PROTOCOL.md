@@ -137,7 +137,7 @@ PHASE 02
 
 1. `docs/CURRENT_STATE.md` — текущая Phase, её статус и что разрешено дальше.
 2. `docs/CLAUDE_CONSTITUTION.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/TECH_STACK.md`, этот файл.
-3. Файл текущей Phase в `docs/phases/`.
+3. Файл текущей Phase в `docs/phases/` и её план требований `NN_*.plan.md`, если он есть: требования владельца, записанные заранее, обязательно входят в спецификацию фазы.
 4. `docs/ADR/` — принятые и предложенные решения.
 
 ### Проверки перед Phase Report
