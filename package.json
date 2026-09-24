@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build": "tsc -b && pnpm --filter @roi-dealer/miniapp run build",
-    "dev": "pnpm -r --parallel run dev",
+    "dev": "pnpm -r --parallel --filter \"!@roi-dealer/bot\" run dev",
+    "dev:bot": "pnpm --filter @roi-dealer/bot run dev",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
@@ -38,6 +39,7 @@
     "@roi-dealer/schemas": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "@roi-dealer/skills": "workspace:*",
+    "@roi-dealer/telegram": "workspace:*",
     "@types/node": "^22.19.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",

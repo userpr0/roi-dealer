@@ -11,6 +11,7 @@ import * as rewards from '@roi-dealer/rewards';
 import * as schemas from '@roi-dealer/schemas';
 import * as shared from '@roi-dealer/shared';
 import * as skills from '@roi-dealer/skills';
+import * as telegram from '@roi-dealer/telegram';
 
 describe('workspace packages', () => {
   it.each([
@@ -26,6 +27,7 @@ describe('workspace packages', () => {
     ['@roi-dealer/schemas', schemas],
     ['@roi-dealer/shared', shared],
     ['@roi-dealer/skills', skills],
+    ['@roi-dealer/telegram', telegram],
   ])('%s is importable and identifies itself', (name, module) => {
     expect(module.PACKAGE_NAME).toBe(name);
   });

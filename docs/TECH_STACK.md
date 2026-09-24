@@ -43,17 +43,19 @@
 | Local infra     | Docker Compose                        | v2+                       | `infra/docker/compose.yaml`                                                                                   |
 | CI              | GitHub Actions                        | —                         | `.github/workflows/ci.yml`                                                                                    |
 | Hosting miniapp | GitHub Pages                          | —                         | `.github/workflows/miniapp-pages.yml` после зелёного CI; [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md) |
+| Telegram        | Bot API через собственный клиент      | —                         | `@roi-dealer/telegram` (`fetch` + Zod), long polling; [ADR-0003](ADR/0003-early-telegram-owner-bot.md)        |
+| Hosting bot     | Docker-образ `apps/bot/Dockerfile`    | `node:22-alpine`          | любой container-хостинг (рекомендуется Railway); [deploy guide](deploy/telegram-bot.md)                       |
 
 ### Ещё не подключено (по плану)
 
-| Компонент                           | Когда                                          | Требование                                       |
-| ----------------------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| DB driver, migrations, repositories | PHASE 02                                       | ADR на выбор инструмента                         |
-| Temporal (server + SDK)             | Перед первым durable workflow                  | ADR; сервис в Docker Compose                     |
-| S3-compatible storage               | Первая потребность (Evidence snapshots, media) | ADR; сервис в Docker Compose                     |
-| AI providers                        | PHASE 09                                       | только через `@roi-dealer/ai-runtime`            |
-| Telegram SDK / Bot API              | PHASE 13                                       | токен только из Secret Manager / `.env` локально |
-| Metrics, tracing, alerts            | Reliability System                             | совместимо с текущим logger / correlation id     |
+| Компонент                                | Когда                                          | Требование                                                                |
+| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| DB driver, migrations, repositories      | PHASE 02                                       | ADR на выбор инструмента                                                  |
+| Temporal (server + SDK)                  | Перед первым durable workflow                  | ADR; сервис в Docker Compose                                              |
+| S3-compatible storage                    | Первая потребность (Evidence snapshots, media) | ADR; сервис в Docker Compose                                              |
+| AI providers                             | PHASE 09                                       | только через `@roi-dealer/ai-runtime`                                     |
+| Telegram Mini App SDK, `initData` на api | PHASE 13                                       | данные в Mini App только после проверки подписи Telegram на стороне `api` |
+| Metrics, tracing, alerts                 | Reliability System                             | совместимо с текущим logger / correlation id                              |
 
 ## TypeScript
 
@@ -86,6 +88,6 @@
 ## Политика зависимостей
 
 1. Новая зависимость допускается, только если без неё нельзя выполнить задачу текущей Phase (Feature Kill Gate, §2.15); причина указывается в Phase Report.
-2. Runtime-зависимости сейчас: `zod`, `react`, `react-dom`. Всё остальное — dev-инструменты.
+2. Runtime-зависимости сейчас: `zod`, `react`, `react-dom`. Всё остальное — dev-инструменты. Telegram-интеграция не добавляет зависимостей.
 3. Install-скрипты зависимостей не выполняются (`onlyBuiltDependencies: []`). Разрешение — только после review, с записью в `pnpm-workspace.yaml`.
 4. `pnpm-lock.yaml` коммитится; CI использует `--frozen-lockfile`.

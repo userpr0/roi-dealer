@@ -24,6 +24,7 @@ pnpm format:check     # Prettier
 pnpm test             # Vitest: unit + integration
 pnpm build
 pnpm infra:up         # local PostgreSQL 18 (Docker)
+pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate test bot locally
 ```
 
 ## Code conventions
@@ -34,4 +35,5 @@ pnpm infra:up         # local PostgreSQL 18 (Docker)
 - Keep `apps/*` thin; put logic into `packages/*`. Packages never import apps.
 - Workspace packages resolve to `src/` via the `@roi-dealer/source` export condition in dev and tests, and to `dist/` at runtime. Do not add tsconfig `paths` aliases.
 - Tests live in the root `tests/` directory: `unit/` (in-process), `integration/` (real sockets and processes).
+- Call the Telegram Bot API only through `@roi-dealer/telegram`. Bot commands are read-only; any state-changing command must ask the owner for confirmation first. Never log the bot token or message text.
 - Code and comments are in English; project documentation is in Russian.

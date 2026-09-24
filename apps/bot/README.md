@@ -1,11 +1,35 @@
 # @roi-dealer/bot
 
-Telegram bot. **PHASE 00: только skeleton.** Токен не читается, сетевых вызовов нет: процесс пишет одну структурированную запись о статусе и завершается с кодом 0.
+Бот-пульт владельца ROI Dealer (фаза 13a, [ADR-0003](../../docs/ADR/0003-early-telegram-owner-bot.md)).
 
-Интеграция с Telegram — PHASE 13+ (Owner Command Center). Будущий Input Router: text / voice / webhook → typed intent → **confirmation** → backend action; state-changing действия только после подтверждения.
+- Отвечает **только** владельцу (`TELEGRAM_OWNER_USER_ID`) и только в личном чате.
+- Команды (только чтение): `/start`, `/status` — здоровье, версия, окружение, время работы; `/help`.
+- Уведомляет владельца о запуске и остановке.
+- Кнопка меню «Пульт» открывает Mini App (настраивается в @BotFather, [ADR-0002](../../docs/ADR/0002-miniapp-hosting-github-pages.md)).
 
-Токен бота в будущем — только из Secret Manager / Vault (локально — `.env`), никогда в repository.
+## Конфигурация
+
+| Переменная               | Обязательна | По умолчанию               |
+| ------------------------ | ----------- | -------------------------- |
+| `TELEGRAM_BOT_TOKEN`     | да          | — (секрет, из @BotFather)  |
+| `TELEGRAM_OWNER_USER_ID` | да          | — (ваш Id из @userinfobot) |
+| `TELEGRAM_API_BASE_URL`  | нет         | `https://api.telegram.org` |
+| `APP_VERSION`            | нет         | `dev`                      |
+| `NODE_ENV`               | нет         | `development`              |
+| `LOG_LEVEL`              | нет         | `info`                     |
+
+## Запуск
 
 ```bash
-pnpm build && pnpm --filter @roi-dealer/bot start
+pnpm dev:bot                                  # локально, читает .env (используйте ОТДЕЛЬНОГО тестового бота)
+docker build -f apps/bot/Dockerfile -t roi-dealer-bot .   # образ для облака
 ```
+
+Развёртывание в облаке — [`docs/deploy/telegram-bot.md`](../../docs/deploy/telegram-bot.md).
+
+## Структура
+
+- `src/config.ts` — Zod-схема конфигурации.
+- `src/commands.ts` — команды и тексты для владельца.
+- `src/main.ts` — сборка процесса: config → logger → shutdown (8 s) → Telegram client → команды → long polling → уведомления.
+- `Dockerfile` — multi-stage образ: сборка в pnpm workspace, в runtime только `dist` и production-зависимости, пользователь `node`.

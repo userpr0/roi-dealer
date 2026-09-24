@@ -1,0 +1,24 @@
+{
+  "name": "@roi-dealer/telegram",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Telegram Bot API integration: typed client, long polling, owner-only command routing, notifications",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/observability": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

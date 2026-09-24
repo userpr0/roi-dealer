@@ -47,6 +47,9 @@ importers:
       '@roi-dealer/skills':
         specifier: workspace:*
         version: link:packages/skills
+      '@roi-dealer/telegram':
+        specifier: workspace:*
+        version: link:packages/telegram
       '@types/node':
         specifier: ^22.19.0
         version: 22.20.4
@@ -101,6 +104,9 @@ importers:
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@roi-dealer/telegram':
+        specifier: workspace:*
+        version: link:../../packages/telegram
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -166,6 +172,15 @@ importers:
         version: 4.6.5
 
   packages/skills: {}
+
+  packages/telegram:
+    dependencies:
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
 packages:
 

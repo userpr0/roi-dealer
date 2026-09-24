@@ -54,3 +54,16 @@ jobs:
 
       - name: Validate Docker Compose config
         run: docker compose -f infra/docker/compose.yaml config --quiet
+
+  bot-image:
+    name: Build bot Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build -f apps/bot/Dockerfile --build-arg APP_VERSION=${{ github.sha }} -t roi-dealer-bot:ci .

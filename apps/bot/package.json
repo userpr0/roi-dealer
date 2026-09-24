@@ -2,15 +2,20 @@
   "name": "@roi-dealer/bot",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer Telegram bot (PHASE 00: skeleton only, no Telegram connection)",
+  "description": "ROI Dealer owner bot: Telegram control panel (read-only commands, notifications)",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
+    "dev": "tsx watch --conditions=@roi-dealer/source --env-file-if-exists=../../.env src/main.ts",
     "start": "node --enable-source-maps dist/main.js"
   },
   "dependencies": {
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/telegram": "workspace:*",
     "zod": "^4.6.5"
   }
 }

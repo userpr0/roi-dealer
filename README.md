@@ -35,7 +35,7 @@ cp .env.example .env   # опционально: значения по умол�
 
 ```bash
 pnpm infra:up   # PostgreSQL 18 на 127.0.0.1:5432 (ждёт healthy)
-pnpm dev        # api (:3000), worker, miniapp (:5173) в watch-режиме
+pnpm dev        # api (:3000), worker, miniapp (:5173) в watch-режиме (бот — отдельно, см. ниже)
 
 curl http://127.0.0.1:3000/health
 # {"status":"ok","service":"api"}
@@ -47,7 +47,7 @@ curl http://127.0.0.1:3000/health
 pnpm --filter @roi-dealer/api dev
 pnpm --filter @roi-dealer/worker dev
 pnpm --filter @roi-dealer/miniapp dev
-pnpm build && pnpm --filter @roi-dealer/bot start   # skeleton: пишет статус и завершается
+pnpm dev:bot   # бот-пульт; нужен .env с TELEGRAM_* (используйте отдельного тестового бота)
 ```
 
 Остановить инфраструктуру: `pnpm infra:down`.
@@ -80,9 +80,10 @@ apps/
   api/          HTTP API — PHASE 00: GET /health
   worker/       фоновый процесс — PHASE 00: lifecycle, graceful shutdown
   miniapp/      Telegram Mini App (React + Vite) — PHASE 00: placeholder
-  bot/          Telegram bot — PHASE 00: skeleton без токена
+  bot/          бот-пульт владельца в Telegram (фаза 13a): /status, уведомления, Docker-образ
 packages/
   shared/         config validation (Zod), graceful shutdown
+  telegram/       Telegram Bot API: клиент, long polling, команды только для владельца
   observability/  structured logger, health registry, correlation id
   domain/ schemas/ events/ policies/ agents/ judges/ skills/
   ai-runtime/ economics/ rewards/          placeholders следующих Phase
@@ -104,6 +105,7 @@ docs/           архитектура, конституция, протокол
 | [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)                     | Текущая Phase и её статус                                                            |
 | [`docs/ADR/`](docs/ADR/README.md)                                    | Architecture Decision Records                                                        |
 | [`docs/phases/`](docs/phases/README.md)                              | Спецификации и отчёты Phase                                                          |
+| [`docs/deploy/`](docs/deploy/telegram-bot.md)                        | Развёртывание бота-пульта в облаке                                                   |
 | [`docs/playbook/`](docs/playbook/IMPLEMENTATION_PLAYBOOK_v1.1.md)    | Implementation Playbook v1.1 — исходная спецификация                                 |
 
 ## Security
