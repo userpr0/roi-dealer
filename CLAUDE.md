@@ -35,5 +35,7 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Keep `apps/*` thin; put logic into `packages/*`. Packages never import apps.
 - Workspace packages resolve to `src/` via the `@roi-dealer/source` export condition in dev and tests, and to `dist/` at runtime. Do not add tsconfig `paths` aliases.
 - Tests live in the root `tests/` directory: `unit/` (in-process), `integration/` (real sockets and processes).
+- Change entity state only through `@roi-dealer/domain` functions (factories and transitions), never by assigning fields; validate untrusted input with `parseInput` from `@roi-dealer/schemas` first. Only the `owner` actor makes decisions; AI agents only propose.
+- Follow the owner decisions in `docs/OWNER_DECISIONS.md` (USD accounting, $20 approval threshold, budgets, markets).
 - Call the Telegram Bot API only through `@roi-dealer/telegram`. Bot commands are read-only; any state-changing command must ask the owner for confirmation first. Never log the bot token or message text.
 - Code and comments are in English; project documentation is in Russian.

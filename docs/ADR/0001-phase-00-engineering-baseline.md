@@ -1,8 +1,8 @@
 # ADR-0001: Инженерный baseline PHASE 00
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-24
-- **Approved by:** — (ожидает решения владельца вместе с приёмкой PHASE 00)
+- **Approved by:** владелец, 2026-09-24 (вместе с приёмкой PHASE 00 и переходом к PHASE 01)
 
 ## Context
 

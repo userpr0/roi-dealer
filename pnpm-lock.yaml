@@ -149,7 +149,11 @@ importers:
 
   packages/ai-runtime: {}
 
-  packages/domain: {}
+  packages/domain:
+    dependencies:
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/economics: {}
 
@@ -163,7 +167,14 @@ importers:
 
   packages/rewards: {}
 
-  packages/schemas: {}
+  packages/schemas:
+    dependencies:
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/shared:
     dependencies:

@@ -1,18 +1,19 @@
 # @roi-dealer/schemas
 
-**Статус:** placeholder (PHASE 00). Реализация — PHASE 01 — Core Domain (далее расширяется в каждой Phase).
+**Статус:** реализован (PHASE 01).
 
-## Назначение
+Boundary contracts: всё, что приходит извне (API, Telegram-бот, AI-агенты, интеграции), проверяется здесь до передачи в доменные фабрики.
 
-Zod-схемы и типизированные контракты: API payloads, события, structured outputs AI-задач, конфигурации workflows.
+| Export                          | Назначение                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createInputSchemas`            | Строгие схемы создания для 13 сущностей (`source`, `evidence`, …, `knowledgeAsset`). Лишние поля и поля сервера (`id`, `status`, `version`, времена, `createdBy`) отклоняются, в том числе во вложенных объектах. |
+| `approvalDecisionInputSchema`   | Ответ владельца на запрос одобрения: `approve` / `reject` + комментарий.                                                                                                                                          |
+| `contributionReviewInputSchema` | Проверка вклада владельцем: `verify` / `reject` + заметка.                                                                                                                                                        |
+| `parseInput(schema, raw)`       | Типизированный результат или `InputValidationError` (пути и сообщения, без значений).                                                                                                                             |
 
-## Правила
+```ts
+const data = parseInput(createInputSchemas.hypothesis, untrustedJson);
+const hypothesis = createHypothesis(data, { id, actor, at });
+```
 
-- Любые данные извне (HTTP, AI output, интеграции) валидируются схемой до использования.
-- AI output без прохождения схемы не считается валидным результатом.
-
-## Текущий export surface
-
-- `PACKAGE_NAME` — идентификатор пакета (используется в import-тестах).
-
-Не добавлять логику до одобрения соответствующей Phase владельцем.
+Далее (PHASE 03+) здесь появятся контракты событий, API-ответов и structured outputs AI-задач.

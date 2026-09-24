@@ -17,5 +17,6 @@ export {
   type ShutdownManager,
   type ShutdownManagerOptions,
 } from './lifecycle.js';
+export { uuidv7 } from './uuid.js';
 
 export const PACKAGE_NAME = '@roi-dealer/shared';

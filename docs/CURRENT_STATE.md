@@ -1,31 +1,34 @@
 # Current State
 
 ```text
-Current Phase: 00 — Project Bootstrap
+Current Phase: 01 — Core Domain
 Phase Status: PASS
-Additional (owner-approved): 13a — Telegram Owner Bot — PASS
+Completed: 00 — Project Bootstrap (PASS), 13a — Telegram Owner Bot (PASS, owner-approved early step)
 Playbook: v1.1
 Updated: 2026-09-24
 ```
 
-Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md)
+Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md), [PHASE 01 — Core Domain](phases/01_core_domain.report.md)
+
+Решения владельца: [`docs/OWNER_DECISIONS.md`](OWNER_DECISIONS.md)
 
 ## Implemented
 
 - pnpm monorepo (`apps/*`, `packages/*`), воспроизводимая установка (`pnpm install --frozen-lockfile`).
 - TypeScript 6.0 strict + project references (`tsc -b`), ESLint 10 (type-aware, `no-console`), Prettier.
-- Vitest: 16 test files, 166 tests (142 unit, 24 integration).
+- Vitest: 25 test files, 262 tests (238 unit, 24 integration).
 - Config validation (Zod), structured JSON logging с редактированием секретов, correlation id, health registry, graceful shutdown.
 - `GET /health` → `{"status":"ok","service":"api"}`.
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
 - GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → integration tests → compose validation. Первый запуск на GitHub — success ([run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452)).
-- Документация: конституция, архитектура, стек, протокол, ADR (процесс, шаблон, ADR-0001 Proposed), phases, playbook v1.1.
+- Документация: конституция, архитектура, стек, протокол, ADR (процесс, шаблон, ADR-0001…0003 Accepted), решения владельца (D-001…D-011), план кнопок пульта, phases, playbook v1.1.
+- **PHASE 01 — Core Domain:** `@roi-dealer/domain` — 13 сущностей цикла ROI CORE v0.1 (Source → … → Reward, ApprovalRequest), value objects (UUID, UTC, USD в центах, Actor), state machines и 11 правил (решения только владельца, evidence first, 5 разных гипотез, human gate $20, актив по итогам эксперимента, Reward только за проверенный вклад); `@roi-dealer/schemas` — строгие входные контракты; `uuidv7()` в `@roi-dealer/shared`.
 - **Фаза 13a (по запросу владельца, [ADR-0003](ADR/0003-early-telegram-owner-bot.md)):** бот-пульт в Telegram — только владелец, `/start` `/status` `/help`, уведомления о запуске / остановке, long polling; пакет `@roi-dealer/telegram`; Docker-образ `apps/bot/Dockerfile` (собирается в CI); инструкция [`docs/deploy/telegram-bot.md`](deploy/telegram-bot.md).
 - **По запросу владельца после PHASE 00:** публикация placeholder miniapp на GitHub Pages (https://userpr0.github.io/roi-dealer/) для открытия в Telegram — [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md), workflow `.github/workflows/miniapp-pages.yml`.
 
 ## Not Implemented
 
-- Любая бизнес-логика и доменные сущности (PHASE 01+).
+- Хранение сущностей и бизнес-логика поверх домена (PHASE 02+); Customer / Product / Revenue и другие сущности поздних фаз.
 - Схема БД, миграции, драйвер PostgreSQL (PHASE 02).
 - Event History (PHASE 03), RBAC (PHASE 04), AI runtime и провайдеры (PHASE 09), agents / judges (PHASE 10–11).
 - Mini App с данными и проверкой `initData`, команды с изменением состояния, approvals в Telegram (PHASE 13).
@@ -43,12 +46,14 @@ Updated: 2026-09-24
 
 ## Packages
 
-| Package                                                                                                       | Состояние                                                                   |
-| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `@roi-dealer/shared`                                                                                          | Реализован: `loadConfig`, `createShutdownManager`, `installProcessHandlers` |
-| `@roi-dealer/observability`                                                                                   | Реализован: `createLogger`, `createHealthRegistry`, `resolveCorrelationId`  |
-| `@roi-dealer/telegram`                                                                                        | Реализован (13a): клиент Bot API, long polling, owner-only router, notifier |
-| `domain`, `schemas`, `events`, `policies`, `agents`, `judges`, `skills`, `ai-runtime`, `economics`, `rewards` | Placeholders: `PACKAGE_NAME` + README с назначением и Phase                 |
+| Package                                                                                  | Состояние                                                                   |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `@roi-dealer/shared`                                                                     | Реализован: `loadConfig`, `createShutdownManager`, `installProcessHandlers` |
+| `@roi-dealer/observability`                                                              | Реализован: `createLogger`, `createHealthRegistry`, `resolveCorrelationId`  |
+| `@roi-dealer/telegram`                                                                   | Реализован (13a): клиент Bot API, long polling, owner-only router, notifier |
+| `@roi-dealer/domain`                                                                     | Реализован (PHASE 01): сущности, value objects, lifecycles, правила         |
+| `@roi-dealer/schemas`                                                                    | Реализован (PHASE 01): строгие входные контракты, `parseInput`              |
+| `events`, `policies`, `agents`, `judges`, `skills`, `ai-runtime`, `economics`, `rewards` | Placeholders: `PACKAGE_NAME` + README с назначением и Phase                 |
 
 ## Infrastructure
 
@@ -60,7 +65,7 @@ Updated: 2026-09-24
 
 | Набор       | Файлы | Тесты | Результат |
 | ----------- | ----- | ----- | --------- |
-| unit        | 12    | 142   | pass      |
+| unit        | 21    | 238   | pass      |
 | integration | 4     | 24    | pass      |
 
 Integration-тесты запускают реальные процессы api / worker / bot (SIGTERM, SIGINT, exit codes, некорректная конфигурация), реальный HTTP-сервер и поддельный Telegram Bot API.
@@ -68,10 +73,10 @@ Integration-тесты запускают реальные процессы api 
 ## Known Issues
 
 - Для miniapp нет автоматического теста рендеринга (проверено вручную: build + Chromium, ошибок в консоли нет).
-- ADR-0001 (инструменты и версии PHASE 00) в статусе **Proposed** — ожидает решения владельца.
+- Сущности пока живут только в памяти: хранение в PostgreSQL — PHASE 02.
 - Бот ещё не развёрнут в облаке: нужен аккаунт хостинга владельца ([инструкция](deploy/telegram-bot.md)).
 - Живой Telegram API недоступен из облачной среды разработки — бот проверен на поддельном Bot API и в Docker-контейнере.
 
 ## Next Allowed Phase
 
-**01 only after owner approval.**
+**02 (PostgreSQL Foundation) only after owner approval.** Затем 03 → одобрения и стоп-кран в пульте (D-002).

@@ -2,7 +2,7 @@
   "name": "@roi-dealer/schemas",
   "version": "0.0.0",
   "private": true,
-  "description": "Zod schemas and typed contracts",
+  "description": "Boundary contracts: strict input schemas for commands coming from API, bot, agents and integrations",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,9 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/domain": "workspace:*",
+    "zod": "^4.6.5"
   }
 }

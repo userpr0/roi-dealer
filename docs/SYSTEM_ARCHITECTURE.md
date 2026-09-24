@@ -176,6 +176,19 @@ packages/*  ──►  packages/shared, packages/observability
 | 16. Input Router / Capture Layer    | `packages/telegram` (типизированные команды) → `apps/bot`, `apps/api` — typed intent → confirmation → backend action (после PHASE 13) |
 | 17. Early User Validation Layer     | PHASE 20–21                                                                                                                           |
 
+### Доменная модель (PHASE 01)
+
+`@roi-dealer/domain` — единственное место, где описаны сущности и правила. Backend, бот, workflows и агенты меняют состояние **только** через его функции:
+
+```text
+untrusted JSON ──parseInput(createInputSchemas.x)──► typed data ──createX / transition(ctx)──► new entity version
+                  (@roi-dealer/schemas: strict)                   (@roi-dealer/domain: rules, owner gates)
+```
+
+- Изменяемые сущности: `version` + `updatedAt` (optimistic locking в PHASE 02); неизменяемые записи (Evidence, Decision, CostEntry, KnowledgeAsset) исправляются новыми записями.
+- Решения владельца (Decision, ApprovalRequest, верификация вклада, одобрение Reward) закреплены за актором `owner` в домене, а не только в интерфейсе.
+- Спецификация и правила — [`docs/phases/01_core_domain.md`](phases/01_core_domain.md).
+
 ### Сквозные механизмы (реализованы в PHASE 00)
 
 | Механизм           | Где                                                                      | Контракт                                                                                                 |

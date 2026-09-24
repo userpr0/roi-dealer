@@ -25,6 +25,6 @@ ADR фиксирует значимое архитектурное решени�
 
 | №                                             | Название                                     | Статус   | Дата       |
 | --------------------------------------------- | -------------------------------------------- | -------- | ---------- |
-| [0001](0001-phase-00-engineering-baseline.md) | Инженерный baseline PHASE 00                 | Proposed | 2026-09-24 |
+| [0001](0001-phase-00-engineering-baseline.md) | Инженерный baseline PHASE 00                 | Accepted | 2026-09-24 |
 | [0002](0002-miniapp-hosting-github-pages.md)  | Хостинг miniapp на GitHub Pages              | Accepted | 2026-09-24 |
 | [0003](0003-early-telegram-owner-bot.md)      | Ранний Telegram-модуль — бот-пульт владельца | Accepted | 2026-09-24 |
