@@ -20,16 +20,37 @@
 
 ## 2. Вариант A — Railway (рекомендуется, без командной строки)
 
-1. Зарегистрируйтесь на [railway.com](https://railway.com) через GitHub. Бот требует постоянно работающего процесса — проверьте актуальный тариф (ориентировочно около $5/мес).
-2. **New Project → Deploy from GitHub repo** → выберите `userpr0/roi-dealer`.
-3. В созданном сервисе откройте **Variables** и добавьте:
-   - `TELEGRAM_BOT_TOKEN` = токен из п. 1;
-   - `TELEGRAM_OWNER_USER_ID` = ваш Id;
-   - `RAILWAY_DOCKERFILE_PATH` = `apps/bot/Dockerfile` — путь к Dockerfile бота (Dockerfile лежит не в корне repository).
-4. Запустите деплой (**Deploy**). Сервису не нужен публичный домен — не включайте **Networking → Generate Domain**.
-5. Через 1–3 минуты в Telegram придёт сообщение **«🟢 ROI Dealer bot запущен»**. Отправьте боту `/status`.
+Проверено на запуске 2026-09-25.
 
-Дальше Railway сам пересобирает бота после каждого push в выбранную ветку. Если в настройках сервиса есть опция ожидания CI (**Wait for CI**), включите её — тогда выкатываются только коммиты с зелёным CI.
+1. Зарегистрируйтесь на [railway.com](https://railway.com) через GitHub, тариф **Hobby** (около $5/мес). Сразу задайте лимиты: **Usage → Usage limits** — оповещение $15, жёсткий лимит $20 (D-007).
+2. **New Project → Deploy from GitHub repo** → `userpr0/roi-dealer`. Доступ приложению Railway — **Only select repositories**.
+3. Railway сам находит в монорепозитории все приложения и создаёт по сервису на каждое (`api`, `worker`, `miniapp`, `bot`). **Оставьте только `@roi-dealer/bot`**, остальные удалите: сервис → **Settings** → внизу **Delete Service**. Mini App работает на GitHub Pages, `api` и `worker` пока заготовки.
+4. Сервис бота → **Variables** → **Raw Editor** (вкладка **ENV**) → три строки → **Update Variables**:
+   ```
+   RAILWAY_DOCKERFILE_PATH=apps/bot/Dockerfile
+   TELEGRAM_BOT_TOKEN=<токен из п. 1>
+   TELEGRAM_OWNER_USER_ID=<ваш Id>
+   ```
+   Блок **Suggested Variables** (его Railway собрал из `.env.example`) **не добавляйте**: там `NODE_ENV=development` и настройки других сервисов.
+5. Сервис бота → **Settings**. Railway заранее прописывает команды для сборки без Docker, их нужно убрать:
+
+   | Раздел     | Поле                           | Значение                                                                             |
+   | ---------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+   | Source     | Root Directory                 | пусто                                                                                |
+   | Source     | Branch connected to production | `main`                                                                               |
+   | Source     | Wait for CI                    | включено — выкатываются только коммиты с зелёными проверками                         |
+   | Build      | Builder                        | Dockerfile (задаётся переменной `RAILWAY_DOCKERFILE_PATH`)                           |
+   | Build      | Custom Build Command           | пусто                                                                                |
+   | Build      | Watch Paths                    | пусто, иначе изменения в `packages/*` не пересоберут бота                            |
+   | Deploy     | Custom Start Command           | **пусто**, иначе вместо `CMD` из Dockerfile запустится `pnpm`, которого нет в образе |
+   | Deploy     | Serverless                     | выключено — бот должен работать постоянно                                            |
+   | Scale      | Replicas                       | 1 (два экземпляра с одним токеном конфликтуют)                                       |
+   | Scale      | Replica Limits                 | 1 vCPU, 0.5 GB — защита бюджета при ошибке в коде                                    |
+   | Networking | Public domain                  | не создавать                                                                         |
+
+6. Вверху **Apply N changes → Deploy**. Через 2–4 минуты карточка станет **Online**, в Telegram придёт **«🟢 ROI Dealer bot запущен»**. Отправьте боту `/status`.
+
+Дальше Railway сам пересобирает бота после каждого слияния в `main`, когда проверки GitHub зелёные.
 
 ## 3. Вариант B — любой сервер с Docker (VPS)
 
@@ -59,13 +80,16 @@ docker logs -f roi-dealer-bot
 
 ## 5. Если что-то не так
 
-| Симптом в логах                                                 | Причина и решение                                                           |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `Invalid configuration: TELEGRAM_BOT_TOKEN …`                   | Переменная не задана или скопирована с ошибкой                              |
-| `bot failed to start` … `(401)`                                 | Токен неверный или отозван — возьмите актуальный в @BotFather               |
-| `telegram polling conflict: another bot instance…`              | Бот с этим токеном запущен где-то ещё — остановите лишний экземпляр         |
-| Бот молчит, в логах `sender is not the owner` с вашим `user_id` | В `TELEGRAM_OWNER_USER_ID` указан не ваш Id — замените на `user_id` из лога |
-| Бот молчит, логов нет                                           | Сервис не запущен — проверьте статус деплоя у провайдера                    |
+| Симптом в логах                                                 | Причина и решение                                                                      |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `Invalid configuration: TELEGRAM_BOT_TOKEN …`                   | Переменная не задана или скопирована с ошибкой                                         |
+| `bot failed to start` … `(401)`                                 | Токен неверный или отозван — возьмите актуальный в @BotFather                          |
+| `telegram polling conflict: another bot instance…`              | Бот с этим токеном запущен где-то ещё — остановите лишний экземпляр                    |
+| Бот молчит, в логах `sender is not the owner` с вашим `user_id` | В `TELEGRAM_OWNER_USER_ID` указан не ваш Id — замените на `user_id` из лога            |
+| Бот молчит, логов нет                                           | Сервис не запущен — проверьте статус деплоя у провайдера                               |
+| Railway: ``The executable `pnpm` could not be found``           | Заполнено **Custom Start Command** — очистите поле и перезапустите деплой              |
+| Railway: деплой **Skipped**, «No changes to watched files»      | Заполнено **Watch Paths** — очистите поле                                              |
+| Railway: деплой **Skipped**, «CI check suite failed»            | На коммите есть упавшая проверка GitHub Actions — исправьте её или влейте новый коммит |
 
 ## Безопасность
 

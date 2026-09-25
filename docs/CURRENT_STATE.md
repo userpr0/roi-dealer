@@ -37,12 +37,12 @@ Updated: 2026-09-25
 
 ## Applications
 
-| App            | Состояние                                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/api`     | `GET/HEAD /health`, 404 / 405 / 500 обработка, correlation id, access log, graceful shutdown                                         |
-| `apps/worker`  | start → heartbeat (debug log) → SIGTERM / SIGINT → graceful stop, exit 0                                                             |
-| `apps/miniapp` | React 19 + Vite 8, placeholder-экран; dev / build / preview работают                                                                 |
-| `apps/bot`     | Бот-пульт владельца (13a): `/start` `/status` `/help`, уведомления, long polling, Docker-образ; облачный деплой — действие владельца |
+| App            | Состояние                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api`     | `GET/HEAD /health`, 404 / 405 / 500 обработка, correlation id, access log, graceful shutdown                                 |
+| `apps/worker`  | start → heartbeat (debug log) → SIGTERM / SIGINT → graceful stop, exit 0                                                     |
+| `apps/miniapp` | React 19 + Vite 8, placeholder-экран; dev / build / preview работают                                                         |
+| `apps/bot`     | Бот-пульт владельца (13a): `/start` `/status` `/help`, уведомления, long polling, Docker-образ; работает в Railway (EU West) |
 
 ## Packages
 
@@ -74,14 +74,16 @@ Integration-тесты запускают реальные процессы api 
 
 - ✅ **A2:** `main` — основная ветка; ruleset `Protect main` активен ([файл](deploy/github-ruleset-protect-main.json)): изменения только через pull request, обязательные проверки CI `Typecheck, lint, test, build` и `Build bot Docker image`, запрет force push и удаления. Claude работает в рабочей ветке и открывает PR, вливает владелец.
 - ✅ **A3 (GitHub):** Secret Protection и push protection включены. Двухфакторка аккаунтов — на стороне владельца.
-- ⏳ **A1, A4, A5:** бот в Railway, лимит расходов $20, тестовый бот — [инструкция](deploy/owner-setup.md).
+- ✅ **A1:** бот-пульт работает в Railway (регион EU West, 1 реплика, лимиты 1 vCPU / 0.5 GB), деплой из `main` после зелёного CI; 2026-09-25 прислал «🟢 ROI Dealer bot запущен». Настройки — [`deploy/telegram-bot.md`](deploy/telegram-bot.md).
+- ✅ **A4 (Railway):** лимиты использования заданы владельцем ($15 оповещение, $20 жёсткий лимит).
+- ⏳ **A5:** тестовый бот для локальной разработки — [инструкция](deploy/owner-setup.md).
 - ⏳ **A6:** инструкции на аварии — Claude, по команде владельца.
 
 ## Known Issues
 
 - Для miniapp нет автоматического теста рендеринга (проверено вручную: build + Chromium, ошибок в консоли нет).
 - Сущности пока живут только в памяти: хранение в PostgreSQL — PHASE 02.
-- Бот ещё не развёрнут в облаке: нужен аккаунт хостинга владельца ([инструкция](deploy/telegram-bot.md)).
+- В Railway бот показывает версию `dev`: переменная `APP_VERSION` не задана, поэтому по сообщению не видно, какой коммит выкачен.
 - Живой Telegram API недоступен из облачной среды разработки — бот проверен на поддельном Bot API и в Docker-контейнере.
 
 ## Next Allowed Phase
