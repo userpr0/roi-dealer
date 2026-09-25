@@ -16,6 +16,7 @@
     { "path": "./packages/economics" },
     { "path": "./packages/rewards" },
     { "path": "./packages/telegram" },
+    { "path": "./packages/command-center" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/bot" },

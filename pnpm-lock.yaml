@@ -17,6 +17,9 @@ importers:
       '@roi-dealer/ai-runtime':
         specifier: workspace:*
         version: link:packages/ai-runtime
+      '@roi-dealer/command-center':
+        specifier: workspace:*
+        version: link:packages/command-center
       '@roi-dealer/database':
         specifier: workspace:*
         version: link:packages/database
@@ -104,6 +107,12 @@ importers:
 
   apps/bot:
     dependencies:
+      '@roi-dealer/command-center':
+        specifier: workspace:*
+        version: link:../../packages/command-center
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -154,6 +163,24 @@ importers:
   packages/agents: {}
 
   packages/ai-runtime: {}
+
+  packages/command-center:
+    dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/events':
+        specifier: workspace:*
+        version: link:../events
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@roi-dealer/telegram':
+        specifier: workspace:*
+        version: link:../telegram
 
   packages/database:
     dependencies:

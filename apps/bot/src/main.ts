@@ -1,3 +1,5 @@
+import { createCommandCenter } from '@roi-dealer/command-center';
+import { createDatabase, createDatabaseHealthCheck, type Database } from '@roi-dealer/database';
 import { createHealthRegistry, createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
 import {
@@ -40,7 +42,37 @@ async function main(): Promise<void> {
     service: SERVICE,
     onCheckError: (check, error) => logger.warn('health check failed', { check, error }),
   });
-  const commands = createBotCommands({ ...runtime, health, startedAt: Date.now() });
+
+  // The command center needs PostgreSQL; without DATABASE_URL its commands explain that.
+  let database: Database | undefined;
+  if (config.DATABASE_URL === undefined) {
+    logger.info('database not configured');
+  } else {
+    const connected = createDatabase({
+      url: config.DATABASE_URL,
+      applicationName: 'roi-dealer-bot',
+      maxConnections: config.DATABASE_POOL_MAX,
+      connectTimeoutSeconds: config.DATABASE_CONNECT_TIMEOUT_SECONDS,
+      logger,
+    });
+    database = connected;
+    health.register(createDatabaseHealthCheck(connected));
+    shutdown.register('database', () => connected.close());
+  }
+  const commandCenter = createCommandCenter({
+    database,
+    logger,
+    deliverDigest: (text) => client.sendMessage({ chatId: ownerUserId, text }),
+  });
+  shutdown.register('daily-digest', () => commandCenter.stopDigest());
+
+  const commands = createBotCommands({
+    ...runtime,
+    health,
+    startedAt: Date.now(),
+    panel: commandCenter.commands,
+    statusLines: () => commandCenter.statusLines(),
+  });
 
   try {
     // Commands appear in the Telegram menu only in the owner's chat.
@@ -58,11 +90,13 @@ async function main(): Promise<void> {
     onUpdate: createOwnerCommandRouter({
       ownerUserId,
       commands,
+      callbacks: commandCenter.callbacks,
       client,
       logger,
       ...(me.username === undefined ? {} : { botUsername: me.username }),
       unknownCommandReply: TEXT.unknownCommand,
       failureReply: TEXT.failure,
+      unknownCallbackReply: TEXT.unknownButton,
     }),
     onFatalError: () => {
       void shutdown.shutdown('telegram token rejected', 1).then(exitProcess);
@@ -77,7 +111,12 @@ async function main(): Promise<void> {
   });
 
   await notifier.notify(startedText(runtime));
-  logger.info('bot started', { node_env: config.NODE_ENV, version: config.APP_VERSION });
+  commandCenter.startDigest();
+  logger.info('bot started', {
+    node_env: config.NODE_ENV,
+    version: config.APP_VERSION,
+    database: database !== undefined,
+  });
 }
 
 main().catch((error: unknown) => {

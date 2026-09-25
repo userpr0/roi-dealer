@@ -30,6 +30,7 @@
     "@eslint/js": "^10.0.1",
     "@roi-dealer/agents": "workspace:*",
     "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/economics": "workspace:*",
