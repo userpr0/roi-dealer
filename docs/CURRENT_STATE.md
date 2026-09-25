@@ -5,7 +5,7 @@ Current Phase: 01 — Core Domain
 Phase Status: PASS
 Completed: 00 — Project Bootstrap (PASS), 13a — Telegram Owner Bot (PASS, owner-approved early step)
 Playbook: v1.1
-Updated: 2026-09-24
+Updated: 2026-09-25
 ```
 
 Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md), [PHASE 01 — Core Domain](phases/01_core_domain.report.md)
@@ -69,6 +69,13 @@ Updated: 2026-09-24
 | integration | 4     | 24    | pass      |
 
 Integration-тесты запускают реальные процессы api / worker / bot (SIGTERM, SIGINT, exit codes, некорректная конфигурация), реальный HTTP-сервер и поддельный Telegram Bot API.
+
+## Этап A — настройка владельцем
+
+- ✅ **A2:** `main` — основная ветка; ruleset `Protect main` активен ([файл](deploy/github-ruleset-protect-main.json)): изменения только через pull request, обязательные проверки CI `Typecheck, lint, test, build` и `Build bot Docker image`, запрет force push и удаления. Claude работает в рабочей ветке и открывает PR, вливает владелец.
+- ✅ **A3 (GitHub):** Secret Protection и push protection включены. Двухфакторка аккаунтов — на стороне владельца.
+- ⏳ **A1, A4, A5:** бот в Railway, лимит расходов $20, тестовый бот — [инструкция](deploy/owner-setup.md).
+- ⏳ **A6:** инструкции на аварии — Claude, по команде владельца.
 
 ## Known Issues
 
