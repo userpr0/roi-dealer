@@ -2,7 +2,7 @@
 
 > **Источник канонического стека:** Implementation Playbook v1.1, §4.
 > Изменение канонического стека — только через ADR с approval владельца.
-> Конкретные инструменты PHASE 00 зафиксированы в [ADR-0001](ADR/0001-phase-00-engineering-baseline.md) (статус: Proposed).
+> Конкретные инструменты PHASE 00 зафиксированы в [ADR-0001](ADR/0001-phase-00-engineering-baseline.md) (Accepted), PostgreSQL-драйвер и миграции — в [ADR-0005](ADR/0005-postgresql-driver-and-migrations.md) (Proposed, принимается с приёмкой PHASE 02).
 
 ## Канонический стек v1
 
@@ -26,31 +26,33 @@
 
 ## Инструменты, используемые сейчас (PHASE 00)
 
-| Область         | Инструмент                            | Версия                    | Примечание                                                                                                    |
-| --------------- | ------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Runtime         | Node.js                               | 22 LTS (`>=22.12`)        | `.nvmrc`, `engines`                                                                                           |
-| Package manager | pnpm workspaces                       | 10.33 (`packageManager`)  | lifecycle-скрипты зависимостей заблокированы                                                                  |
-| Язык            | TypeScript                            | `~6.0.3`                  | **Не 7.x:** typescript-eslint 8.x поддерживает только `<6.1`                                                  |
-| Validation      | Zod                                   | `^4.6`                    | конфигурация процессов; далее — все контракты                                                                 |
-| Tests           | Vitest                                | `^5.0`                    | проекты `unit` и `integration`                                                                                |
-| Lint            | ESLint + typescript-eslint            | `^10.11` / `^8.70`        | flat config, type-aware правила                                                                               |
-| Format          | Prettier                              | `^3.9`                    | `eslint-config-prettier` отключает конфликтующие правила                                                      |
-| Dev runner      | tsx                                   | `^4.23`                   | `pnpm dev` для api / worker, integration-тесты процессов                                                      |
-| Frontend        | React + Vite + `@vitejs/plugin-react` | `^19.3` / `^8.3` / `^6.1` | только `apps/miniapp`                                                                                         |
-| HTTP            | `node:http`                           | встроен                   | фреймворк не выбран — решение через ADR в Phase, где понадобится routing / middleware                         |
-| Logging         | собственный JSON logger               | —                         | `@roi-dealer/observability`, без зависимостей                                                                 |
-| Database        | PostgreSQL                            | 18 (`postgres:18-alpine`) | нативный `uuidv7()`; драйвер и инструмент миграций — PHASE 02                                                 |
-| Local infra     | Docker Compose                        | v2+                       | `infra/docker/compose.yaml`                                                                                   |
-| CI              | GitHub Actions                        | —                         | `.github/workflows/ci.yml`                                                                                    |
-| Hosting miniapp | GitHub Pages                          | —                         | `.github/workflows/miniapp-pages.yml` после зелёного CI; [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md) |
-| Telegram        | Bot API через собственный клиент      | —                         | `@roi-dealer/telegram` (`fetch` + Zod), long polling; [ADR-0003](ADR/0003-early-telegram-owner-bot.md)        |
-| Hosting bot     | Docker-образ `apps/bot/Dockerfile`    | `node:22-alpine`          | любой container-хостинг (рекомендуется Railway); [deploy guide](deploy/telegram-bot.md)                       |
+| Область         | Инструмент                            | Версия                    | Примечание                                                                                                                   |
+| --------------- | ------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Runtime         | Node.js                               | 22 LTS (`>=22.12`)        | `.nvmrc`, `engines`                                                                                                          |
+| Package manager | pnpm workspaces                       | 10.33 (`packageManager`)  | lifecycle-скрипты зависимостей заблокированы                                                                                 |
+| Язык            | TypeScript                            | `~6.0.3`                  | **Не 7.x:** typescript-eslint 8.x поддерживает только `<6.1`                                                                 |
+| Validation      | Zod                                   | `^4.6`                    | конфигурация процессов; далее — все контракты                                                                                |
+| Tests           | Vitest                                | `^5.0`                    | проекты `unit` и `integration`                                                                                               |
+| Lint            | ESLint + typescript-eslint            | `^10.11` / `^8.70`        | flat config, type-aware правила                                                                                              |
+| Format          | Prettier                              | `^3.9`                    | `eslint-config-prettier` отключает конфликтующие правила                                                                     |
+| Dev runner      | tsx                                   | `^4.23`                   | `pnpm dev` для api / worker, integration-тесты процессов                                                                     |
+| Frontend        | React + Vite + `@vitejs/plugin-react` | `^19.3` / `^8.3` / `^6.1` | только `apps/miniapp`                                                                                                        |
+| HTTP            | `node:http`                           | встроен                   | фреймворк не выбран — решение через ADR в Phase, где понадобится routing / middleware                                        |
+| Logging         | собственный JSON logger               | —                         | `@roi-dealer/observability`, без зависимостей                                                                                |
+| Database        | PostgreSQL                            | 18 (`postgres:18-alpine`) | локально и в CI; сессии в UTC                                                                                                |
+| DB driver       | `postgres` (postgres.js)              | `^3.4.9`                  | без зависимостей; только через `@roi-dealer/database`; [ADR-0005](ADR/0005-postgresql-driver-and-migrations.md)              |
+| Migrations      | SQL-файлы + собственный раннер        | —                         | `database/migrations/`, `pnpm db:migrate`; SHA-256 и advisory lock; [ADR-0005](ADR/0005-postgresql-driver-and-migrations.md) |
+| Local infra     | Docker Compose                        | v2+                       | `infra/docker/compose.yaml`                                                                                                  |
+| CI              | GitHub Actions                        | —                         | `.github/workflows/ci.yml`                                                                                                   |
+| Hosting miniapp | GitHub Pages                          | —                         | `.github/workflows/miniapp-pages.yml` после зелёного CI; [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md)                |
+| Telegram        | Bot API через собственный клиент      | —                         | `@roi-dealer/telegram` (`fetch` + Zod), long polling; [ADR-0003](ADR/0003-early-telegram-owner-bot.md)                       |
+| Hosting bot     | Docker-образ `apps/bot/Dockerfile`    | `node:22-alpine`          | любой container-хостинг (рекомендуется Railway); [deploy guide](deploy/telegram-bot.md)                                      |
 
 ### Ещё не подключено (по плану)
 
 | Компонент                                | Когда                                          | Требование                                                                |
 | ---------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| DB driver, migrations, repositories      | PHASE 02                                       | ADR на выбор инструмента                                                  |
+| PostgreSQL в облаке, резервные копии     | Вместе с первым облачным потребителем (13b)    | [инструкция](deploy/database.md); создаёт владелец                        |
 | Temporal (server + SDK)                  | Перед первым durable workflow                  | ADR; сервис в Docker Compose                                              |
 | S3-compatible storage                    | Первая потребность (Evidence snapshots, media) | ADR; сервис в Docker Compose                                              |
 | AI providers                             | PHASE 09                                       | только через `@roi-dealer/ai-runtime`                                     |
@@ -88,6 +90,6 @@
 ## Политика зависимостей
 
 1. Новая зависимость допускается, только если без неё нельзя выполнить задачу текущей Phase (Feature Kill Gate, §2.15); причина указывается в Phase Report.
-2. Runtime-зависимости сейчас: `zod`, `react`, `react-dom`. Всё остальное — dev-инструменты. Telegram-интеграция не добавляет зависимостей.
+2. Runtime-зависимости сейчас: `zod`, `react`, `react-dom`, `postgres` (PHASE 02, ADR-0005). Всё остальное — dev-инструменты. Telegram-интеграция не добавляет зависимостей.
 3. Install-скрипты зависимостей не выполняются (`onlyBuiltDependencies: []`). Разрешение — только после review, с записью в `pnpm-workspace.yaml`.
 4. `pnpm-lock.yaml` коммитится; CI использует `--frozen-lockfile`.

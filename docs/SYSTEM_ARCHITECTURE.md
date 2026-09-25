@@ -104,7 +104,7 @@ Real Pain / Opportunity
 
 ---
 
-## Архитектура реализации (as built — PHASE 00)
+## Архитектура реализации (as built — PHASE 02)
 
 ### Стиль
 
@@ -113,7 +113,7 @@ TypeScript **modular monolith** в pnpm monorepo:
 - `apps/*` — развёртываемые процессы (тонкий транспортный слой, без бизнес-логики);
 - `packages/*` — библиотеки: домен, контракты, политики, AI runtime, экономика, observability;
 - `workflows/*` — Temporal workflows (появятся с Temporal; сейчас только README);
-- `database/*` — миграции и seeds PostgreSQL (с PHASE 02).
+- `database/*` — SQL-миграции и документация схемы PostgreSQL (PHASE 02).
 
 ### Runtime-компоненты
 
@@ -131,15 +131,15 @@ TypeScript **modular monolith** в pnpm monorepo:
                      └─► ai-runtime ─► AI providers (заменяемые)   └─► S3-compatible storage
 ```
 
-| Компонент             | Статус в PHASE 00                                                                                                                         | Появится                                            |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                         | Бизнес-API — по Phase                               |
-| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                            | Temporal workers — после выбора интеграции Temporal |
-| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                    | PHASE 13 — Owner Command Center                     |
-| `apps/bot`            | Бот-пульт владельца (фаза 13a, ADR-0003): только владелец, `/start` `/status` `/help`, уведомления, long polling, Docker-образ для облака | Approvals, alerts, Input Router — PHASE 13+         |
-| PostgreSQL 18         | Docker Compose, healthcheck, volume, loopback-only                                                                                        | Схема и миграции — PHASE 02                         |
-| Temporal              | Не запущен                                                                                                                                | Отдельный шаг с ADR                                 |
-| S3-compatible storage | Не запущен                                                                                                                                | При первой потребности (Evidence snapshots, media)  |
+| Компонент             | Статус в PHASE 00                                                                                                                                                        | Появится                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                        | Бизнес-API — по Phase                               |
+| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                                                           | Temporal workers — после выбора интеграции Temporal |
+| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                   | PHASE 13 — Owner Command Center                     |
+| `apps/bot`            | Бот-пульт владельца (фаза 13a, ADR-0003): только владелец, `/start` `/status` `/help`, уведомления, long polling, Docker-образ для облака                                | Approvals, alerts, Input Router — PHASE 13+         |
+| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 13 сущностей (миграция `0001`); доступ — `@roi-dealer/database`; `api` проверяет БД в `/health`, если задан `DATABASE_URL` | Облачная БД — с первым облачным потребителем (13b)  |
+| Temporal              | Не запущен                                                                                                                                                               | Отдельный шаг с ADR                                 |
+| S3-compatible storage | Не запущен                                                                                                                                                               | При первой потребности (Evidence snapshots, media)  |
 
 ### Направления зависимостей
 
@@ -148,6 +148,7 @@ apps/*  ──►  packages/*          (никогда наоборот)
 packages/domain                  без I/O: не импортирует БД, сеть, AI
 packages/agents, packages/judges ──► packages/ai-runtime  (не напрямую к провайдерам)
 apps/bot ──► packages/telegram     (Telegram Bot API только через этот пакет)
+apps/* ──► packages/database ──► packages/domain   (PostgreSQL только через этот пакет)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -185,9 +186,23 @@ untrusted JSON ──parseInput(createInputSchemas.x)──► typed data ──
                   (@roi-dealer/schemas: strict)                   (@roi-dealer/domain: rules, owner gates)
 ```
 
-- Изменяемые сущности: `version` + `updatedAt` (optimistic locking в PHASE 02); неизменяемые записи (Evidence, Decision, CostEntry, KnowledgeAsset) исправляются новыми записями.
+- Изменяемые сущности: `version` + `updatedAt` (optimistic locking — PHASE 02, см. «Хранение»); неизменяемые записи (Evidence, Decision, CostEntry, KnowledgeAsset) исправляются новыми записями.
 - Решения владельца (Decision, ApprovalRequest, верификация вклада, одобрение Reward) закреплены за актором `owner` в домене, а не только в интерфейсе.
 - Спецификация и правила — [`docs/phases/01_core_domain.md`](phases/01_core_domain.md).
+
+### Хранение (PHASE 02)
+
+`@roi-dealer/database` сохраняет сущности домена в PostgreSQL ([ADR-0005](ADR/0005-postgresql-driver-and-migrations.md), [схема](../database/docs/schema.md)):
+
+```text
+domain function ──► new entity version ──► repository.update ──► UPDATE … WHERE version = N − 1
+                                                   (database.transaction: несколько записей атомарно)
+repository.getById ──► row ──► domain schema ──► entity   (иначе DataIntegrityError, §2.13)
+```
+
+- БД проверяет структуру (типы, ссылки, деньги, время, human gates) и защищает историю: неизменяемые записи и связи нельзя изменить или удалить, строки не удаляются, каждая новая версия — `version + 1`.
+- Домен по-прежнему решает, кто и какой переход может выполнить.
+- Миграции — SQL-файлы в `database/migrations/`, только вперёд, с контрольными суммами; `pnpm db:migrate`.
 
 ### Сквозные механизмы (реализованы в PHASE 00)
 
