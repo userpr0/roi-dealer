@@ -77,12 +77,13 @@ beforeAll(async () => {
     createCtx(opportunityIdSchema, AGENT, 4),
   );
   await repos.opportunities.insert(opportunity);
-  hypothesis = changeHypothesisStatus(
-    createHypothesis(hypothesisData(opportunity.id), createCtx(hypothesisIdSchema, AGENT, 5)),
-    'selected',
-    ctx(OWNER, 6),
+  const proposed = createHypothesis(
+    hypothesisData(opportunity.id),
+    createCtx(hypothesisIdSchema, AGENT, 5),
   );
-  await repos.hypotheses.insert(hypothesis);
+  await repos.hypotheses.insert(proposed);
+  hypothesis = changeHypothesisStatus(proposed, 'selected', ctx(OWNER, 6));
+  await repos.hypotheses.update(hypothesis, OWNER);
   experiment = createExperiment(
     experimentData(opportunity.id, hypothesis.id),
     hypothesis,

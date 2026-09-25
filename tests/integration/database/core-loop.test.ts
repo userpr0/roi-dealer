@@ -101,25 +101,23 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     const evidenceIds = evidence.map((item) => item.id);
 
     // detect Signal → Pain candidate → validate against evidence loaded from the database
-    const signal = changeSignalStatus(
-      changeSignalStatus(
-        createSignal(
-          {
-            title: 'Reconciliation complaints',
-            summary: 'Agencies repeatedly complain about manual invoice matching',
-            evidenceIds,
-            markets: ['US'],
-            strength: 'strong',
-          },
-          createCtx(signalIdSchema, AGENT, 2),
-        ),
-        'triaged',
-        ctx(AGENT, 3),
-      ),
-      'promoted',
-      ctx(AGENT, 4),
+    const newSignal = createSignal(
+      {
+        title: 'Reconciliation complaints',
+        summary: 'Agencies repeatedly complain about manual invoice matching',
+        evidenceIds,
+        markets: ['US'],
+        strength: 'strong',
+      },
+      createCtx(signalIdSchema, AGENT, 2),
     );
-    await repos.signals.insert(signal);
+    const triaged = changeSignalStatus(newSignal, 'triaged', ctx(AGENT, 3));
+    const signal = changeSignalStatus(triaged, 'promoted', ctx(AGENT, 4));
+    await db.transaction(async ({ repositories }) => {
+      await repositories.signals.insert(newSignal);
+      await repositories.signals.update(triaged, AGENT);
+      await repositories.signals.update(signal, AGENT);
+    });
 
     const candidate = createPain(
       painData(evidenceIds, { signalIds: [signal.id] }),
@@ -132,14 +130,16 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       await repos.evidence.getByIds(storedCandidate.evidenceIds),
       ctx(AGENT, 6),
     );
-    await repos.pains.update(pain);
+    await repos.pains.update(pain, AGENT);
 
     // Opportunity → owner Decision → approve (decision and new status in one transaction)
-    const opportunity = submitOpportunityForReview(
-      createOpportunity(opportunityData([pain.id]), createCtx(opportunityIdSchema, AGENT, 7)),
-      ctx(AGENT, 8),
+    const draft = createOpportunity(
+      opportunityData([pain.id]),
+      createCtx(opportunityIdSchema, AGENT, 7),
     );
-    await repos.opportunities.insert(opportunity);
+    const opportunity = submitOpportunityForReview(draft, ctx(AGENT, 8));
+    await repos.opportunities.insert(draft);
+    await repos.opportunities.update(opportunity, AGENT);
     const decision = createDecision(
       {
         subject: { type: 'opportunity', id: opportunity.id },
@@ -149,14 +149,17 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       },
       createCtx(decisionIdSchema, OWNER, 9),
     );
-    const approvedOpportunity = await db.transaction(async ({ repositories }) => {
-      const current =
-        (await repositories.opportunities.getById(opportunity.id)) ?? expect.unreachable();
-      const next = applyOpportunityDecision(current, decision);
-      await repositories.decisions.insert(decision);
-      await repositories.opportunities.update(next);
-      return next;
-    });
+    const approvedOpportunity = await db.transaction(
+      async ({ repositories }) => {
+        const current =
+          (await repositories.opportunities.getById(opportunity.id)) ?? expect.unreachable();
+        const next = applyOpportunityDecision(current, decision);
+        await repositories.decisions.insert(decision);
+        await repositories.opportunities.update(next, OWNER);
+        return next;
+      },
+      { correlationId: 'tg-update-1001' },
+    );
     expect(approvedOpportunity.status).toBe('approved');
 
     // five distinct hypotheses; the owner selects one
@@ -173,7 +176,7 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       'selected',
       ctx(OWNER, 11),
     );
-    await repos.hypotheses.update(chosen);
+    await repos.hypotheses.update(chosen, OWNER);
 
     // Experiment plan → launch approval covering the full budget → running
     const planned = createExperiment(
@@ -196,7 +199,7 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     await db.transaction(async ({ repositories }) => {
       await repositories.experiments.insert(planned);
       await repositories.approvalRequests.insert(launch);
-      await repositories.experiments.update(awaiting);
+      await repositories.experiments.update(awaiting, SYSTEM);
     });
 
     const launchApproved = resolveApprovalRequest(
@@ -207,11 +210,16 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     const approvedExperiment = approveExperiment(awaiting, launchApproved, ctx(OWNER, 15));
     const running = startExperiment(approvedExperiment, ctx(SYSTEM, 16));
     const validating = startOpportunityValidation(approvedOpportunity, ctx(SYSTEM, 16));
+    await db.transaction(
+      async ({ repositories }) => {
+        await repositories.approvalRequests.update(launchApproved, OWNER);
+        await repositories.experiments.update(approvedExperiment, OWNER);
+      },
+      { correlationId: 'tg-update-1002' },
+    );
     await db.transaction(async ({ repositories }) => {
-      await repositories.approvalRequests.update(launchApproved);
-      await repositories.experiments.update(approvedExperiment);
-      await repositories.experiments.update(running);
-      await repositories.opportunities.update(validating);
+      await repositories.experiments.update(running, SYSTEM);
+      await repositories.opportunities.update(validating, SYSTEM);
     });
 
     // costs: a small spend passes; a large one references the owner's approval
@@ -253,7 +261,7 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     await db.transaction(async ({ repositories }) => {
       await repositories.costEntries.insert(aiCost);
       await repositories.approvalRequests.insert(adsRequest);
-      await repositories.approvalRequests.update(adsApproval);
+      await repositories.approvalRequests.update(adsApproval, OWNER);
       await repositories.costEntries.insert(adsCost);
     });
 
@@ -275,9 +283,9 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       ctx(OWNER, 31),
     );
     await db.transaction(async ({ repositories }) => {
-      await repositories.experiments.update(stopped);
+      await repositories.experiments.update(stopped, SYSTEM);
       await repositories.knowledgeAssets.insert(learning);
-      await repositories.experiments.update(completed);
+      await repositories.experiments.update(completed, OWNER);
     });
 
     // contribution → verification → reward from contributions loaded from the database
@@ -293,7 +301,7 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     );
     await repos.contributions.insert(contribution);
     const verified = reviewContribution(contribution, { verdict: 'verify' }, ctx(OWNER, 33));
-    await repos.contributions.update(verified);
+    await repos.contributions.update(verified, OWNER);
     const reward = calculateReward(
       {
         contributor: OWNER,
@@ -320,8 +328,8 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     await db.transaction(async ({ repositories }) => {
       await repositories.rewards.insert(reward);
       await repositories.approvalRequests.insert(payoutRequest);
-      await repositories.approvalRequests.update(payout);
-      await repositories.rewards.update(approvedReward);
+      await repositories.approvalRequests.update(payout, OWNER);
+      await repositories.rewards.update(approvedReward, OWNER);
     });
 
     // everything reads back exactly as the domain produced it
@@ -346,5 +354,66 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
     // deterministic totals from stored ledger lines (§7.3)
     const ledger = await repos.costEntries.getByIds([aiCost.id, adsCost.id]);
     expect(summarizeCosts(ledger).total).toEqual(usd(15_900));
+
+    // complete Event History (§11: "save complete Event History")
+    const signalHistory = await db.events.history({ type: 'signal', id: signal.id });
+    expect(signalHistory.map((event) => [event.type, event.aggregateVersion])).toEqual([
+      ['signal.created', 1],
+      ['signal.updated', 2],
+      ['signal.updated', 3],
+    ]);
+    expect(signalHistory.map((event) => event.payload.snapshot)).toEqual([
+      newSignal,
+      triaged,
+      signal,
+    ]);
+
+    const experimentHistory = await db.events.history({ type: 'experiment', id: completed.id });
+    expect(
+      experimentHistory.map((event) => [
+        event.payload.previousStatus,
+        event.payload.snapshot['status'],
+      ]),
+    ).toEqual([
+      [undefined, 'planned'],
+      ['planned', 'awaiting_approval'],
+      ['awaiting_approval', 'approved'],
+      ['approved', 'running'],
+      ['running', 'stopped'],
+      ['stopped', 'completed'],
+    ]);
+    expect(experimentHistory.at(-1)?.actor).toEqual(OWNER);
+
+    // the owner's decision and the opportunity change share the request's correlation id
+    const decisionEvents = (await db.events.list()).filter(
+      (event) => event.correlationId === 'tg-update-1001',
+    );
+    expect(decisionEvents.map((event) => [event.type, event.actor.type])).toEqual([
+      ['decision.created', 'owner'],
+      ['opportunity.updated', 'owner'],
+    ]);
+
+    // one event per stored version of every entity
+    const allEvents = await db.events.list({ limit: 1_000 });
+    const expectedVersions = [
+      ...sources,
+      ...evidence,
+      signal,
+      pain,
+      validating,
+      decision,
+      ...hypotheses.slice(1),
+      chosen,
+      completed,
+      launchApproved,
+      adsApproval,
+      payout,
+      aiCost,
+      adsCost,
+      learning,
+      verified,
+      approvedReward,
+    ].reduce((total, entity) => total + ('version' in entity ? entity.version : 1), 0);
+    expect(allEvents).toHaveLength(expectedVersions);
   });
 });

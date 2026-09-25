@@ -147,7 +147,7 @@ async function storeChain() {
   );
   await repos.hypotheses.insert(hypothesis);
   const selected = changeHypothesisStatus(hypothesis, 'selected', ctx(OWNER, 7));
-  await repos.hypotheses.update(selected);
+  await repos.hypotheses.update(selected, OWNER);
 
   const planned = createExperiment(
     experimentData(opportunity.id, selected.id),
@@ -173,14 +173,14 @@ async function storeChain() {
     { decision: 'approve', comment: 'Go' },
     ctx(OWNER, 10),
   );
-  await repos.approvalRequests.update(launchApproved);
+  await repos.approvalRequests.update(launchApproved, OWNER);
 
   const awaiting = requestExperimentApproval(planned, launch.id, ctx(SYSTEM, 9));
-  await repos.experiments.update(awaiting);
+  await repos.experiments.update(awaiting, SYSTEM);
   const approved = approveExperiment(awaiting, launchApproved, ctx(OWNER, 11));
-  await repos.experiments.update(approved);
+  await repos.experiments.update(approved, OWNER);
   const running = startExperiment(approved, ctx(SYSTEM, 12));
-  await repos.experiments.update(running);
+  await repos.experiments.update(running, SYSTEM);
 
   const cost = recordCostEntry(
     {
@@ -222,13 +222,13 @@ async function storeChain() {
   await repos.knowledgeAssets.insert(asset);
 
   const stopped = stopExperiment(running, 'Minimum data reached', ctx(SYSTEM, 19));
-  await repos.experiments.update(stopped);
+  await repos.experiments.update(stopped, SYSTEM);
   const completed = completeExperiment(
     stopped,
     { outcome: 'scale', summary: 'Conversion above target', assetIds: [asset.id] },
     ctx(OWNER, 21),
   );
-  await repos.experiments.update(completed);
+  await repos.experiments.update(completed, OWNER);
 
   const contribution = createContribution(
     {
@@ -246,7 +246,7 @@ async function storeChain() {
     { verdict: 'verify', note: 'Checked' },
     ctx(OWNER, 23),
   );
-  await repos.contributions.update(verified);
+  await repos.contributions.update(verified, OWNER);
 
   const reward = calculateReward(
     {
@@ -331,7 +331,7 @@ describe('repositories', () => {
     const { source } = await storeChain();
     const paused = changeSourceStatus(source, 'paused', ctx(OWNER, 30));
 
-    await repos.sources.update(paused);
+    await repos.sources.update(paused, OWNER);
 
     const stored = await repos.sources.getById(source.id);
     expect(stored).toStrictEqual(paused);
@@ -340,10 +340,10 @@ describe('repositories', () => {
 
   it('reject an update based on a stale version (optimistic locking)', async () => {
     const { source } = await storeChain();
-    await repos.sources.update(changeSourceStatus(source, 'paused', ctx(OWNER, 30)));
+    await repos.sources.update(changeSourceStatus(source, 'paused', ctx(OWNER, 30)), OWNER);
 
     const staleChange = changeSourceStatus(source, 'retired', ctx(AGENT, 31));
-    const error = await repos.sources.update(staleChange).catch((caught: unknown) => caught);
+    const error = await repos.sources.update(staleChange, AGENT).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(ConcurrencyError);
     expect(error).toMatchObject({
@@ -358,7 +358,7 @@ describe('repositories', () => {
   it('report an update of an entity that was never stored', async () => {
     const source = createSource(sourceData(), createCtx(sourceIdSchema, SYSTEM, 0));
     const error = await repos.sources
-      .update(changeSourceStatus(source, 'paused', ctx(OWNER, 1)))
+      .update(changeSourceStatus(source, 'paused', ctx(OWNER, 1)), OWNER)
       .catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(NotFoundError);
@@ -369,7 +369,7 @@ describe('repositories', () => {
     const { signal, evidence } = await storeChain();
     const rewritten = { ...signal, evidenceIds: [evidence.id], version: signal.version + 1 };
 
-    const error = await repos.signals.update(rewritten).catch((caught: unknown) => caught);
+    const error = await repos.signals.update(rewritten, AGENT).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(ConstraintViolationError);
     expect(error).toMatchObject({ kind: 'forbidden_change', table: 'signal_evidence' });
@@ -415,15 +415,23 @@ describe('repositories', () => {
       createCtx(opportunityIdSchema, AGENT, 0),
     );
     // Written around the repository: no pain links, which the domain requires.
-    await test.database.sql`
-      insert into opportunities (
-        id, title, summary, icp, markets, value_problem, value_change, value_measurable_result,
-        business_model, status, created_at, created_by_type, created_by_id, updated_at, version
-      ) values (
-        ${opportunity.id}, 'Orphan', 'No pains', 'Anyone', ${['US']}, 'p', 'c', 'r',
-        'subscription', 'draft', now(), 'agent', 'a', now(), 1
-      )
-    `;
+    await test.database.sql.begin(async (tx) => {
+      await tx`
+        insert into opportunities (
+          id, title, summary, icp, markets, value_problem, value_change, value_measurable_result,
+          business_model, status, created_at, created_by_type, created_by_id, updated_at, version
+        ) values (
+          ${opportunity.id}, 'Orphan', 'No pains', 'Anyone', ${['US']}, 'p', 'c', 'r',
+          'subscription', 'draft', now(), 'agent', 'a', now(), 1
+        )
+      `;
+      await tx`
+        insert into events (id, type, aggregate_type, aggregate_id, aggregate_version,
+                            occurred_at, actor_type, actor_id, payload)
+        values (${uuidv7()}, 'opportunity.created', 'opportunity', ${opportunity.id}, 1,
+                now(), 'agent', 'a', ${tx.json({ snapshot: {} })})
+      `;
+    });
 
     const error = await repos.opportunities
       .getById(opportunity.id)
@@ -470,7 +478,7 @@ describe('database.transaction', () => {
         kind: 'unique',
         constraint: 'sources_pkey',
       });
-      await repositories.sources.update(changeSourceStatus(source, 'paused', ctx(OWNER, 1)));
+      await repositories.sources.update(changeSourceStatus(source, 'paused', ctx(OWNER, 1)), OWNER);
     });
 
     expect((await repos.sources.getById(source.id))?.status).toBe('paused');

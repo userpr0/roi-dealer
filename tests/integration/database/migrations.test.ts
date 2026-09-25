@@ -43,7 +43,10 @@ describe('runMigrations with the project migrations', () => {
 
     const result = await runMigrations(test.database.sql, migrations, { logger });
 
-    expect(result).toEqual({ applied: ['0001_core_domain'], alreadyApplied: 0 });
+    expect(result).toEqual({
+      applied: ['0001_core_domain', '0002_event_history'],
+      alreadyApplied: 0,
+    });
     expect(await tableExists(test, 'public.opportunities')).toBe(true);
     const [row] = await test.database.sql<{ checksum: string }[]>`
       select checksum from schema_migrations where id = '0001_core_domain'
@@ -59,7 +62,7 @@ describe('runMigrations with the project migrations', () => {
 
     await expect(runMigrations(test.database.sql, migrations)).resolves.toEqual({
       applied: [],
-      alreadyApplied: 1,
+      alreadyApplied: 2,
     });
   });
 
@@ -72,8 +75,11 @@ describe('runMigrations with the project migrations', () => {
       runMigrations(test.database.sql, migrations),
     ]);
 
-    expect(results.flatMap((result) => result.applied)).toEqual(['0001_core_domain']);
-    expect(await appliedIds(test)).toEqual(['0001_core_domain']);
+    expect(results.flatMap((result) => result.applied)).toEqual([
+      '0001_core_domain',
+      '0002_event_history',
+    ]);
+    expect(await appliedIds(test)).toEqual(['0001_core_domain', '0002_event_history']);
   });
 });
 
