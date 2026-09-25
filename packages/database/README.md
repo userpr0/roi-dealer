@@ -1,8 +1,8 @@
 # @roi-dealer/database
 
-**Статус:** реализован (PHASE 02–03, [ADR-0005](../../docs/ADR/0005-postgresql-driver-and-migrations.md)).
+**Статус:** реализован (PHASE 02–03, 13b, [ADR-0005](../../docs/ADR/0005-postgresql-driver-and-migrations.md)).
 
-PostgreSQL для ROI Dealer: пул соединений в UTC, SQL-миграции, репозитории сущностей PHASE 01 с событием на каждую запись (PHASE 03), чтение Event History и команды с ключом идемпотентности. Схема — [`database/docs/schema.md`](../../database/docs/schema.md).
+PostgreSQL для ROI Dealer: пул соединений в UTC, SQL-миграции, репозитории доменных сущностей с событием на каждую запись (PHASE 03), чтение Event History и команды с ключом идемпотентности. Схема — [`database/docs/schema.md`](../../database/docs/schema.md).
 
 ## Использование
 
@@ -48,17 +48,17 @@ const page = await database.events.list({ from: dayStart, to: dayEnd, limit: 50 
 
 ## Export surface
 
-| Экспорт                                                                                                                      | Назначение                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `createDatabase`, `Database`                                                                                                 | Пул (`TimeZone=UTC`), `repositories`, `transaction`, `ping`, `close`                                                                  |
-| `createDatabaseHealthCheck`                                                                                                  | Проверка `database` для `HealthRegistry`                                                                                              |
-| `loadDatabaseConfig`, `databaseConfigShape`                                                                                  | `DATABASE_URL`, `DATABASE_POOL_MAX`, `DATABASE_CONNECT_TIMEOUT_SECONDS`                                                               |
-| `createRepositories`, `Repositories`                                                                                         | 13 репозиториев: `insert`, `getById`, `getByIds`; у изменяемых сущностей ещё `update(entity, actor)`; каждая запись добавляет событие |
-| `Database.transaction(work, { correlationId })`                                                                              | Одна транзакция; все события получают `correlation_id`                                                                                |
-| `Database.command({ name, idempotencyKey }, work)`                                                                           | Выполнить ровно один раз на ключ; повтор получает сохранённый результат                                                               |
-| `Database.events`, `EventStore`                                                                                              | `history(aggregate)` — версии сущности; `list({ from, to, aggregateType, after, limit })` — журнал за период                          |
-| `loadMigrations`, `runMigrations`                                                                                            | Раннер миграций: SHA-256, блокировка, транзакция на файл                                                                              |
-| `NotFoundError`, `ConcurrencyError`, `ConstraintViolationError`, `DataIntegrityError`, `InvalidWriteError`, `MigrationError` | Ошибки без значений строк                                                                                                             |
+| Экспорт                                                                                                                      | Назначение                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createDatabase`, `Database`                                                                                                 | Пул (`TimeZone=UTC`), `repositories`, `transaction`, `ping`, `close`                                                                                                                                 |
+| `createDatabaseHealthCheck`                                                                                                  | Проверка `database` для `HealthRegistry`                                                                                                                                                             |
+| `loadDatabaseConfig`, `databaseConfigShape`                                                                                  | `DATABASE_URL`, `DATABASE_POOL_MAX`, `DATABASE_CONNECT_TIMEOUT_SECONDS`                                                                                                                              |
+| `createRepositories`, `Repositories`                                                                                         | 14 репозиториев (с 13b — `systemControls`): `insert`, `getById`, `getByIds`; у изменяемых сущностей ещё `update(entity, actor)` и `listByStatus(status, { limit })`; каждая запись добавляет событие |
+| `Database.transaction(work, { correlationId })`                                                                              | Одна транзакция; все события получают `correlation_id`                                                                                                                                               |
+| `Database.command({ name, idempotencyKey }, work)`                                                                           | Выполнить ровно один раз на ключ; повтор получает сохранённый результат                                                                                                                              |
+| `Database.events`, `EventStore`                                                                                              | `history(aggregate)` — версии сущности; `list({ from, to, aggregateType, after, limit })` — журнал за период                                                                                         |
+| `loadMigrations`, `runMigrations`                                                                                            | Раннер миграций: SHA-256, блокировка, транзакция на файл                                                                                                                                             |
+| `NotFoundError`, `ConcurrencyError`, `ConstraintViolationError`, `DataIntegrityError`, `InvalidWriteError`, `MigrationError` | Ошибки без значений строк                                                                                                                                                                            |
 
 ## Правила
 
@@ -67,4 +67,4 @@ const page = await database.events.list({ from: dayStart, to: dayEnd, limit: 50 
 - Списки id (связи) только дополняются: удалить или переставить элемент нельзя.
 - Сущность сохраняется в версии 1 и дальше каждая версия по очереди: история не имеет пропусков. Запись в обход репозиториев без события БД не зафиксирует.
 - `DATABASE_URL` содержит пароль и никогда не логируется.
-- CLI: `pnpm db:migrate` (`src/migrate-cli.ts`).
+- CLI: `pnpm db:migrate` (`src/migrate-cli.ts`); в Docker-образе бота — `node /app/node_modules/@roi-dealer/database/dist/migrate-cli.js` с `DATABASE_MIGRATIONS_DIR=/app/database/migrations`.

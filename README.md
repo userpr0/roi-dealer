@@ -82,14 +82,15 @@ apps/
   api/          HTTP API: GET /health (с проверкой БД, если задан DATABASE_URL)
   worker/       фоновый процесс — PHASE 00: lifecycle, graceful shutdown
   miniapp/      Telegram Mini App (React + Vite) — PHASE 00: placeholder
-  bot/          бот-пульт владельца в Telegram (фаза 13a): /status, уведомления, Docker-образ
+  bot/          бот-пульт владельца в Telegram (13a–13b): /status, решения, стоп-кран, журнал, дайджест
 packages/
   shared/         config validation (Zod), graceful shutdown
-  telegram/       Telegram Bot API: клиент, long polling, команды только для владельца
+  telegram/       Telegram Bot API: клиент, long polling, команды и кнопки только для владельца
+  command-center/ логика пульта: одобрения, стоп-кран, журнал, история, дайджест (13b)
   observability/  structured logger, health registry, correlation id
   domain/         сущности, жизненные циклы и правила ROI CORE v0.1 (PHASE 01)
   schemas/        строгие входные контракты (PHASE 01)
-  database/       PostgreSQL: подключение, миграции, репозитории, Event History (PHASE 02–03)
+  database/       PostgreSQL: подключение, миграции, репозитории, Event History (PHASE 02–03, 13b)
   events/         контракты Event History (PHASE 03)
   policies/ agents/ judges/ skills/
   ai-runtime/ economics/ rewards/          placeholders следующих Phase

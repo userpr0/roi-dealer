@@ -42,5 +42,7 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Every repository write appends its event (Event History). Store an entity at version 1, then every new version with `update(entity, actor)` using the actor of the domain transition. Pass the request's `correlationId` to `database.transaction`; run owner actions from buttons through `database.command` with an idempotency key.
 - Change entity state only through `@roi-dealer/domain` functions (factories and transitions), never by assigning fields; validate untrusted input with `parseInput` from `@roi-dealer/schemas` first. Only the `owner` actor makes decisions; AI agents only propose.
 - Follow the owner decisions in `docs/OWNER_DECISIONS.md` (USD accounting, $20 approval threshold, budgets, markets).
-- Call the Telegram Bot API only through `@roi-dealer/telegram`. Bot commands are read-only; any state-changing command must ask the owner for confirmation first. Never log the bot token or message text.
+- Call the Telegram Bot API only through `@roi-dealer/telegram`. Any state-changing command or button must ask the owner for confirmation first and run as an idempotent `database.command` (key `tg-callback-<id>`, correlation `tg-update-<id>`). Never log the bot token or message text.
+- Owner command center logic lives in `@roi-dealer/command-center`; `apps/bot` only wires it.
+- Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.

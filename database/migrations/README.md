@@ -2,10 +2,11 @@
 
 Версионированные SQL-миграции PostgreSQL. Применяются командой `pnpm db:migrate` (раннер из `@roi-dealer/database`, [ADR-0005](../../docs/ADR/0005-postgresql-driver-and-migrations.md)).
 
-| Миграция                                           | Phase | Содержание                                                                             |
-| -------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
-| [`0001_core_domain.sql`](0001_core_domain.sql)     | 02    | 13 сущностей PHASE 01, связи, ограничения, защита истории — [схема](../docs/schema.md) |
-| [`0002_event_history.sql`](0002_event_history.sql) | 03    | Event History: `events`, проверка «нет изменения без события», `idempotency_keys`      |
+| Миграция                                             | Phase | Содержание                                                                             |
+| ---------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
+| [`0001_core_domain.sql`](0001_core_domain.sql)       | 02    | 13 сущностей PHASE 01, связи, ограничения, защита истории — [схема](../docs/schema.md) |
+| [`0002_event_history.sql`](0002_event_history.sql)   | 03    | Event History: `events`, проверка «нет изменения без события», `idempotency_keys`      |
+| [`0003_system_control.sql`](0003_system_control.sql) | 13b   | Стоп-кран: таблица `system_controls`, строка `automation` с событием                   |
 
 ## Правила
 
@@ -19,3 +20,5 @@
 ## Порядок в облаке
 
 Миграции применяются до запуска новой версии сервисов. Раннер безопасен при одновременном запуске: вторая копия ждёт блокировку и пропускает уже применённые файлы.
+
+Docker-образ бота содержит эти файлы (`/app/database/migrations`, переменная `DATABASE_MIGRATIONS_DIR`) и раннер; в Railway их применяет **Pre-deploy Command** `node /app/node_modules/@roi-dealer/database/dist/migrate-cli.js` ([инструкция](../../docs/deploy/database.md#2-подключить-бота)).

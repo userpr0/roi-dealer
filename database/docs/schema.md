@@ -1,6 +1,6 @@
 # Схема базы данных
 
-> Миграции [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02) и [`0002_event_history.sql`](../migrations/0002_event_history.sql) (PHASE 03). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [PHASE 02](../../docs/phases/02_postgresql_foundation.md); история — [PHASE 03](../../docs/phases/03_event_history.md).
+> Миграции [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02), [`0002_event_history.sql`](../migrations/0002_event_history.sql) (PHASE 03) и [`0003_system_control.sql`](../migrations/0003_system_control.sql) (13b). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [PHASE 02](../../docs/phases/02_postgresql_foundation.md); история — [PHASE 03](../../docs/phases/03_event_history.md); стоп-кран — [13b](../../docs/phases/13b_owner_approvals.md).
 
 ## Кто за что отвечает
 
@@ -39,6 +39,7 @@ rewards ─< reward_contributions >── contributions
 | `contributions`     | Contribution    | версии      | —                                                                  |
 | `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)                           |
 | `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                     |
+| `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                       |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
 | `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
 | `schema_migrations` | —               | служебная   | журнал раннера миграций                                            |
@@ -98,6 +99,13 @@ rewards ─< reward_contributions >── contributions
 - **Нет изменения без события.** Отложенный constraint trigger `<table>_requires_event` на каждой таблице сущностей проверяет при `COMMIT`, что у вставленной или изменённой строки есть событие того же типа и версии. Иначе транзакция не фиксируется (`ConstraintViolationError`, `kind: 'missing_event'`).
 - **История неизменяема.** `UPDATE`, `DELETE` и `TRUNCATE` событий отклоняются; тип события соответствует сущности, `created` — только версия 1.
 - **Команды идемпотентны.** В `idempotency_keys` ключ вставляется первым, поэтому одновременный повтор ждёт и видит его; результат записывается один раз (триггер `idempotency_keys_result_once`).
+
+## Стоп-кран (13b)
+
+- `system_controls` — переключатели всей системы; сейчас один, `automation`, с известным id `00000000-0000-7000-8000-000000000001` (`AUTOMATION_CONTROL_ID`). Строку и её событие `system_control.created` (актор `system:migration`) создаёт миграция `0003`, поэтому стоп-кран есть в любой базе.
+- `key` уникален; `status` — `running` / `paused`; `reason` задана ровно на паузе (`system_controls_reason_matches_status`).
+- Защита та же, что у остальных сущностей с версиями: версия + 1 на каждое изменение, без удаления, событие на каждую версию.
+- Миграция расширила домен `entity_type` значением `system_control` (замена CHECK-ограничения; существующие значения остаются допустимыми).
 
 ## Ошибки
 
