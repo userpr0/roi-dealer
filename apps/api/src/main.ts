@@ -1,3 +1,4 @@
+import { createDatabase, createDatabaseHealthCheck } from '@roi-dealer/database';
 import { createHealthRegistry, createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
 import { loadApiConfig } from './config.js';
@@ -13,12 +14,26 @@ async function main(): Promise<void> {
   const shutdown = createShutdownManager({ logger });
   installProcessHandlers(shutdown, { logger });
 
-  // PHASE 00: no dependency checks yet. Database, Temporal, storage and AI provider
-  // checks are registered here by the phases that introduce those dependencies.
+  // Dependency checks are registered by the phases that introduce the dependency:
+  // database (PHASE 02); Temporal, storage and AI providers later.
   const health = createHealthRegistry({
     service: SERVICE,
     onCheckError: (check, error) => logger.warn('health check failed', { check, error }),
   });
+
+  if (config.DATABASE_URL === undefined) {
+    logger.info('database not configured');
+  } else {
+    const database = createDatabase({
+      url: config.DATABASE_URL,
+      applicationName: 'roi-dealer-api',
+      maxConnections: config.DATABASE_POOL_MAX,
+      connectTimeoutSeconds: config.DATABASE_CONNECT_TIMEOUT_SECONDS,
+      logger,
+    });
+    health.register(createDatabaseHealthCheck(database));
+    shutdown.register('database', () => database.close());
+  }
 
   const server = await startApiServer({
     host: config.API_HOST,

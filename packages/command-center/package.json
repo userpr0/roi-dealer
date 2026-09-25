@@ -1,0 +1,27 @@
+{
+  "name": "@roi-dealer/command-center",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Owner command center logic: approvals, kill switch, journal, history and daily digest",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/events": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/telegram": "workspace:*"
+  }
+}

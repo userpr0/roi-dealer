@@ -25,7 +25,8 @@ pnpm lint             # ESLint, zero warnings
 pnpm format:check     # Prettier
 pnpm test             # Vitest: unit + integration
 pnpm build
-pnpm infra:up         # local PostgreSQL 18 (Docker)
+pnpm infra:up         # local PostgreSQL 18 (Docker); integration tests need it
+pnpm db:migrate       # apply database/migrations to DATABASE_URL
 pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate test bot locally
 ```
 
@@ -37,7 +38,11 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Keep `apps/*` thin; put logic into `packages/*`. Packages never import apps.
 - Workspace packages resolve to `src/` via the `@roi-dealer/source` export condition in dev and tests, and to `dist/` at runtime. Do not add tsconfig `paths` aliases.
 - Tests live in the root `tests/` directory: `unit/` (in-process), `integration/` (real sockets and processes).
+- Access PostgreSQL only through `@roi-dealer/database` (repositories, `database.transaction`). Change the schema only with a new file in `database/migrations/`; never edit an applied migration.
+- Every repository write appends its event (Event History). Store an entity at version 1, then every new version with `update(entity, actor)` using the actor of the domain transition. Pass the request's `correlationId` to `database.transaction`; run owner actions from buttons through `database.command` with an idempotency key.
 - Change entity state only through `@roi-dealer/domain` functions (factories and transitions), never by assigning fields; validate untrusted input with `parseInput` from `@roi-dealer/schemas` first. Only the `owner` actor makes decisions; AI agents only propose.
 - Follow the owner decisions in `docs/OWNER_DECISIONS.md` (USD accounting, $20 approval threshold, budgets, markets).
-- Call the Telegram Bot API only through `@roi-dealer/telegram`. Bot commands are read-only; any state-changing command must ask the owner for confirmation first. Never log the bot token or message text.
+- Call the Telegram Bot API only through `@roi-dealer/telegram`. Any state-changing command or button must ask the owner for confirmation first and run as an idempotent `database.command` (key `tg-callback-<id>`, correlation `tg-update-<id>`). Never log the bot token or message text.
+- Owner command center logic lives in `@roi-dealer/command-center`; `apps/bot` only wires it.
+- Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.

@@ -10,7 +10,9 @@ export type DomainErrorCode =
   /** The ApprovalRequest can no longer be resolved. */
   | 'approval_expired'
   /** The data breaks an entity invariant or schema. */
-  | 'invariant_violation';
+  | 'invariant_violation'
+  /** The kill switch is on: automations and automated spend must not run (13b). */
+  | 'automation_paused';
 
 export interface DomainIssue {
   readonly path: string;

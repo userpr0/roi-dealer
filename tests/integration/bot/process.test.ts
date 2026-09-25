@@ -1,5 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  approvalRequestIdSchema,
+  AUTOMATION_CONTROL_ID,
+  createApprovalRequest,
+  toTimestamp,
+  usd,
+} from '@roi-dealer/domain';
+import { uuidv7 } from '@roi-dealer/shared';
+import { createTestDatabase, type TestDatabase } from '../../support/database.js';
+import { SYSTEM } from '../../support/domain.js';
+import {
   FAKE_BOT_TOKEN,
   startFakeTelegram,
   type FakeTelegram,
@@ -44,10 +54,16 @@ describe('owner bot process', () => {
       method: 'setMyCommands',
       params: {
         commands: [
-          { command: 'start', description: expect.any(String) as unknown },
-          { command: 'status', description: expect.any(String) as unknown },
-          { command: 'help', description: expect.any(String) as unknown },
-        ],
+          'start',
+          'decisions',
+          'stop',
+          'resume',
+          'journal',
+          'history',
+          'digest',
+          'status',
+          'help',
+        ].map((command) => ({ command, description: expect.any(String) as unknown })),
         scope: { type: 'chat', chat_id: OWNER_ID },
       },
     });
@@ -80,6 +96,11 @@ describe('owner bot process', () => {
     );
   });
 
+  it('explains that the command center needs a database', async () => {
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/decisions' });
+    await telegram.waitForSent((message) => message.text.includes('База данных не подключена'));
+  });
+
   it('answers unknown input with a hint', async () => {
     telegram.pushMessage({ fromId: OWNER_ID, text: 'привет' });
     await telegram.waitForSent((message) => message.text.startsWith('Неизвестная команда'));
@@ -101,6 +122,121 @@ describe('owner bot process', () => {
     expect(output).not.toContain('привет');
     expect(service.logs.every((line) => line['service'] === 'bot')).toBe(true);
     expect(service.stderr()).toBe('');
+  });
+});
+
+describe('owner bot process with a database (13b)', () => {
+  let telegram: FakeTelegram;
+  let database: TestDatabase;
+  let service: ServiceProcess;
+
+  beforeAll(async () => {
+    telegram = await startFakeTelegram();
+    database = await createTestDatabase();
+    service = startService(
+      'apps/bot/src/main.ts',
+      botEnv(telegram, { DATABASE_URL: database.url }),
+    );
+    await telegram.waitForSent((message) => message.text.includes('запущен'));
+  });
+
+  afterAll(async () => {
+    service.kill();
+    await telegram.close();
+    await database.drop();
+  });
+
+  it('shows the database check and the kill switch in /status', async () => {
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/status' });
+    const reply = await telegram.waitForSent((message) => message.text.includes('database: '));
+    expect(reply.text).toContain('🟢 database: ok');
+    expect(reply.text).toContain('▶️ Автоматизации: работают');
+  });
+
+  it('pauses automation from Telegram after a confirmation, once', async () => {
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/stop Проверка из теста' });
+    const question = await telegram.waitForSent((message) => message.text.includes('Остановить'));
+    const confirm = question.buttons?.find((data) => data.startsWith('ks:y:'));
+    expect(confirm).toBeDefined();
+
+    // A stranger cannot press it; the owner's press is delivered twice.
+    telegram.pushCallback({ fromId: STRANGER_ID, data: confirm ?? '' });
+    telegram.pushCallback({ fromId: OWNER_ID, data: confirm ?? '', queryId: 'press-1' });
+    telegram.pushCallback({ fromId: OWNER_ID, data: confirm ?? '', queryId: 'press-1' });
+    await telegram.waitForEdit((edit) => edit.text.includes('Автоматизации остановлены'));
+    await service.waitForLog(
+      (line) => line['message'] === 'telegram button press handled' && telegram.edits.length >= 2,
+    );
+
+    const control =
+      await database.database.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
+    expect(control).toMatchObject({ status: 'paused', reason: 'Проверка из теста', version: 2 });
+    const history = await database.database.events.history({
+      type: 'system_control',
+      id: AUTOMATION_CONTROL_ID,
+    });
+    expect(history).toHaveLength(2);
+    expect(history[1]).toMatchObject({
+      actor: { type: 'owner', id: `telegram:${OWNER_ID}` },
+      correlationId: expect.stringMatching(/^tg-update-\d+$/) as unknown,
+    });
+    expect(
+      telegram.calls.filter((call) => call.method === 'answerCallbackQuery').length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(service.logs).toContainEqual(
+      expect.objectContaining({
+        message: 'telegram button press rejected: sender is not the owner',
+        user_id: STRANGER_ID,
+      }),
+    );
+  });
+
+  it('approves a pending request with two presses', async () => {
+    const request = createApprovalRequest(
+      {
+        kind: 'spend',
+        title: 'Test domain',
+        summary: 'Domain for the landing page test',
+        amount: usd(3_500),
+        expiresAt: toTimestamp(new Date(Date.now() + 3_600_000)),
+      },
+      { id: approvalRequestIdSchema.parse(uuidv7()), actor: SYSTEM, at: toTimestamp(new Date()) },
+    );
+    await database.database.repositories.approvalRequests.insert(request);
+
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/decisions' });
+    const card = await telegram.waitForSent((message) => message.text.includes('«Test domain»'));
+    expect(card.buttons).toEqual([`ap:a:${request.id}`, `ap:r:${request.id}`]);
+
+    telegram.pushCallback({ fromId: OWNER_ID, data: `ap:a:${request.id}` });
+    const question = await telegram.waitForEdit((edit) => edit.text.includes('❓ Одобрить'));
+    telegram.pushCallback({ fromId: OWNER_ID, data: question.buttons?.[0] ?? '' });
+    await telegram.waitForEdit((edit) => edit.text.includes('✅ Одобрено'));
+
+    const stored = await database.database.repositories.approvalRequests.getById(request.id);
+    expect(stored).toMatchObject({
+      status: 'approved',
+      resolution: { decidedBy: { type: 'owner', id: `telegram:${OWNER_ID}` } },
+    });
+  });
+
+  it('shows the journal for a period', async () => {
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/journal' });
+    const choose = await telegram.waitForSent((message) => message.text.startsWith('🧾 Журнал:'));
+    expect(choose.buttons).toEqual(['jr:day', 'jr:week', 'jr:month']);
+    telegram.pushCallback({ fromId: OWNER_ID, data: 'jr:day' });
+    const journal = await telegram.waitForEdit((edit) => edit.text.includes('Журнал за сутки'));
+    expect(journal.text).toContain('Стоп-кран: running → paused («Проверка из теста»)');
+    expect(journal.text).toContain('Запрос одобрения «Test domain» · $35.00: pending → approved');
+  });
+
+  it('closes the database on SIGTERM and never logs message text', async () => {
+    service.child.kill('SIGTERM');
+    await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });
+    const output = JSON.stringify(service.logs) + service.stderr();
+    expect(output).not.toContain('Проверка из теста');
+    expect(output).not.toContain(FAKE_BOT_TOKEN);
+    expect(output).not.toContain(database.url);
   });
 });
 

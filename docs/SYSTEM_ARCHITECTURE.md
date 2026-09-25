@@ -104,7 +104,7 @@ Real Pain / Opportunity
 
 ---
 
-## Архитектура реализации (as built — PHASE 00)
+## Архитектура реализации (as built — PHASE 03)
 
 ### Стиль
 
@@ -113,7 +113,7 @@ TypeScript **modular monolith** в pnpm monorepo:
 - `apps/*` — развёртываемые процессы (тонкий транспортный слой, без бизнес-логики);
 - `packages/*` — библиотеки: домен, контракты, политики, AI runtime, экономика, observability;
 - `workflows/*` — Temporal workflows (появятся с Temporal; сейчас только README);
-- `database/*` — миграции и seeds PostgreSQL (с PHASE 02).
+- `database/*` — SQL-миграции и документация схемы PostgreSQL (PHASE 02).
 
 ### Runtime-компоненты
 
@@ -131,15 +131,15 @@ TypeScript **modular monolith** в pnpm monorepo:
                      └─► ai-runtime ─► AI providers (заменяемые)   └─► S3-compatible storage
 ```
 
-| Компонент             | Статус в PHASE 00                                                                                                                         | Появится                                            |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                         | Бизнес-API — по Phase                               |
-| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                            | Temporal workers — после выбора интеграции Temporal |
-| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                    | PHASE 13 — Owner Command Center                     |
-| `apps/bot`            | Бот-пульт владельца (фаза 13a, ADR-0003): только владелец, `/start` `/status` `/help`, уведомления, long polling, Docker-образ для облака | Approvals, alerts, Input Router — PHASE 13+         |
-| PostgreSQL 18         | Docker Compose, healthcheck, volume, loopback-only                                                                                        | Схема и миграции — PHASE 02                         |
-| Temporal              | Не запущен                                                                                                                                | Отдельный шаг с ADR                                 |
-| S3-compatible storage | Не запущен                                                                                                                                | При первой потребности (Evidence snapshots, media)  |
+| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                         | Появится                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                         | Бизнес-API — по Phase                                                                                 |
+| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                                                                                                                                            | Temporal workers — после выбора интеграции Temporal                                                   |
+| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                    | PHASE 13 — Owner Command Center                                                                       |
+| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv (`@roi-dealer/command-center`); Docker-образ с миграциями | Alerts, Input Router, Mini App с данными — PHASE 13+                                                  |
+| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 14 сущностей (миграции `0001`–`0003`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                      | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота |
+| Temporal              | Не запущен                                                                                                                                                                                                                                                | Отдельный шаг с ADR                                                                                   |
+| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                | При первой потребности (Evidence snapshots, media)                                                    |
 
 ### Направления зависимостей
 
@@ -148,6 +148,8 @@ apps/*  ──►  packages/*          (никогда наоборот)
 packages/domain                  без I/O: не импортирует БД, сеть, AI
 packages/agents, packages/judges ──► packages/ai-runtime  (не напрямую к провайдерам)
 apps/bot ──► packages/telegram     (Telegram Bot API только через этот пакет)
+apps/bot ──► packages/command-center ──► packages/database, packages/telegram, packages/domain   (логика пульта, 13b)
+apps/* ──► packages/database ──► packages/events ──► packages/domain   (PostgreSQL только через database)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -157,24 +159,24 @@ packages/*  ──►  packages/shared, packages/observability
 
 ### Размещение систем организма
 
-| Система                             | Где будет жить                                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `workflows/discovery`                                                                   |
-| 2. Company Brain                    | `packages/domain` + PostgreSQL (PHASE 08)                                                                                             |
-| 3. Opportunity & Decision           | `packages/domain`, `packages/judges`, `workflows/opportunity`                                                                         |
-| 4. Validation System                | `workflows/validation` (PHASE 14–15)                                                                                                  |
-| 5–6. Distribution, Creative & Media | Отдельные модули в поздних Phase (PHASE 19)                                                                                           |
-| 7. Solution & Product Factory       | `workflows/solution` (PHASE 21–22)                                                                                                    |
-| 8. Customer & Outcome               | PHASE 20                                                                                                                              |
-| 9. Economic System                  | `packages/economics` (PHASE 16)                                                                                                       |
-| 10. Reward Engine                   | `packages/rewards`, `workflows/reward` (PHASE 17)                                                                                     |
-| 11. Skills & Improvement            | `packages/skills`, `workflows/improvement` (PHASE 18, 23)                                                                             |
-| 12. Reliability System              | `packages/observability` (реализован базовый слой), `infra/`                                                                          |
-| 13. Portfolio System                | PHASE 22                                                                                                                              |
-| 14. Owner Command Center            | `apps/miniapp`, `apps/bot` + `packages/telegram` (бот-пульт — фаза 13a; полный пульт — PHASE 13)                                      |
-| 15. MVP Scope Governor              | `packages/policies` + Experiment Engine (PHASE 15)                                                                                    |
-| 16. Input Router / Capture Layer    | `packages/telegram` (типизированные команды) → `apps/bot`, `apps/api` — typed intent → confirmation → backend action (после PHASE 13) |
-| 17. Early User Validation Layer     | PHASE 20–21                                                                                                                           |
+| Система                             | Где будет жить                                                                                                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `workflows/discovery`                                                                                                   |
+| 2. Company Brain                    | `packages/domain` + PostgreSQL (PHASE 08)                                                                                                                             |
+| 3. Opportunity & Decision           | `packages/domain`, `packages/judges`, `workflows/opportunity`                                                                                                         |
+| 4. Validation System                | `workflows/validation` (PHASE 14–15)                                                                                                                                  |
+| 5–6. Distribution, Creative & Media | Отдельные модули в поздних Phase (PHASE 19)                                                                                                                           |
+| 7. Solution & Product Factory       | `workflows/solution` (PHASE 21–22)                                                                                                                                    |
+| 8. Customer & Outcome               | PHASE 20                                                                                                                                                              |
+| 9. Economic System                  | `packages/economics` (PHASE 16)                                                                                                                                       |
+| 10. Reward Engine                   | `packages/rewards`, `workflows/reward` (PHASE 17)                                                                                                                     |
+| 11. Skills & Improvement            | `packages/skills`, `workflows/improvement` (PHASE 18, 23)                                                                                                             |
+| 12. Reliability System              | `packages/observability` (реализован базовый слой), `infra/`                                                                                                          |
+| 13. Portfolio System                | PHASE 22                                                                                                                                                              |
+| 14. Owner Command Center            | `apps/miniapp`, `apps/bot` + `packages/telegram` + `packages/command-center` (бот-пульт — 13a; одобрения, стоп-кран, журнал, дайджест — 13b; полный пульт — PHASE 13) |
+| 15. MVP Scope Governor              | `packages/policies` + Experiment Engine (PHASE 15)                                                                                                                    |
+| 16. Input Router / Capture Layer    | `packages/telegram` (типизированные команды) → `apps/bot`, `apps/api` — typed intent → confirmation → backend action (после PHASE 13)                                 |
+| 17. Early User Validation Layer     | PHASE 20–21                                                                                                                                                           |
 
 ### Доменная модель (PHASE 01)
 
@@ -185,9 +187,48 @@ untrusted JSON ──parseInput(createInputSchemas.x)──► typed data ──
                   (@roi-dealer/schemas: strict)                   (@roi-dealer/domain: rules, owner gates)
 ```
 
-- Изменяемые сущности: `version` + `updatedAt` (optimistic locking в PHASE 02); неизменяемые записи (Evidence, Decision, CostEntry, KnowledgeAsset) исправляются новыми записями.
+- Изменяемые сущности: `version` + `updatedAt` (optimistic locking — PHASE 02, см. «Хранение»); неизменяемые записи (Evidence, Decision, CostEntry, KnowledgeAsset) исправляются новыми записями.
 - Решения владельца (Decision, ApprovalRequest, верификация вклада, одобрение Reward) закреплены за актором `owner` в домене, а не только в интерфейсе.
 - Спецификация и правила — [`docs/phases/01_core_domain.md`](phases/01_core_domain.md).
+
+### Хранение (PHASE 02)
+
+`@roi-dealer/database` сохраняет сущности домена в PostgreSQL ([ADR-0005](ADR/0005-postgresql-driver-and-migrations.md), [схема](../database/docs/schema.md)):
+
+```text
+domain function ──► new entity version ──► repository.update ──► UPDATE … WHERE version = N − 1
+                                                   (database.transaction: несколько записей атомарно)
+repository.getById ──► row ──► domain schema ──► entity   (иначе DataIntegrityError, §2.13)
+```
+
+- БД проверяет структуру (типы, ссылки, деньги, время, human gates) и защищает историю: неизменяемые записи и связи нельзя изменить или удалить, строки не удаляются, каждая новая версия — `version + 1`.
+- Домен по-прежнему решает, кто и какой переход может выполнить.
+- Миграции — SQL-файлы в `database/migrations/`, только вперёд, с контрольными суммами; `pnpm db:migrate`.
+
+### Event History (PHASE 03)
+
+```text
+repository.insert / update ──► row + event (<entity>.created | .updated, version, actor, correlation_id, snapshot)
+                                 └─ одна транзакция; при COMMIT БД проверяет, что у каждой изменённой строки есть событие
+database.command({ idempotencyKey }) ──► idempotency_keys ──► выполнить ровно один раз, повтору — сохранённый результат
+database.events.history(entity) / list({ from, to, … }) ──► журнал и история (кнопки пульта, 13b)
+```
+
+- События — аудит изменений (§2.2, §2.11): кто, когда, какая версия, в рамках какого запроса. Изменить или удалить событие нельзя.
+
+### Пульт владельца (13b)
+
+```text
+Telegram ──► router (только владелец, личный чат) ──► command-center
+  /decisions ──► карточка ──► ✅/❌ ──► вопрос «Одобрить … на $X?» ──► Да ──► database.command(tg-callback-<id>)
+                                                                             └─► resolveApprovalRequest (owner) ──► update + event
+  /stop, /resume ──► подтверждение (10 мин) ──► database.command ──► pauseSystem / resumeSystem ──► SystemControl + event
+  /journal, /history ──► День / Неделя / Месяц ──► database.events.list ──► строки по Киеву
+  10:00 Europe/Kyiv ──► database.command(digest-<дата>) ──► дайджест владельцу, не более раза в день
+```
+
+- **Стоп-кран** — сущность `SystemControl` (`automation`: `running` ⇄ `paused`). Остановить может владелец или система (будущая автопауза), возобновить — только владелец. Каждая будущая автоматизация и трата первым шагом вызывает `assertAutomationRunning`.
+- Контракты событий — `@roi-dealer/events`; хранение — `@roi-dealer/database` ([схема](../database/docs/schema.md#event-history-phase-03)).
 
 ### Сквозные механизмы (реализованы в PHASE 00)
 

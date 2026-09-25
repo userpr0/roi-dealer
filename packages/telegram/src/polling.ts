@@ -9,7 +9,7 @@ export interface LongPollerOptions {
   readonly onUpdate: (update: TelegramUpdate) => Promise<void>;
   /** Called when polling cannot continue (invalid or revoked token). Polling has stopped by then. */
   readonly onFatalError: (error: Error) => void;
-  /** Default: `['message']`. */
+  /** Default: `['message', 'callback_query']` (commands and inline buttons). */
   readonly allowedUpdates?: readonly string[];
   /** Default: 30 s. */
   readonly pollTimeoutSeconds?: number;
@@ -55,7 +55,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  */
 export function createLongPoller(options: LongPollerOptions): LongPoller {
   const { client, logger, onUpdate, onFatalError } = options;
-  const allowedUpdates = options.allowedUpdates ?? ['message'];
+  const allowedUpdates = options.allowedUpdates ?? ['message', 'callback_query'];
   const timeoutSeconds = options.pollTimeoutSeconds ?? DEFAULT_POLL_TIMEOUT_SECONDS;
   const maxBackoffMs = options.maxBackoffMs ?? DEFAULT_MAX_BACKOFF_MS;
 

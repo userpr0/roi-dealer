@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../events" },
+    { "path": "../database" },
+    { "path": "../observability" },
+    { "path": "../telegram" }
+  ]
+}
