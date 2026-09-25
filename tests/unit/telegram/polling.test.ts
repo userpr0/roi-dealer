@@ -63,7 +63,10 @@ describe('createLongPoller', () => {
 
     expect(handled).toEqual([1, 2, 3]);
     expect(calls.map((call) => call.offset)).toEqual([undefined, 3, 4]);
-    expect(calls[0]).toMatchObject({ timeoutSeconds: 30, allowedUpdates: ['message'] });
+    expect(calls[0]).toMatchObject({
+      timeoutSeconds: 30,
+      allowedUpdates: ['message', 'callback_query'],
+    });
     expect(records).toContainEqual(
       expect.objectContaining({ message: 'telegram update handler failed', update_id: 2 }),
     );
