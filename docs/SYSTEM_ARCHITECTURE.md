@@ -104,7 +104,7 @@ Real Pain / Opportunity
 
 ---
 
-## Архитектура реализации (as built — PHASE 02)
+## Архитектура реализации (as built — PHASE 03)
 
 ### Стиль
 
@@ -148,7 +148,7 @@ apps/*  ──►  packages/*          (никогда наоборот)
 packages/domain                  без I/O: не импортирует БД, сеть, AI
 packages/agents, packages/judges ──► packages/ai-runtime  (не напрямую к провайдерам)
 apps/bot ──► packages/telegram     (Telegram Bot API только через этот пакет)
-apps/* ──► packages/database ──► packages/domain   (PostgreSQL только через этот пакет)
+apps/* ──► packages/database ──► packages/events ──► packages/domain   (PostgreSQL только через database)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -203,6 +203,18 @@ repository.getById ──► row ──► domain schema ──► entity   (и�
 - БД проверяет структуру (типы, ссылки, деньги, время, human gates) и защищает историю: неизменяемые записи и связи нельзя изменить или удалить, строки не удаляются, каждая новая версия — `version + 1`.
 - Домен по-прежнему решает, кто и какой переход может выполнить.
 - Миграции — SQL-файлы в `database/migrations/`, только вперёд, с контрольными суммами; `pnpm db:migrate`.
+
+### Event History (PHASE 03)
+
+```text
+repository.insert / update ──► row + event (<entity>.created | .updated, version, actor, correlation_id, snapshot)
+                                 └─ одна транзакция; при COMMIT БД проверяет, что у каждой изменённой строки есть событие
+database.command({ idempotencyKey }) ──► idempotency_keys ──► выполнить ровно один раз, повтору — сохранённый результат
+database.events.history(entity) / list({ from, to, … }) ──► журнал и история (основа кнопок пульта, 13b)
+```
+
+- События — аудит изменений (§2.2, §2.11): кто, когда, какая версия, в рамках какого запроса. Изменить или удалить событие нельзя.
+- Контракты событий — `@roi-dealer/events`; хранение — `@roi-dealer/database` ([схема](../database/docs/schema.md#event-history-phase-03)).
 
 ### Сквозные механизмы (реализованы в PHASE 00)
 

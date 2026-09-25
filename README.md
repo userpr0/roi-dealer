@@ -89,8 +89,9 @@ packages/
   observability/  structured logger, health registry, correlation id
   domain/         сущности, жизненные циклы и правила ROI CORE v0.1 (PHASE 01)
   schemas/        строгие входные контракты (PHASE 01)
-  database/       PostgreSQL: подключение, миграции, репозитории (PHASE 02)
-  events/ policies/ agents/ judges/ skills/
+  database/       PostgreSQL: подключение, миграции, репозитории, Event History (PHASE 02–03)
+  events/         контракты Event History (PHASE 03)
+  policies/ agents/ judges/ skills/
   ai-runtime/ economics/ rewards/          placeholders следующих Phase
 workflows/      Temporal workflows (PHASE 00: только README)
 database/       migrations/ (SQL), docs/schema.md

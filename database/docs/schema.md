@@ -1,6 +1,6 @@
 # Схема базы данных
 
-> Миграция [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [спецификация PHASE 02](../../docs/phases/02_postgresql_foundation.md).
+> Миграции [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02) и [`0002_event_history.sql`](../migrations/0002_event_history.sql) (PHASE 03). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [PHASE 02](../../docs/phases/02_postgresql_foundation.md); история — [PHASE 03](../../docs/phases/03_event_history.md).
 
 ## Кто за что отвечает
 
@@ -24,22 +24,24 @@ cost_entries → opportunities / hypotheses / experiments / approval_requests / 
 rewards ─< reward_contributions >── contributions
 ```
 
-| Таблица             | Сущность        | Вид         | Связи списков                                  |
-| ------------------- | --------------- | ----------- | ---------------------------------------------- |
-| `sources`           | Source          | версии      | —                                              |
-| `evidence`          | Evidence        | append-only | —                                              |
-| `signals`           | Signal          | версии      | `signal_evidence` (evidenceIds)                |
-| `pains`             | Pain            | версии      | `pain_signals`, `pain_evidence`                |
-| `opportunities`     | Opportunity     | версии      | `opportunity_pains` (painIds)                  |
-| `decisions`         | Decision        | append-only | `decision_evidence`                            |
-| `approval_requests` | ApprovalRequest | версии      | —                                              |
-| `hypotheses`        | Hypothesis      | версии      | —                                              |
-| `experiments`       | Experiment      | версии      | `experiment_result_assets` (result.assetIds)   |
-| `cost_entries`      | CostEntry       | append-only | —                                              |
-| `contributions`     | Contribution    | версии      | —                                              |
-| `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)       |
-| `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds) |
-| `schema_migrations` | —               | служебная   | журнал раннера миграций                        |
+| Таблица             | Сущность        | Вид         | Связи списков                                                      |
+| ------------------- | --------------- | ----------- | ------------------------------------------------------------------ |
+| `sources`           | Source          | версии      | —                                                                  |
+| `evidence`          | Evidence        | append-only | —                                                                  |
+| `signals`           | Signal          | версии      | `signal_evidence` (evidenceIds)                                    |
+| `pains`             | Pain            | версии      | `pain_signals`, `pain_evidence`                                    |
+| `opportunities`     | Opportunity     | версии      | `opportunity_pains` (painIds)                                      |
+| `decisions`         | Decision        | append-only | `decision_evidence`                                                |
+| `approval_requests` | ApprovalRequest | версии      | —                                                                  |
+| `hypotheses`        | Hypothesis      | версии      | —                                                                  |
+| `experiments`       | Experiment      | версии      | `experiment_result_assets` (result.assetIds)                       |
+| `cost_entries`      | CostEntry       | append-only | —                                                                  |
+| `contributions`     | Contribution    | версии      | —                                                                  |
+| `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)                           |
+| `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                     |
+| `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
+| `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
+| `schema_migrations` | —               | служебная   | журнал раннера миграций                                            |
 
 ## Соглашения
 
@@ -79,6 +81,24 @@ rewards ─< reward_contributions >── contributions
 
 Правила, которые БД не проверяет (их проверяет домен): минимальное число элементов в списках id (`evidenceIds ≥ 1`, `painIds ≥ 1`, `result.assetIds ≥ 1`), допустимые переходы статусов, решения только владельца, существование объекта в полиморфной ссылке `subject`, пять разных гипотез.
 
+## Event History (PHASE 03)
+
+| Колонка `events`                                      | Смысл                                                                             |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `position`                                            | Глобальный порядок записи (identity); по нему журнал читается постранично         |
+| `id`, `type`                                          | UUID v7; `<entity>.created` / `<entity>.updated`                                  |
+| `aggregate_type`, `aggregate_id`, `aggregate_version` | Сущность и её версия; `UNIQUE` — у каждой версии ровно одно событие               |
+| `occurred_at` / `recorded_at`                         | Время изменения по домену / время записи по часам БД                              |
+| `actor_type`, `actor_id`                              | Кто изменил: при создании — `createdBy`, при изменении — актор доменного перехода |
+| `correlation_id`                                      | Запрос или обновление Telegram, в рамках которого сделано изменение               |
+| `payload`                                             | `{ snapshot, previousStatus? }` — снимок сущности в этой версии                   |
+
+Гарантии:
+
+- **Нет изменения без события.** Отложенный constraint trigger `<table>_requires_event` на каждой таблице сущностей проверяет при `COMMIT`, что у вставленной или изменённой строки есть событие того же типа и версии. Иначе транзакция не фиксируется (`ConstraintViolationError`, `kind: 'missing_event'`).
+- **История неизменяема.** `UPDATE`, `DELETE` и `TRUNCATE` событий отклоняются; тип события соответствует сущности, `created` — только версия 1.
+- **Команды идемпотентны.** В `idempotency_keys` ключ вставляется первым, поэтому одновременный повтор ждёт и видит его; результат записывается один раз (триггер `idempotency_keys_result_once`).
+
 ## Ошибки
 
-`@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
+`@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
