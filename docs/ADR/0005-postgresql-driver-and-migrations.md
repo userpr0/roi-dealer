@@ -1,8 +1,8 @@
 # ADR-0005: Драйвер PostgreSQL и миграции
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-25
-- **Approved by:** — (принимается вместе с приёмкой PHASE 02, как ADR-0001 с PHASE 00)
+- **Approved by:** владелец, 2026-09-25 — приёмка PHASE 02 ответом «продолжай дальше» на запрос одобрения PHASE 03 (D-016)
 
 ## Context
 
