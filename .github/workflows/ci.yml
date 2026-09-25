@@ -16,6 +16,24 @@ jobs:
     name: Typecheck, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      # Integration tests create a throwaway database per test file (CI-only credentials).
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: roi_dealer_ci
+          POSTGRES_USER: roi_dealer
+          POSTGRES_PASSWORD: roi_dealer_ci_only
+          TZ: UTC
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roi_dealer -d roi_dealer_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://roi_dealer:roi_dealer_ci_only@localhost:5432/roi_dealer_ci
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -48,6 +66,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Apply database migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
 
       - name: Integration tests
         run: pnpm test:integration
