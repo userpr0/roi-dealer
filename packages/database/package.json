@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/events": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "postgres": "^3.4.9",

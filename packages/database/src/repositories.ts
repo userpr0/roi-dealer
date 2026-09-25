@@ -19,6 +19,7 @@ import {
   createVersionedRepository,
   type Repository,
   type VersionedRepository,
+  type WriteContext,
 } from './repository.js';
 import {
   approvalRequestsTable,
@@ -53,21 +54,24 @@ export interface Repositories {
   readonly knowledgeAssets: Repository<KnowledgeAsset>;
 }
 
-/** Repositories bound to the pool or to an open transaction. */
-export function createRepositories(executor: Executor): Repositories {
+/**
+ * Repositories bound to the pool or to an open transaction. Every write appends its event
+ * (PHASE 03) in the same transaction, with `context.correlationId`.
+ */
+export function createRepositories(executor: Executor, context: WriteContext = {}): Repositories {
   return {
-    sources: createVersionedRepository(executor, sourcesTable),
-    evidence: createRepository(executor, evidenceTable),
-    signals: createVersionedRepository(executor, signalsTable),
-    pains: createVersionedRepository(executor, painsTable),
-    opportunities: createVersionedRepository(executor, opportunitiesTable),
-    decisions: createRepository(executor, decisionsTable),
-    approvalRequests: createVersionedRepository(executor, approvalRequestsTable),
-    hypotheses: createVersionedRepository(executor, hypothesesTable),
-    experiments: createVersionedRepository(executor, experimentsTable),
-    costEntries: createRepository(executor, costEntriesTable),
-    contributions: createVersionedRepository(executor, contributionsTable),
-    rewards: createVersionedRepository(executor, rewardsTable),
-    knowledgeAssets: createRepository(executor, knowledgeAssetsTable),
+    sources: createVersionedRepository(executor, sourcesTable, context),
+    evidence: createRepository(executor, evidenceTable, context),
+    signals: createVersionedRepository(executor, signalsTable, context),
+    pains: createVersionedRepository(executor, painsTable, context),
+    opportunities: createVersionedRepository(executor, opportunitiesTable, context),
+    decisions: createRepository(executor, decisionsTable, context),
+    approvalRequests: createVersionedRepository(executor, approvalRequestsTable, context),
+    hypotheses: createVersionedRepository(executor, hypothesesTable, context),
+    experiments: createVersionedRepository(executor, experimentsTable, context),
+    costEntries: createRepository(executor, costEntriesTable, context),
+    contributions: createVersionedRepository(executor, contributionsTable, context),
+    rewards: createVersionedRepository(executor, rewardsTable, context),
+    knowledgeAssets: createRepository(executor, knowledgeAssetsTable, context),
   };
 }

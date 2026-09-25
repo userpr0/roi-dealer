@@ -44,6 +44,8 @@ export type ConstraintKind =
   | 'forbidden_change'
   /** A value of the wrong type or out of range (SQLSTATE class 22). */
   | 'invalid_value'
+  /** An entity row was written without its event (checked at COMMIT, migration 0002). */
+  | 'missing_event'
   | 'other';
 
 const KIND_BY_SQLSTATE: Readonly<Record<string, ConstraintKind>> = {
@@ -75,11 +77,30 @@ export class ConstraintViolationError extends DatabaseError {
 export class DataIntegrityError extends DatabaseError {
   override readonly name = 'DataIntegrityError';
   constructor(
-    readonly entity: EntityType,
+    readonly entity: EntityType | 'event',
     readonly id: string,
     readonly issues: readonly { readonly path: string; readonly message: string }[],
   ) {
     super(`Stored ${entity} ${id} does not match the domain schema`);
+  }
+}
+
+export type InvalidWriteReason =
+  /** History starts at version 1: store an entity when it is created, then each new version. */
+  | 'insert_requires_version_1'
+  | 'invalid_correlation_id'
+  | 'invalid_idempotency_key'
+  /** The same idempotency key was already used by a different command. */
+  | 'idempotency_key_reused';
+
+/** A write that the persistence layer refuses before touching the database (a caller bug). */
+export class InvalidWriteError extends DatabaseError {
+  override readonly name = 'InvalidWriteError';
+  constructor(
+    readonly reason: InvalidWriteReason,
+    message: string,
+  ) {
+    super(message);
   }
 }
 
@@ -110,8 +131,9 @@ export function translateError(error: unknown): unknown {
   if (!(error instanceof postgres.PostgresError)) return error;
   const sqlState = error.code;
   if (sqlState.startsWith('23')) {
+    const missingEvent = error.constraint_name?.endsWith('_requires_event') === true;
     return new ConstraintViolationError(
-      KIND_BY_SQLSTATE[sqlState] ?? 'other',
+      missingEvent ? 'missing_event' : (KIND_BY_SQLSTATE[sqlState] ?? 'other'),
       sqlState,
       error.constraint_name,
       error.table_name,

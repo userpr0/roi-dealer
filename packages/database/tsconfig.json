@@ -5,5 +5,10 @@
     "outDir": "dist"
   },
   "include": ["src"],
-  "references": [{ "path": "../shared" }, { "path": "../observability" }, { "path": "../domain" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../observability" },
+    { "path": "../domain" },
+    { "path": "../events" }
+  ]
 }

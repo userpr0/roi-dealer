@@ -1,12 +1,16 @@
 import type { z } from 'zod';
-import type { EntityType } from '@roi-dealer/domain';
+import type { Actor, EntityType, Timestamp } from '@roi-dealer/domain';
+import { entityEventType, eventIdSchema } from '@roi-dealer/events';
+import { uuidv7 } from '@roi-dealer/shared';
 import {
   ConcurrencyError,
   ConstraintViolationError,
   DataIntegrityError,
+  InvalidWriteError,
   NotFoundError,
   translated,
 } from './errors.js';
+import { appendEvent } from './event-store.js';
 import { atomic, type Executor, type Row, type TransactionSql } from './executor.js';
 import type { Columns } from './rows.js';
 
@@ -20,8 +24,21 @@ export interface LinkSpec<E> {
   ids(entity: E): readonly string[];
 }
 
+/** Fields every stored entity has. */
+export interface StoredEntity {
+  readonly id: string;
+  readonly createdAt: Timestamp;
+  readonly createdBy: Actor;
+}
+
+export interface VersionedEntity extends StoredEntity {
+  readonly status: string;
+  readonly updatedAt: Timestamp;
+  readonly version: number;
+}
+
 /** How one domain entity maps to its table and link tables. */
-export interface TableSpec<E extends { readonly id: string }> {
+export interface TableSpec<E extends StoredEntity> {
   readonly entity: EntityType;
   readonly table: string;
   /** Domain schema: every row read back is validated with it (§2.13). */
@@ -32,23 +49,37 @@ export interface TableSpec<E extends { readonly id: string }> {
   fromRow(row: Row, links: Readonly<Record<string, readonly string[]>>): unknown;
 }
 
-export interface Repository<E extends { readonly id: string }> {
-  /** Stores a new entity with its link rows in one transaction. */
+/** Applies to every event written through these repositories. */
+export interface WriteContext {
+  /** Request or update that caused the writes (`x-correlation-id`, `tg-update-<id>`). */
+  readonly correlationId?: string | undefined;
+}
+
+export interface Repository<E extends StoredEntity> {
+  /**
+   * Stores a new entity with its link rows and its `<entity>.created` event (actor:
+   * `createdBy`) in one transaction. Versioned entities are stored at version 1.
+   */
   insert(entity: E): Promise<void>;
   getById(id: E['id']): Promise<E | undefined>;
   /** Returns the entities that exist, in the order of `ids`. */
   getByIds(ids: readonly E['id'][]): Promise<E[]>;
 }
 
-export interface VersionedRepository<
-  E extends { readonly id: string; readonly version: number },
-> extends Repository<E> {
+export interface VersionedRepository<E extends VersionedEntity> extends Repository<E> {
   /**
-   * Stores the next version of an entity (as returned by a domain function: `version + 1`).
+   * Stores the next version of an entity (as returned by a domain function: `version + 1`)
+   * and its `<entity>.updated` event. `actor` is who made the change: the same actor as in
+   * the domain context of the transition.
    * Throws `ConcurrencyError` when the stored version is not `entity.version - 1`,
    * `NotFoundError` when the entity does not exist.
    */
-  update(entity: E): Promise<void>;
+  update(entity: E, actor: Actor): Promise<void>;
+}
+
+/** The entity as it is stored in the event payload: plain JSON (absent fields dropped). */
+function snapshotOf(entity: StoredEntity): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(entity)) as Record<string, unknown>;
 }
 
 async function loadLinks<E>(
@@ -91,7 +122,7 @@ async function insertLinks<E>(
  * Link rows are append-only: an update may add ids after the stored ones
  * (e.g. the result assets of a completed experiment) but never remove or reorder them.
  */
-async function appendLinks<E extends { readonly id: string }>(
+async function appendLinks<E extends StoredEntity>(
   tx: TransactionSql,
   spec: LinkSpec<E>,
   entity: E,
@@ -111,7 +142,7 @@ async function appendLinks<E extends { readonly id: string }>(
   await insertLinks(tx, spec, entity.id, next.slice(stored.length), stored.length);
 }
 
-function createReader<E extends { readonly id: string }>(
+function createReader<E extends StoredEntity>(
   executor: Executor,
   spec: TableSpec<E>,
 ): Pick<Repository<E>, 'getById' | 'getByIds'> {
@@ -162,53 +193,83 @@ function createReader<E extends { readonly id: string }>(
   };
 }
 
-function createInsert<E extends { readonly id: string }>(
+function createInsert<E extends StoredEntity>(
   executor: Executor,
   spec: TableSpec<E>,
+  context: WriteContext,
 ): Repository<E>['insert'] {
   return (entity) =>
     translated(() =>
       atomic(executor, async (tx) => {
+        const version =
+          'version' in entity && typeof entity.version === 'number' ? entity.version : 1;
+        if (version !== 1) {
+          throw new InvalidWriteError(
+            'insert_requires_version_1',
+            `${spec.entity} ${entity.id} must be stored at version 1, then updated version by version`,
+          );
+        }
         await tx`insert into ${tx(spec.table)} ${tx(spec.toColumns(entity))}`;
         for (const link of Object.values(spec.links)) {
           await insertLinks(tx, link, entity.id, link.ids(entity), 0);
         }
+        await appendEvent(tx, {
+          id: eventIdSchema.parse(uuidv7()),
+          type: entityEventType(spec.entity, 'created'),
+          aggregate: { type: spec.entity, id: entity.id },
+          aggregateVersion: 1,
+          occurredAt: entity.createdAt,
+          actor: entity.createdBy,
+          correlationId: context.correlationId,
+          payload: { snapshot: snapshotOf(entity) },
+        });
       }),
     );
 }
 
 /** Repository of an append-only record (Evidence, Decision, CostEntry, KnowledgeAsset). */
-export function createRepository<E extends { readonly id: string }>(
+export function createRepository<E extends StoredEntity>(
   executor: Executor,
   spec: TableSpec<E>,
+  context: WriteContext = {},
 ): Repository<E> {
-  return { insert: createInsert(executor, spec), ...createReader(executor, spec) };
+  return { insert: createInsert(executor, spec, context), ...createReader(executor, spec) };
 }
 
 /** Repository of a versioned entity with optimistic locking. */
-export function createVersionedRepository<
-  E extends { readonly id: string; readonly version: number },
->(executor: Executor, spec: TableSpec<E>): VersionedRepository<E> {
+export function createVersionedRepository<E extends VersionedEntity>(
+  executor: Executor,
+  spec: TableSpec<E>,
+  context: WriteContext = {},
+): VersionedRepository<E> {
   return {
-    insert: createInsert(executor, spec),
+    insert: createInsert(executor, spec, context),
     ...createReader(executor, spec),
-    update: (entity) =>
+    update: (entity, actor) =>
       translated(() =>
         atomic(executor, async (tx) => {
-          const { id: _id, ...columns } = spec.toColumns(entity);
-          const expectedVersion = entity.version - 1;
-          const result = await tx`
-            update ${tx(spec.table)} set ${tx(columns)}
-            where id = ${entity.id} and version = ${expectedVersion}
+          // Lock the stored version: concurrent updates of one entity queue up here.
+          const [current] = await tx<{ version: number; status: string }[]>`
+            select version, status from ${tx(spec.table)} where id = ${entity.id} for update
           `;
-          if (result.count === 0) {
-            const [current] = await tx<{ version: number }[]>`
-              select version from ${tx(spec.table)} where id = ${entity.id}
-            `;
-            if (current === undefined) throw new NotFoundError(spec.entity, entity.id);
+          if (current === undefined) throw new NotFoundError(spec.entity, entity.id);
+          const expectedVersion = entity.version - 1;
+          if (current.version !== expectedVersion) {
             throw new ConcurrencyError(spec.entity, entity.id, expectedVersion, current.version);
           }
+          const { id: _id, ...columns } = spec.toColumns(entity);
+          await tx`update ${tx(spec.table)} set ${tx(columns)} where id = ${entity.id}`;
           for (const link of Object.values(spec.links)) await appendLinks(tx, link, entity);
+          await appendEvent(tx, {
+            id: eventIdSchema.parse(uuidv7()),
+            type: entityEventType(spec.entity, 'updated'),
+            aggregate: { type: spec.entity, id: entity.id },
+            aggregateVersion: entity.version,
+            occurredAt: entity.updatedAt,
+            actor,
+            correlationId: context.correlationId,
+            payload: { snapshot: snapshotOf(entity), previousStatus: current.status },
+          });
         }),
       ),
   };
