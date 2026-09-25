@@ -17,6 +17,9 @@ importers:
       '@roi-dealer/ai-runtime':
         specifier: workspace:*
         version: link:packages/ai-runtime
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:packages/database
       '@roi-dealer/domain':
         specifier: workspace:*
         version: link:packages/domain
@@ -86,6 +89,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -148,6 +154,24 @@ importers:
   packages/agents: {}
 
   packages/ai-runtime: {}
+
+  packages/database:
+    dependencies:
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@roi-dealer/shared':
+        specifier: workspace:*
+        version: link:../shared
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/domain:
     dependencies:
@@ -1126,6 +1150,10 @@ packages:
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
+
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
 
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -2179,6 +2207,8 @@ snapshots:
       nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  postgres@3.4.9: {}
 
   prelude-ls@1.2.1: {}
 

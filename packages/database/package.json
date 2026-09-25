@@ -1,0 +1,27 @@
+{
+  "name": "@roi-dealer/database",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PostgreSQL access: connection, SQL migrations and repositories for the core domain",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.5"
+  }
+}

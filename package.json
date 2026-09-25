@@ -23,12 +23,14 @@
     "clean": "tsc -b --clean && pnpm -r --if-present run clean",
     "infra:up": "docker compose -f infra/docker/compose.yaml up -d --wait",
     "infra:down": "docker compose -f infra/docker/compose.yaml down",
-    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f"
+    "infra:logs": "docker compose -f infra/docker/compose.yaml logs -f",
+    "db:migrate": "tsx --conditions=@roi-dealer/source --env-file-if-exists=.env packages/database/src/migrate-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@roi-dealer/agents": "workspace:*",
     "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/economics": "workspace:*",
     "@roi-dealer/events": "workspace:*",
