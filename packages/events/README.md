@@ -8,7 +8,7 @@
 
 | Экспорт                                                          | Назначение                                                                                        |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `EVENT_TYPES`, `eventTypeSchema`, `entityEventType`              | `<entity>.created` для 13 сущностей и `<entity>.updated` для 9 изменяемых                         |
+| `EVENT_TYPES`, `eventTypeSchema`, `entityEventType`              | `<entity>.created` для 14 сущностей и `<entity>.updated` для 10 изменяемых                        |
 | `APPEND_ONLY_ENTITY_TYPES`, `VERSIONED_ENTITY_TYPES`             | Какие сущности только создаются (Evidence, Decision, CostEntry, KnowledgeAsset), а какие меняются |
 | `newEventSchema`, `storedEventSchema`, `NewEvent`, `StoredEvent` | Конверт события: id, тип, сущность и версия, время (UTC), актор, `correlationId`, снимок сущности |
 | `correlationIdSchema`                                            | Формат `x-correlation-id` и `tg-update-<id>`                                                      |

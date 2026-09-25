@@ -393,8 +393,10 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       ['opportunity.updated', 'owner'],
     ]);
 
-    // one event per stored version of every entity
-    const allEvents = await db.events.list({ limit: 1_000 });
+    // one event per stored version of every entity (besides the kill switch of migration 0003)
+    const allEvents = (await db.events.list({ limit: 1_000 })).filter(
+      (event) => event.aggregate.type !== 'system_control',
+    );
     const expectedVersions = [
       ...sources,
       ...evidence,

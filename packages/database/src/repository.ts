@@ -66,7 +66,14 @@ export interface Repository<E extends StoredEntity> {
   getByIds(ids: readonly E['id'][]): Promise<E[]>;
 }
 
+export interface ListOptions {
+  /** Default 100, at most 1 000. */
+  readonly limit?: number | undefined;
+}
+
 export interface VersionedRepository<E extends VersionedEntity> extends Repository<E> {
+  /** Entities currently in `status`, least recently changed first. */
+  listByStatus(status: E['status'], options?: ListOptions): Promise<E[]>;
   /**
    * Stores the next version of an entity (as returned by a domain function: `version + 1`)
    * and its `<entity>.updated` event. `actor` is who made the change: the same actor as in
@@ -142,41 +149,51 @@ async function appendLinks<E extends StoredEntity>(
   await insertLinks(tx, spec, entity.id, next.slice(stored.length), stored.length);
 }
 
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 1_000;
+
+/** Rebuilds entities from rows with their link lists and validates each (§2.13). */
+async function readEntities<E extends StoredEntity>(
+  executor: Executor,
+  spec: TableSpec<E>,
+  rows: readonly Row[],
+): Promise<E[]> {
+  const foundIds = rows.map((row) => String(row['id']));
+  const links = await Promise.all(
+    Object.entries(spec.links).map(
+      async ([name, link]) => [name, await loadLinks(executor, link, foundIds)] as const,
+    ),
+  );
+  return rows.map((row) => {
+    const id = String(row['id']);
+    const lists = Object.fromEntries(links.map(([name, map]) => [name, map.get(id) ?? []]));
+    const parsed = spec.schema.safeParse(spec.fromRow(row, lists));
+    if (!parsed.success) {
+      throw new DataIntegrityError(
+        spec.entity,
+        id,
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.map(String).join('.'),
+          message: issue.message,
+        })),
+      );
+    }
+    return parsed.data;
+  });
+}
+
 function createReader<E extends StoredEntity>(
   executor: Executor,
   spec: TableSpec<E>,
 ): Pick<Repository<E>, 'getById' | 'getByIds'> {
-  const linkEntries = Object.entries(spec.links);
-
   async function getByIds(ids: readonly E['id'][]): Promise<E[]> {
     if (ids.length === 0) return [];
     return translated(async () => {
       const rows = await executor<Row[]>`
         select * from ${executor(spec.table)} where id = any(${ids}::uuid[])
       `;
-      const foundIds = rows.map((row) => String(row['id']));
-      const links = await Promise.all(
-        linkEntries.map(
-          async ([name, link]) => [name, await loadLinks(executor, link, foundIds)] as const,
-        ),
-      );
-      const byId = new Map<string, E>();
-      for (const row of rows) {
-        const id = String(row['id']);
-        const lists = Object.fromEntries(links.map(([name, map]) => [name, map.get(id) ?? []]));
-        const parsed = spec.schema.safeParse(spec.fromRow(row, lists));
-        if (!parsed.success) {
-          throw new DataIntegrityError(
-            spec.entity,
-            id,
-            parsed.error.issues.map((issue) => ({
-              path: issue.path.map(String).join('.'),
-              message: issue.message,
-            })),
-          );
-        }
-        byId.set(id, parsed.data);
-      }
+      const entities = await readEntities(executor, spec, rows);
+      const byId = new Map(entities.map((entity) => [entity.id, entity]));
       return ids.flatMap((id) => {
         const entity = byId.get(id);
         return entity === undefined ? [] : [entity];
@@ -245,6 +262,20 @@ export function createVersionedRepository<E extends VersionedEntity>(
   return {
     insert: createInsert(executor, spec, context),
     ...createReader(executor, spec),
+    listByStatus: (status, options = {}) =>
+      translated(async () => {
+        const limit = Math.min(
+          Math.max(Math.trunc(options.limit ?? DEFAULT_LIST_LIMIT), 1),
+          MAX_LIST_LIMIT,
+        );
+        const rows = await executor<Row[]>`
+          select * from ${executor(spec.table)}
+          where status = ${status}
+          order by updated_at, id
+          limit ${limit}
+        `;
+        return readEntities(executor, spec, rows);
+      }),
     update: (entity, actor) =>
       translated(() =>
         atomic(executor, async (tx) => {

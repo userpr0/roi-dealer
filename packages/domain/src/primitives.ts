@@ -14,6 +14,7 @@ export const ENTITY_TYPES = [
   'contribution',
   'reward',
   'knowledge_asset',
+  'system_control',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -45,6 +46,8 @@ export const rewardIdSchema = z.uuid().brand<'RewardId'>();
 export type RewardId = z.infer<typeof rewardIdSchema>;
 export const knowledgeAssetIdSchema = z.uuid().brand<'KnowledgeAssetId'>();
 export type KnowledgeAssetId = z.infer<typeof knowledgeAssetIdSchema>;
+export const systemControlIdSchema = z.uuid().brand<'SystemControlId'>();
+export type SystemControlId = z.infer<typeof systemControlIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();

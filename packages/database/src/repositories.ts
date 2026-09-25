@@ -12,6 +12,7 @@ import type {
   Reward,
   Signal,
   Source,
+  SystemControl,
 } from '@roi-dealer/domain';
 import type { Executor } from './executor.js';
 import {
@@ -35,9 +36,10 @@ import {
   rewardsTable,
   signalsTable,
   sourcesTable,
+  systemControlsTable,
 } from './tables.js';
 
-/** One repository per PHASE 01 entity; append-only records have no `update`. */
+/** One repository per domain entity; append-only records have no `update`. */
 export interface Repositories {
   readonly sources: VersionedRepository<Source>;
   readonly evidence: Repository<Evidence>;
@@ -52,6 +54,8 @@ export interface Repositories {
   readonly contributions: VersionedRepository<Contribution>;
   readonly rewards: VersionedRepository<Reward>;
   readonly knowledgeAssets: Repository<KnowledgeAsset>;
+  /** The automation kill switch (13b); its row is created by migration 0003. */
+  readonly systemControls: VersionedRepository<SystemControl>;
 }
 
 /**
@@ -73,5 +77,6 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     contributions: createVersionedRepository(executor, contributionsTable, context),
     rewards: createVersionedRepository(executor, rewardsTable, context),
     knowledgeAssets: createRepository(executor, knowledgeAssetsTable, context),
+    systemControls: createVersionedRepository(executor, systemControlsTable, context),
   };
 }

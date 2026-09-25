@@ -35,6 +35,8 @@ async function tableExists(test: TestDatabase, name: string): Promise<boolean> {
   return row?.exists ?? false;
 }
 
+const PROJECT_MIGRATIONS = ['0001_core_domain', '0002_event_history', '0003_system_control'];
+
 describe('runMigrations with the project migrations', () => {
   it('builds the schema on an empty database and records a checksum', async () => {
     const test = await freshDatabase();
@@ -43,10 +45,7 @@ describe('runMigrations with the project migrations', () => {
 
     const result = await runMigrations(test.database.sql, migrations, { logger });
 
-    expect(result).toEqual({
-      applied: ['0001_core_domain', '0002_event_history'],
-      alreadyApplied: 0,
-    });
+    expect(result).toEqual({ applied: PROJECT_MIGRATIONS, alreadyApplied: 0 });
     expect(await tableExists(test, 'public.opportunities')).toBe(true);
     const [row] = await test.database.sql<{ checksum: string }[]>`
       select checksum from schema_migrations where id = '0001_core_domain'
@@ -62,7 +61,7 @@ describe('runMigrations with the project migrations', () => {
 
     await expect(runMigrations(test.database.sql, migrations)).resolves.toEqual({
       applied: [],
-      alreadyApplied: 2,
+      alreadyApplied: PROJECT_MIGRATIONS.length,
     });
   });
 
@@ -75,11 +74,12 @@ describe('runMigrations with the project migrations', () => {
       runMigrations(test.database.sql, migrations),
     ]);
 
-    expect(results.flatMap((result) => result.applied)).toEqual([
-      '0001_core_domain',
-      '0002_event_history',
-    ]);
-    expect(await appliedIds(test)).toEqual(['0001_core_domain', '0002_event_history']);
+    // The runners may share the work (the lock is taken per file), but together they apply
+    // every migration exactly once, and each runner applies its share in file order.
+    const applied = results.map((result) => result.applied);
+    expect(applied.flat().sort()).toEqual(PROJECT_MIGRATIONS);
+    for (const share of applied) expect(share).toEqual([...share].sort());
+    expect(await appliedIds(test)).toEqual(PROJECT_MIGRATIONS);
   });
 });
 

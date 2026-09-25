@@ -12,6 +12,7 @@ import {
   rewardSchema,
   signalSchema,
   sourceSchema,
+  systemControlSchema,
   type ApprovalRequest,
   type Contribution,
   type CostEntry,
@@ -26,6 +27,7 @@ import {
   type Reward,
   type Signal,
   type Source,
+  type SystemControl,
 } from '@roi-dealer/domain';
 import type { Row } from './executor.js';
 import type { TableSpec } from './repository.js';
@@ -46,7 +48,8 @@ import {
 } from './rows.js';
 
 /*
- * Mapping of the 13 PHASE 01 entities to migration 0001 (database/docs/schema.md).
+ * Mapping of the 13 PHASE 01 entities (migration 0001) and SystemControl (migration 0003, 13b)
+ * to their tables (database/docs/schema.md).
  * `toColumns` writes every column; `fromRow` rebuilds the domain object for schema validation.
  */
 
@@ -612,5 +615,27 @@ export const knowledgeAssetsTable: TableSpec<KnowledgeAsset> = {
       tags: row['tags'],
       supersedes: row['supersedes'],
       ...readImmutableMeta(row),
+    }),
+};
+
+export const systemControlsTable: TableSpec<SystemControl> = {
+  entity: 'system_control',
+  table: 'system_controls',
+  schema: systemControlSchema,
+  links: {},
+  toColumns: (control) => ({
+    id: control.id,
+    key: control.key,
+    status: control.status,
+    reason: control.reason ?? null,
+    ...mutableMetaColumns(control),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      key: row['key'],
+      status: row['status'],
+      reason: row['reason'],
+      ...readMutableMeta(row),
     }),
 };

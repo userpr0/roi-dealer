@@ -28,6 +28,8 @@ import {
   sourceLifecycle,
   subtractMoney,
   sumMoney,
+  SYSTEM_CONTROL_STATUSES,
+  systemControlLifecycle,
   timestampSchema,
   toTimestamp,
   uniqueList,
@@ -114,6 +116,7 @@ describe('state machines', () => {
     ['experiment', EXPERIMENT_STATUSES, experimentLifecycle],
     ['contribution', CONTRIBUTION_STATUSES, contributionLifecycle],
     ['reward', REWARD_STATUSES, rewardLifecycle],
+    ['system_control', SYSTEM_CONTROL_STATUSES, systemControlLifecycle],
   ] as [string, readonly string[], StateMachine<string>][])(
     '%s lifecycle covers exactly the schema statuses',
     (_name, statuses, lifecycle) => {
