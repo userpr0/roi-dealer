@@ -72,6 +72,10 @@
 
 **3.4. Защитить `main`**
 
+Быстрый путь (1 минута): скачайте [`github-ruleset-protect-main.json`](github-ruleset-protect-main.json) → **Settings** → **Rules** → **Rulesets** → **New ruleset** ▾ → **Import a ruleset** → выберите файл → **Create**. В файле те же настройки, что ниже, но для ветки задан шаблон `main`, а не пункт «Include default branch».
+
+Вручную:
+
 1. **Settings** → слева **Rules** → **Rulesets** → **New ruleset** → **New branch ruleset**.
 2. **Ruleset Name:** `Protect main`. **Enforcement status:** `Active`.
 3. **Target branches** → **Add target** → **Include default branch**.
