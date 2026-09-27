@@ -45,13 +45,22 @@ describe('api router', () => {
 });
 
 describe('api config', () => {
-  it('uses safe local defaults', () => {
+  it('uses safe local defaults and needs no database', () => {
     expect(loadApiConfig({})).toEqual({
       NODE_ENV: 'development',
       LOG_LEVEL: 'info',
       API_HOST: '127.0.0.1',
       API_PORT: 3000,
+      DATABASE_POOL_MAX: 5,
+      DATABASE_CONNECT_TIMEOUT_SECONDS: 10,
     });
+  });
+
+  it('accepts a database URL and rejects a malformed one', () => {
+    expect(loadApiConfig({ DATABASE_URL: 'postgresql://roi@localhost/roi' })).toMatchObject({
+      DATABASE_URL: 'postgresql://roi@localhost/roi',
+    });
+    expect(() => loadApiConfig({ DATABASE_URL: 'localhost:5432' })).toThrow(/DATABASE_URL/);
   });
 
   it('rejects an invalid log level', () => {

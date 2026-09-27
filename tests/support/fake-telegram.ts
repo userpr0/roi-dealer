@@ -12,19 +12,65 @@ export interface RecordedCall {
 export interface SentMessage {
   readonly chatId: number;
   readonly text: string;
+  /** `callback_data` of the inline buttons, row by row. */
+  readonly buttons?: readonly string[];
+}
+
+export interface EditedMessage extends SentMessage {
+  readonly messageId: number;
 }
 
 export interface FakeTelegram {
   readonly baseUrl: string;
   readonly calls: readonly RecordedCall[];
   readonly sent: readonly SentMessage[];
+  readonly edits: readonly EditedMessage[];
   /** Queues an incoming private text message. */
   pushMessage(message: { fromId: number; text: string; chatType?: string }): void;
+  /** Queues a press of an inline button; `queryId` repeats the delivery of one press. */
+  pushCallback(press: { fromId: number; data: string; messageId?: number; queryId?: string }): void;
   waitForSent(
     predicate: (message: SentMessage) => boolean,
     timeoutMs?: number,
   ): Promise<SentMessage>;
+  waitForEdit(
+    predicate: (message: EditedMessage) => boolean,
+    timeoutMs?: number,
+  ): Promise<EditedMessage>;
   close(): Promise<void>;
+}
+
+function buttonsOf(params: Record<string, unknown>): string[] | undefined {
+  const markup = params['reply_markup'] as
+    { inline_keyboard?: { callback_data?: string }[][] } | undefined;
+  return markup?.inline_keyboard?.flat().map((button) => String(button.callback_data));
+}
+
+function waitFor<T>(
+  items: readonly T[],
+  listeners: Set<() => void>,
+  predicate: (item: T) => boolean,
+  timeoutMs: number,
+  what: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const check = (): void => {
+      const found = items.find(predicate);
+      if (found === undefined) return;
+      cleanup();
+      resolve(found);
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`No matching ${what}. Got: ${JSON.stringify(items)}`));
+    }, timeoutMs);
+    const cleanup = (): void => {
+      clearTimeout(timer);
+      listeners.delete(check);
+    };
+    listeners.add(check);
+    check();
+  });
 }
 
 interface Waiter {
@@ -33,15 +79,17 @@ interface Waiter {
 }
 
 /**
- * Minimal in-memory Telegram Bot API: getMe, getUpdates (long polling),
- * sendMessage, setMyCommands. Requests with another token get 401.
+ * Minimal in-memory Telegram Bot API: getMe, getUpdates (long polling), sendMessage,
+ * editMessageText, answerCallbackQuery, setMyCommands. Requests with another token get 401.
  */
 export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTelegram> {
   const calls: RecordedCall[] = [];
   const sent: SentMessage[] = [];
-  const updates: { update_id: number; message: Record<string, unknown> }[] = [];
+  const edits: EditedMessage[] = [];
+  const updates: ({ update_id: number } & Record<string, unknown>)[] = [];
   const pollers = new Set<Waiter>();
   const sentListeners = new Set<() => void>();
+  const editListeners = new Set<() => void>();
   let nextUpdateId = 1;
   let nextMessageId = 1;
 
@@ -93,11 +141,30 @@ export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTel
         });
         return;
       }
-      case 'sendMessage':
-        sent.push({ chatId: Number(params['chat_id']), text: String(params['text']) });
+      case 'sendMessage': {
+        const buttons = buttonsOf(params);
+        sent.push({
+          chatId: Number(params['chat_id']),
+          text: String(params['text']),
+          ...(buttons === undefined ? {} : { buttons }),
+        });
         sentListeners.forEach((notify) => notify());
         json(res, 200, { ok: true, result: { message_id: nextMessageId++ } });
         return;
+      }
+      case 'editMessageText': {
+        const buttons = buttonsOf(params);
+        edits.push({
+          chatId: Number(params['chat_id']),
+          messageId: Number(params['message_id']),
+          text: String(params['text']),
+          ...(buttons === undefined ? {} : { buttons }),
+        });
+        editListeners.forEach((notify) => notify());
+        json(res, 200, { ok: true, result: true });
+        return;
+      }
+      case 'answerCallbackQuery':
       case 'setMyCommands':
         json(res, 200, { ok: true, result: true });
         return;
@@ -116,6 +183,7 @@ export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTel
     baseUrl: `http://127.0.0.1:${port}`,
     calls,
     sent,
+    edits,
     pushMessage({ fromId, text, chatType = 'private' }) {
       const chatId = chatType === 'private' ? fromId : -100_000 - fromId;
       updates.push({
@@ -130,26 +198,28 @@ export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTel
       });
       for (const waiter of [...pollers]) waiter.respond();
     },
-    waitForSent(predicate, timeoutMs = 10_000) {
-      return new Promise<SentMessage>((resolve, reject) => {
-        const check = (): void => {
-          const found = sent.find(predicate);
-          if (found === undefined) return;
-          cleanup();
-          resolve(found);
-        };
-        const timer = setTimeout(() => {
-          cleanup();
-          reject(new Error(`No matching sendMessage. Sent: ${JSON.stringify(sent)}`));
-        }, timeoutMs);
-        const cleanup = (): void => {
-          clearTimeout(timer);
-          sentListeners.delete(check);
-        };
-        sentListeners.add(check);
-        check();
+    pushCallback({ fromId, data, messageId = 1, queryId }) {
+      const updateId = nextUpdateId++;
+      updates.push({
+        update_id: updateId,
+        callback_query: {
+          id: queryId ?? `cb${updateId}`,
+          from: { id: fromId, is_bot: false, first_name: 'User' },
+          message: {
+            message_id: messageId,
+            date: Math.floor(Date.now() / 1_000),
+            chat: { id: fromId, type: 'private' },
+          },
+          chat_instance: '1',
+          data,
+        },
       });
+      for (const waiter of [...pollers]) waiter.respond();
     },
+    waitForSent: (predicate, timeoutMs = 10_000) =>
+      waitFor(sent, sentListeners, predicate, timeoutMs, 'sendMessage'),
+    waitForEdit: (predicate, timeoutMs = 10_000) =>
+      waitFor(edits, editListeners, predicate, timeoutMs, 'editMessageText'),
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();

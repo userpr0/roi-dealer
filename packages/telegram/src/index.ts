@@ -1,10 +1,16 @@
 export {
+  CALLBACK_DATA_PATTERN,
+  callbackButton,
+  telegramCallbackQuerySchema,
   telegramChatSchema,
   telegramMessageSchema,
   telegramUpdateSchema,
   telegramUserSchema,
   type BotCommand,
   type BotCommandScope,
+  type InlineKeyboard,
+  type InlineKeyboardButton,
+  type TelegramCallbackQuery,
   type TelegramChat,
   type TelegramMessage,
   type TelegramUpdate,
@@ -31,9 +37,12 @@ export {
   parseCommand,
   toBotCommands,
   type BotCommandDefinition,
+  type CallbackContext,
+  type CallbackHandlerDefinition,
   type CommandContext,
   type OwnerCommandRouterOptions,
   type ParsedCommand,
+  type RejectedAttempt,
 } from './commands.js';
 export { createOwnerNotifier, type OwnerNotifier, type OwnerNotifierOptions } from './notifier.js';
 

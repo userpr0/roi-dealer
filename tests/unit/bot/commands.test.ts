@@ -11,7 +11,11 @@ import { createCapturingLogger } from '../../support/logger.js';
 
 const TOKEN = '1234567:TEST-fake-token-not-real-0000000000';
 
-async function run(name: string, health = createHealthRegistry({ service: 'bot' })) {
+async function run(
+  name: string,
+  health = createHealthRegistry({ service: 'bot' }),
+  statusLines?: () => Promise<string[]>,
+) {
   const replies: string[] = [];
   const commands = createBotCommands({
     health,
@@ -19,6 +23,7 @@ async function run(name: string, health = createHealthRegistry({ service: 'bot' 
     environment: 'production',
     startedAt: 0,
     now: () => 2 * 3_600_000 + 5 * 60_000,
+    ...(statusLines === undefined ? {} : { statusLines }),
   });
   const command = commands.find((candidate) => candidate.name === name);
   if (command === undefined) throw new Error(`no command ${name}`);
@@ -26,6 +31,7 @@ async function run(name: string, health = createHealthRegistry({ service: 'bot' 
   await command.handler({
     chatId: 1,
     userId: 1,
+    updateId: 1,
     args: '',
     logger,
     reply: (text) => {
@@ -70,8 +76,34 @@ describe('bot commands', () => {
     expect(reply).toContain('🔴 database: down');
   });
 
+  it('lists the command center commands between start and status', () => {
+    const names = createBotCommands({
+      health: createHealthRegistry({ service: 'bot' }),
+      version: 'v',
+      environment: 'test',
+      startedAt: 0,
+      panel: [{ name: 'decisions', description: 'Решения', handler: () => Promise.resolve() }],
+    }).map((command) => command.name);
+    expect(names).toEqual(['start', 'decisions', 'status', 'help']);
+  });
+
+  it('/status shows the kill switch, and still answers when its state is unavailable', async () => {
+    const [running] = await run('status', undefined, () =>
+      Promise.resolve(['▶️ Автоматизации: работают']),
+    );
+    expect(running).toMatch(/Работает: 2 ч 5 мин\n▶️ Автоматизации: работают$/);
+
+    const [failed] = await run('status', undefined, () =>
+      Promise.reject(new Error('database unavailable')),
+    );
+    expect(failed).toContain('⚠️ Стоп-кран: состояние недоступно');
+  });
+
   it('/start and /help list the commands', async () => {
     expect((await run('start'))[0]).toContain('/status');
+    for (const command of ['/decisions', '/stop', '/resume', '/journal', '/history', '/digest']) {
+      expect(TEXT.help).toContain(command);
+    }
     expect(await run('help')).toEqual([TEXT.help]);
   });
 
@@ -110,7 +142,17 @@ describe('bot config', () => {
       TELEGRAM_BOT_TOKEN: TOKEN,
       TELEGRAM_OWNER_USER_ID: 1001,
       TELEGRAM_API_BASE_URL: 'https://api.telegram.org',
+      DATABASE_POOL_MAX: 5,
+      DATABASE_CONNECT_TIMEOUT_SECONDS: 10,
     });
+  });
+
+  it('accepts an optional PostgreSQL URL for the command center', () => {
+    const base = { TELEGRAM_BOT_TOKEN: TOKEN, TELEGRAM_OWNER_USER_ID: '1001' };
+    expect(
+      loadBotConfig({ ...base, DATABASE_URL: 'postgresql://u:p@db.example:5432/roi' }).DATABASE_URL,
+    ).toBe('postgresql://u:p@db.example:5432/roi');
+    expect(() => loadBotConfig({ ...base, DATABASE_URL: 'mysql://db' })).toThrow(/DATABASE_URL/);
   });
 
   it('rejects a non-numeric owner id', () => {

@@ -118,10 +118,11 @@
 1. **New Project** (или **+ New**) → **Deploy from GitHub repo**.
 2. Если попросит доступ: **Configure GitHub App** → **Only select repositories** → `userpr0/roi-dealer` → **Save**.
 3. Выберите `roi-dealer`. Railway создаст сервис и может сразу начать сборку. Если первая сборка упадёт — это нормально: переменные ещё не заданы.
+4. Railway создаст по сервису на каждое приложение (`api`, `worker`, `miniapp`, `bot`). Оставьте только **`@roi-dealer/bot`**, остальные удалите: сервис → **Settings** → внизу **Delete Service**.
 
 **4.4. Переменные**
 
-1. Нажмите на сервис → вкладка **Variables** → **+ New Variable** (или **Raw Editor**, чтобы вставить всё сразу).
+1. Нажмите на сервис бота → вкладка **Variables** → **Raw Editor** (вкладка **ENV**). Блок **Suggested Variables** не добавляйте.
 2. Добавьте:
 
    | Переменная                | Значение                                    |
@@ -134,8 +135,13 @@
 
 **4.5. Проверить настройки сервиса** (вкладка **Settings** сервиса)
 
-- **Source → Branch:** `main`.
+- **Source → Branch:** `main`; **Wait for CI** — включить.
+- **Build → Custom Build Command** и **Watch Paths** — пусто.
+- **Deploy → Custom Start Command** — **пусто** (иначе ошибка ``The executable `pnpm` could not be found``); **Serverless** — выключен.
+- **Scale:** 1 реплика, лимиты 1 vCPU и 0.5 GB.
 - **Networking:** публичный домен **не нужен**, не нажимайте **Generate Domain**.
+
+Подробности и частые ошибки — в [`telegram-bot.md`](telegram-bot.md#2-вариант-a--railway-рекомендуется-без-командной-строки).
 
 **4.6. Проверка**
 

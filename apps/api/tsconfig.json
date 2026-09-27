@@ -5,5 +5,9 @@
     "outDir": "dist"
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/observability" }]
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/database" }
+  ]
 }

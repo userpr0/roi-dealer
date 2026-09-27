@@ -2,7 +2,7 @@
   "name": "@roi-dealer/events",
   "version": "0.0.0",
   "private": true,
-  "description": "Append-only event history contracts",
+  "description": "Event History contracts: event types, envelope, correlation and idempotency keys",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,9 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/domain": "workspace:*",
+    "zod": "^4.6.5"
   }
 }
