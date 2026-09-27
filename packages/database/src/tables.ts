@@ -9,6 +9,7 @@ import {
   knowledgeAssetSchema,
   opportunitySchema,
   painSchema,
+  principalSchema,
   rewardSchema,
   signalSchema,
   sourceSchema,
@@ -24,6 +25,7 @@ import {
   type Metric,
   type Opportunity,
   type Pain,
+  type Principal,
   type Reward,
   type Signal,
   type Source,
@@ -48,8 +50,8 @@ import {
 } from './rows.js';
 
 /*
- * Mapping of the 13 PHASE 01 entities (migration 0001) and SystemControl (migration 0003, 13b)
- * to their tables (database/docs/schema.md).
+ * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b) and
+ * Principal (migration 0004, PHASE 04) to their tables (database/docs/schema.md).
  * `toColumns` writes every column; `fromRow` rebuilds the domain object for schema validation.
  */
 
@@ -636,6 +638,31 @@ export const systemControlsTable: TableSpec<SystemControl> = {
       key: row['key'],
       status: row['status'],
       reason: row['reason'],
+      ...readMutableMeta(row),
+    }),
+};
+
+export const principalsTable: TableSpec<Principal> = {
+  entity: 'principal',
+  table: 'principals',
+  schema: principalSchema,
+  links: {},
+  toColumns: (principal) => ({
+    id: principal.id,
+    actor_type: principal.actor.type,
+    actor_id: principal.actor.id,
+    display_name: principal.displayName,
+    purpose: principal.purpose,
+    status: principal.status,
+    ...mutableMetaColumns(principal),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      actor: actor(row['actor_type'], row['actor_id']),
+      displayName: row['display_name'],
+      purpose: row['purpose'],
+      status: row['status'],
       ...readMutableMeta(row),
     }),
 };

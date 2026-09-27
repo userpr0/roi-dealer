@@ -22,10 +22,15 @@ export const DIGEST_RETRY_MS = 5 * 60_000;
 
 /** The morning summary, from the database only (§2.13). */
 export async function buildDigest(
-  database: Pick<Database, 'repositories' | 'events'>,
+  database: Pick<Database, 'repositories' | 'events' | 'access'>,
   nowMs: number,
 ): Promise<string> {
   const now = toTimestamp(new Date(nowMs));
+  const refused = await database.access.count({
+    from: toTimestamp(new Date(nowMs - PERIODS.day.ms)),
+    to: toTimestamp(new Date(nowMs + 1)),
+    decision: 'denied',
+  });
   const requests = await decidableRequests(database.repositories, now);
   const nearest = requests[0];
   const { events, partial } = await collectEvents(database.events, {
@@ -51,6 +56,7 @@ export async function buildDigest(
     costs.length === 0
       ? '💸 Расходов за сутки не записано.'
       : `💸 Расходы за сутки: ${formatUsd(summarizeCosts(costs).total)} · записей: ${costs.length} → /history`,
+    ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
     await killSwitchStatus(database.repositories, database.events),
   ].join('\n');
 }
@@ -140,7 +146,7 @@ export async function sendDailyDigest(
     { name: 'digest.send', idempotencyKey: key, correlationId: key },
     async (scope) => {
       // Delivered inside the command: a failed delivery stores nothing and can be retried.
-      await deliver(await buildDigest(scope, nowMs));
+      await deliver(await buildDigest({ ...scope, access: database.access }, nowMs));
       return { sentAt: toTimestamp(new Date(nowMs)) };
     },
   );

@@ -10,6 +10,8 @@ import {
   NotFoundError,
   translated,
 } from './errors.js';
+import type { AccessLogEntry } from './access-log.js';
+import { authorizeWrite, type AccessDeniedHandler } from './access.js';
 import { appendEvent } from './event-store.js';
 import { atomic, type Executor, type Row, type TransactionSql } from './executor.js';
 import type { Columns } from './rows.js';
@@ -53,12 +55,34 @@ export interface TableSpec<E extends StoredEntity> {
 export interface WriteContext {
   /** Request or update that caused the writes (`x-correlation-id`, `tg-update-<id>`). */
   readonly correlationId?: string | undefined;
+  /** Records refused writes in the access log (PHASE 04), outside the rolled back transaction. */
+  readonly onAccessDenied?: AccessDeniedHandler | undefined;
+}
+
+/**
+ * Runs a write and hands its refused attempts to `onAccessDenied` once the write's transaction
+ * has ended: the connection is free again and the record survives the rollback.
+ */
+async function withAccessAudit<T>(
+  context: WriteContext,
+  write: (denied: (entry: AccessLogEntry) => void) => Promise<T>,
+): Promise<T> {
+  const denials: AccessLogEntry[] = [];
+  try {
+    return await write((entry) => {
+      denials.push({ ...entry, correlationId: context.correlationId });
+    });
+  } finally {
+    for (const entry of denials) await context.onAccessDenied?.(entry);
+  }
 }
 
 export interface Repository<E extends StoredEntity> {
   /**
    * Stores a new entity with its link rows and its `<entity>.created` event (actor:
    * `createdBy`) in one transaction. Versioned entities are stored at version 1.
+   * The actor needs the write permission (and an active principal, PHASE 04), otherwise
+   * `DomainError('permission_denied')`.
    */
   insert(entity: E): Promise<void>;
   getById(id: E['id']): Promise<E | undefined>;
@@ -216,31 +240,34 @@ function createInsert<E extends StoredEntity>(
   context: WriteContext,
 ): Repository<E>['insert'] {
   return (entity) =>
-    translated(() =>
-      atomic(executor, async (tx) => {
-        const version =
-          'version' in entity && typeof entity.version === 'number' ? entity.version : 1;
-        if (version !== 1) {
-          throw new InvalidWriteError(
-            'insert_requires_version_1',
-            `${spec.entity} ${entity.id} must be stored at version 1, then updated version by version`,
-          );
-        }
-        await tx`insert into ${tx(spec.table)} ${tx(spec.toColumns(entity))}`;
-        for (const link of Object.values(spec.links)) {
-          await insertLinks(tx, link, entity.id, link.ids(entity), 0);
-        }
-        await appendEvent(tx, {
-          id: eventIdSchema.parse(uuidv7()),
-          type: entityEventType(spec.entity, 'created'),
-          aggregate: { type: spec.entity, id: entity.id },
-          aggregateVersion: 1,
-          occurredAt: entity.createdAt,
-          actor: entity.createdBy,
-          correlationId: context.correlationId,
-          payload: { snapshot: snapshotOf(entity) },
-        });
-      }),
+    withAccessAudit(context, (denied) =>
+      translated(() =>
+        atomic(executor, async (tx) => {
+          const version =
+            'version' in entity && typeof entity.version === 'number' ? entity.version : 1;
+          if (version !== 1) {
+            throw new InvalidWriteError(
+              'insert_requires_version_1',
+              `${spec.entity} ${entity.id} must be stored at version 1, then updated version by version`,
+            );
+          }
+          await authorizeWrite(tx, spec.entity, 'create', entity.createdBy, denied);
+          await tx`insert into ${tx(spec.table)} ${tx(spec.toColumns(entity))}`;
+          for (const link of Object.values(spec.links)) {
+            await insertLinks(tx, link, entity.id, link.ids(entity), 0);
+          }
+          await appendEvent(tx, {
+            id: eventIdSchema.parse(uuidv7()),
+            type: entityEventType(spec.entity, 'created'),
+            aggregate: { type: spec.entity, id: entity.id },
+            aggregateVersion: 1,
+            occurredAt: entity.createdAt,
+            actor: entity.createdBy,
+            correlationId: context.correlationId,
+            payload: { snapshot: snapshotOf(entity) },
+          });
+        }),
+      ),
     );
 }
 
@@ -277,31 +304,34 @@ export function createVersionedRepository<E extends VersionedEntity>(
         return readEntities(executor, spec, rows);
       }),
     update: (entity, actor) =>
-      translated(() =>
-        atomic(executor, async (tx) => {
-          // Lock the stored version: concurrent updates of one entity queue up here.
-          const [current] = await tx<{ version: number; status: string }[]>`
+      withAccessAudit(context, (denied) =>
+        translated(() =>
+          atomic(executor, async (tx) => {
+            await authorizeWrite(tx, spec.entity, 'update', actor, denied);
+            // Lock the stored version: concurrent updates of one entity queue up here.
+            const [current] = await tx<{ version: number; status: string }[]>`
             select version, status from ${tx(spec.table)} where id = ${entity.id} for update
           `;
-          if (current === undefined) throw new NotFoundError(spec.entity, entity.id);
-          const expectedVersion = entity.version - 1;
-          if (current.version !== expectedVersion) {
-            throw new ConcurrencyError(spec.entity, entity.id, expectedVersion, current.version);
-          }
-          const { id: _id, ...columns } = spec.toColumns(entity);
-          await tx`update ${tx(spec.table)} set ${tx(columns)} where id = ${entity.id}`;
-          for (const link of Object.values(spec.links)) await appendLinks(tx, link, entity);
-          await appendEvent(tx, {
-            id: eventIdSchema.parse(uuidv7()),
-            type: entityEventType(spec.entity, 'updated'),
-            aggregate: { type: spec.entity, id: entity.id },
-            aggregateVersion: entity.version,
-            occurredAt: entity.updatedAt,
-            actor,
-            correlationId: context.correlationId,
-            payload: { snapshot: snapshotOf(entity), previousStatus: current.status },
-          });
-        }),
+            if (current === undefined) throw new NotFoundError(spec.entity, entity.id);
+            const expectedVersion = entity.version - 1;
+            if (current.version !== expectedVersion) {
+              throw new ConcurrencyError(spec.entity, entity.id, expectedVersion, current.version);
+            }
+            const { id: _id, ...columns } = spec.toColumns(entity);
+            await tx`update ${tx(spec.table)} set ${tx(columns)} where id = ${entity.id}`;
+            for (const link of Object.values(spec.links)) await appendLinks(tx, link, entity);
+            await appendEvent(tx, {
+              id: eventIdSchema.parse(uuidv7()),
+              type: entityEventType(spec.entity, 'updated'),
+              aggregate: { type: spec.entity, id: entity.id },
+              aggregateVersion: entity.version,
+              occurredAt: entity.updatedAt,
+              actor,
+              correlationId: context.correlationId,
+              payload: { snapshot: snapshotOf(entity), previousStatus: current.status },
+            });
+          }),
+        ),
       ),
   };
 }

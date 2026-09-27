@@ -206,7 +206,7 @@ describe('the database guarantees', () => {
       () => db.sql`
         insert into events (id, type, aggregate_type, aggregate_id, aggregate_version, occurred_at,
                             actor_type, actor_id, payload)
-        values (${uuidv7()}, 'source.created', 'source', ${source.id}, 1, now(), 'agent', 'a',
+        values (${uuidv7()}, 'source.created', 'source', ${source.id}, 1, now(), 'agent', 'research-agent',
                 ${db.sql.json({ snapshot: {} })})
       `,
     );
@@ -218,7 +218,7 @@ describe('the database guarantees', () => {
       db.sql`
         insert into events (id, type, aggregate_type, aggregate_id, aggregate_version, occurred_at,
                             actor_type, actor_id, payload)
-        values (${uuidv7()}, ${type}, 'source', ${uuidv7()}, ${version}, now(), 'agent', 'a',
+        values (${uuidv7()}, ${type}, 'source', ${uuidv7()}, ${version}, now(), 'agent', 'research-agent',
                 ${db.sql.json({ snapshot: {} })})
       `;
 

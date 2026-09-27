@@ -61,6 +61,7 @@ describe('owner bot process', () => {
           'journal',
           'history',
           'digest',
+          'access',
           'status',
           'help',
         ].map((command) => ({ command, description: expect.any(String) as unknown })),
@@ -228,6 +229,38 @@ describe('owner bot process with a database (13b)', () => {
     const journal = await telegram.waitForEdit((edit) => edit.text.includes('Журнал за сутки'));
     expect(journal.text).toContain('Стоп-кран: running → paused («Проверка из теста»)');
     expect(journal.text).toContain('Запрос одобрения «Test domain» · $35.00: pending → approved');
+  });
+
+  it('records refused attempts and owner views in the access log, without message text', async () => {
+    telegram.pushMessage({ fromId: STRANGER_ID, text: '/access секретный вопрос' });
+    telegram.pushMessage({ fromId: OWNER_ID, text: '/access' });
+    await telegram.waitForSent((message) => message.text.startsWith('🔐 Доступы'));
+
+    const log = await database.database.access.list({ limit: 100 });
+    const refused = log.filter((entry) => entry.actorId === `telegram:${STRANGER_ID}`);
+    // The stranger's button press earlier and this message: one record per 10 minutes.
+    expect(refused).toEqual([
+      expect.objectContaining({
+        channel: 'telegram',
+        permission: 'panel.use',
+        decision: 'denied',
+        reason: 'not_owner',
+      }),
+    ]);
+    const ownerViews = log
+      .filter((entry) => entry.actorId === `telegram:${OWNER_ID}`)
+      .map((entry) => entry.permission);
+    expect(ownerViews).toEqual(
+      expect.arrayContaining([
+        'access.read',
+        'journal.read',
+        'decisions.read',
+        'approval.update',
+        'system.control',
+        'status.read',
+      ]),
+    );
+    expect(JSON.stringify(log)).not.toContain('секретный');
   });
 
   it('closes the database on SIGTERM and never logs message text', async () => {

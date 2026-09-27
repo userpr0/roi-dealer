@@ -422,14 +422,14 @@ describe('repositories', () => {
           business_model, status, created_at, created_by_type, created_by_id, updated_at, version
         ) values (
           ${opportunity.id}, 'Orphan', 'No pains', 'Anyone', ${['US']}, 'p', 'c', 'r',
-          'subscription', 'draft', now(), 'agent', 'a', now(), 1
+          'subscription', 'draft', now(), 'agent', 'research-agent', now(), 1
         )
       `;
       await tx`
         insert into events (id, type, aggregate_type, aggregate_id, aggregate_version,
                             occurred_at, actor_type, actor_id, payload)
         values (${uuidv7()}, 'opportunity.created', 'opportunity', ${opportunity.id}, 1,
-                now(), 'agent', 'a', ${tx.json({ snapshot: {} })})
+                now(), 'agent', 'research-agent', ${tx.json({ snapshot: {} })})
       `;
     });
 

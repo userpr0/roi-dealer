@@ -71,7 +71,7 @@ async function main(): Promise<void> {
     health,
     startedAt: Date.now(),
     panel: commandCenter.commands,
-    statusLines: () => commandCenter.statusLines(),
+    statusLines: (request) => commandCenter.statusLines(request),
   });
 
   try {
@@ -97,6 +97,7 @@ async function main(): Promise<void> {
       unknownCommandReply: TEXT.unknownCommand,
       failureReply: TEXT.failure,
       unknownCallbackReply: TEXT.unknownButton,
+      onRejected: (attempt) => commandCenter.refused(attempt),
     }),
     onFatalError: () => {
       void shutdown.shutdown('telegram token rejected', 1).then(exitProcess);

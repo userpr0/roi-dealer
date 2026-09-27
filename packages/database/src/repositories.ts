@@ -1,4 +1,5 @@
 import type {
+  Actor,
   ApprovalRequest,
   Contribution,
   CostEntry,
@@ -9,11 +10,14 @@ import type {
   KnowledgeAsset,
   Opportunity,
   Pain,
+  Principal,
   Reward,
   Signal,
   Source,
   SystemControl,
 } from '@roi-dealer/domain';
+import { findPrincipal } from './access.js';
+import { translated } from './errors.js';
 import type { Executor } from './executor.js';
 import {
   createRepository,
@@ -33,6 +37,7 @@ import {
   knowledgeAssetsTable,
   opportunitiesTable,
   painsTable,
+  principalsTable,
   rewardsTable,
   signalsTable,
   sourcesTable,
@@ -56,6 +61,13 @@ export interface Repositories {
   readonly knowledgeAssets: Repository<KnowledgeAsset>;
   /** The automation kill switch (13b); its row is created by migration 0003. */
   readonly systemControls: VersionedRepository<SystemControl>;
+  /** Identities of members, agents and integrations (PHASE 04). */
+  readonly principals: PrincipalRepository;
+}
+
+export interface PrincipalRepository extends VersionedRepository<Principal> {
+  /** The identity registered for this actor, whatever its status. */
+  getByActor(actor: Actor): Promise<Principal | undefined>;
 }
 
 /**
@@ -78,5 +90,9 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     rewards: createVersionedRepository(executor, rewardsTable, context),
     knowledgeAssets: createRepository(executor, knowledgeAssetsTable, context),
     systemControls: createVersionedRepository(executor, systemControlsTable, context),
+    principals: {
+      ...createVersionedRepository(executor, principalsTable, context),
+      getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
+    },
   };
 }

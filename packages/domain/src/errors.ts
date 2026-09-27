@@ -12,7 +12,9 @@ export type DomainErrorCode =
   /** The data breaks an entity invariant or schema. */
   | 'invariant_violation'
   /** The kill switch is on: automations and automated spend must not run (13b). */
-  | 'automation_paused';
+  | 'automation_paused'
+  /** The actor's role lacks the permission, or its principal is not active (PHASE 04). */
+  | 'permission_denied';
 
 export interface DomainIssue {
   readonly path: string;

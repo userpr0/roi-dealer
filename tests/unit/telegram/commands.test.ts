@@ -8,6 +8,7 @@ import {
   type BotCommandDefinition,
   type CallbackContext,
   type CallbackHandlerDefinition,
+  type RejectedAttempt,
   type TelegramUpdate,
 } from '@roi-dealer/telegram';
 import { createCapturingLogger } from '../../support/logger.js';
@@ -67,6 +68,7 @@ function setup(commands?: BotCommandDefinition[], callbacks?: CallbackHandlerDef
   const confirm = vi.fn(async (context: CallbackContext) => {
     await context.edit(`confirmed ${context.data}`);
   });
+  const onRejected = vi.fn<(attempt: RejectedAttempt) => Promise<void>>(() => Promise.resolve());
   const router = createOwnerCommandRouter({
     ownerUserId: OWNER,
     commands: commands ?? [{ name: 'status', description: 'Status', handler: status }],
@@ -77,8 +79,18 @@ function setup(commands?: BotCommandDefinition[], callbacks?: CallbackHandlerDef
     unknownCommandReply: 'unknown',
     failureReply: 'failed',
     unknownCallbackReply: 'outdated',
+    onRejected,
   });
-  return { router, sendMessage, editMessageText, answerCallbackQuery, status, confirm, records };
+  return {
+    router,
+    sendMessage,
+    editMessageText,
+    answerCallbackQuery,
+    status,
+    confirm,
+    onRejected,
+    records,
+  };
 }
 
 describe('parseCommand', () => {
@@ -296,6 +308,37 @@ describe('createOwnerCommandRouter with inline buttons', () => {
         { prefix: 'ap', handler },
       ]),
     ).toThrow(/prefix/);
+  });
+});
+
+describe('refused attempts (PHASE 04)', () => {
+  it('reports strangers and group chats without their text, and never the owner', async () => {
+    const { router, onRejected } = setup();
+
+    await router(update('/status secret words', 666));
+    await router(update('/status', OWNER, 'group'));
+    await router(press('ap:x', { fromId: 666 }));
+    await router(update('/status'));
+    await router(press('ap:x'));
+
+    expect(onRejected.mock.calls.map(([attempt]) => attempt)).toEqual([
+      { updateId: 55, kind: 'message', userId: 666, reason: 'not_owner' },
+      { updateId: 55, kind: 'message', userId: OWNER, reason: 'not_private_chat' },
+      { updateId: 56, kind: 'button press', userId: 666, reason: 'not_owner' },
+    ]);
+    expect(JSON.stringify(onRejected.mock.calls)).not.toContain('secret');
+  });
+
+  it('keeps refusing when recording the refusal fails', async () => {
+    const { router, onRejected, sendMessage, records } = setup();
+    onRejected.mockRejectedValueOnce(new Error('database unavailable'));
+
+    await expect(router(update('/status', 666))).resolves.toBeUndefined();
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(records).toContainEqual(
+      expect.objectContaining({ level: 'warn', message: 'telegram refusal not recorded' }),
+    );
   });
 });
 

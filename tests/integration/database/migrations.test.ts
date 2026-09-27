@@ -35,7 +35,12 @@ async function tableExists(test: TestDatabase, name: string): Promise<boolean> {
   return row?.exists ?? false;
 }
 
-const PROJECT_MIGRATIONS = ['0001_core_domain', '0002_event_history', '0003_system_control'];
+const PROJECT_MIGRATIONS = [
+  '0001_core_domain',
+  '0002_event_history',
+  '0003_system_control',
+  '0004_identity_access',
+];
 
 describe('runMigrations with the project migrations', () => {
   it('builds the schema on an empty database and records a checksum', async () => {

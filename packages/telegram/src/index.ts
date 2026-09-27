@@ -42,6 +42,7 @@ export {
   type CommandContext,
   type OwnerCommandRouterOptions,
   type ParsedCommand,
+  type RejectedAttempt,
 } from './commands.js';
 export { createOwnerNotifier, type OwnerNotifier, type OwnerNotifierOptions } from './notifier.js';
 

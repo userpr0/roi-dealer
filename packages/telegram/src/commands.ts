@@ -98,6 +98,20 @@ export interface OwnerCommandRouterOptions {
   readonly failureReply: string;
   /** Notice for a button nobody handles any more (old message, removed feature). */
   readonly unknownCallbackReply?: string;
+  /**
+   * Called for every refused message or button press (e.g. to record it in the access log).
+   * Errors are logged; the sender never gets a reply.
+   */
+  readonly onRejected?: (attempt: RejectedAttempt) => Promise<void>;
+}
+
+/** A message or button press the router refused. Carries no message text. */
+export interface RejectedAttempt {
+  readonly updateId: number;
+  readonly kind: 'message' | 'button press';
+  /** Absent for anonymous senders (e.g. channel posts). */
+  readonly userId: number | undefined;
+  readonly reason: 'not_owner' | 'not_private_chat';
 }
 
 const CALLBACK_PREFIX = /^[a-z]{1,8}$/;
@@ -106,26 +120,29 @@ export function toBotCommands(commands: readonly BotCommandDefinition[]): BotCom
   return commands.map(({ name, description }) => ({ command: name, description }));
 }
 
-/** Only the owner, only in the private chat with the bot. Logs why anything else is dropped. */
-function fromOwner(
+/**
+ * Only the owner, only in the private chat with the bot. Logs why anything else is dropped and
+ * returns the refusal reason, or `undefined` when the sender is the owner.
+ */
+function refusal(
   message: Pick<TelegramMessage, 'chat'> | undefined,
   userId: number | undefined,
   ownerUserId: number,
   logger: Logger,
-  kind: string,
-): boolean {
+  kind: RejectedAttempt['kind'],
+): RejectedAttempt['reason'] | undefined {
   if (message !== undefined && message.chat.type !== 'private') {
     logger.warn(`telegram ${kind} ignored: not a private chat`, {
       chat_type: message.chat.type,
       chat_id: message.chat.id,
     });
-    return false;
+    return 'not_private_chat';
   }
   if (userId !== ownerUserId) {
     logger.warn(`telegram ${kind} rejected: sender is not the owner`, { user_id: userId });
-    return false;
+    return 'not_owner';
   }
-  return true;
+  return undefined;
 }
 
 /**
@@ -146,12 +163,26 @@ export function createOwnerCommandRouter(
     callbackHandlers.set(callback.prefix, callback);
   }
 
+  async function rejected(attempt: RejectedAttempt, logger: Logger): Promise<void> {
+    if (options.onRejected === undefined) return;
+    try {
+      await options.onRejected(attempt);
+    } catch (error) {
+      logger.warn('telegram refusal not recorded', { error });
+    }
+  }
+
   async function handleMessage(
     updateId: number,
     message: TelegramMessage & { text: string },
     logger: Logger,
   ): Promise<void> {
-    if (!fromOwner(message, message.from?.id, ownerUserId, logger, 'message')) return;
+    const userId = message.from?.id;
+    const reason = refusal(message, userId, ownerUserId, logger, 'message');
+    if (reason !== undefined) {
+      await rejected({ updateId, kind: 'message', userId, reason }, logger);
+      return;
+    }
 
     const chatId = message.chat.id;
     const reply = (text: string, keyboard?: InlineKeyboard): Promise<void> =>
@@ -189,7 +220,11 @@ export function createOwnerCommandRouter(
     query: TelegramCallbackQuery,
     logger: Logger,
   ): Promise<void> {
-    if (!fromOwner(query.message, query.from.id, ownerUserId, logger, 'button press')) return;
+    const reason = refusal(query.message, query.from.id, ownerUserId, logger, 'button press');
+    if (reason !== undefined) {
+      await rejected({ updateId, kind: 'button press', userId: query.from.id, reason }, logger);
+      return;
+    }
 
     let answered = false;
     const answer = async (text?: string): Promise<void> => {

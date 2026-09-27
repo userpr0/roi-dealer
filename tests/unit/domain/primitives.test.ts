@@ -20,6 +20,8 @@ import {
   opportunityLifecycle,
   PAIN_STATUSES,
   painLifecycle,
+  PRINCIPAL_STATUSES,
+  principalLifecycle,
   REWARD_STATUSES,
   rewardLifecycle,
   SIGNAL_STATUSES,
@@ -117,6 +119,7 @@ describe('state machines', () => {
     ['contribution', CONTRIBUTION_STATUSES, contributionLifecycle],
     ['reward', REWARD_STATUSES, rewardLifecycle],
     ['system_control', SYSTEM_CONTROL_STATUSES, systemControlLifecycle],
+    ['principal', PRINCIPAL_STATUSES, principalLifecycle],
   ] as [string, readonly string[], StateMachine<string>][])(
     '%s lifecycle covers exactly the schema statuses',
     (_name, statuses, lifecycle) => {

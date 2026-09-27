@@ -1,18 +1,21 @@
 # @roi-dealer/policies
 
-**Статус:** placeholder (PHASE 00). Реализация — PHASE 04 — Identity / RBAC / Security (далее расширяется).
+**Статус:** реализован (PHASE 04 — Identity / RBAC / Security; [спецификация](../../docs/phases/04_identity_access.md)). Бюджеты и настраиваемые политики одобрений — PHASE 16.
 
-## Назначение
+Роли и права: кто и что может делать в системе (конституция §2.3, §2.11). Чистые функции без I/O; проверку на каждой записи выполняет `@roi-dealer/database`, в пульте — `@roi-dealer/command-center`.
 
-Политики: permissions (RBAC), budgets, human gates, state-transition rules, evidence requirements.
+## Export surface
+
+| Экспорт                                       | Назначение                                                                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `PERMISSIONS`, `Permission`                   | Список прав: просмотры пульта, исследование, Evidence, запросы и решения, эксперименты, деньги, стоп-кран, доступы |
+| `ROLE_PERMISSIONS`                            | Матрица «роль (тип актора) → права»: `owner` — всё; `agent`, `integration`, `system`, `member` — минимум           |
+| `ENTITY_WRITE_PERMISSIONS`, `writePermission` | Право, нужное для создания или изменения каждой сущности                                                           |
+| `isPermitted`, `assertPermitted`              | Проверка роли; `assertPermitted` — `DomainError('permission_denied')`                                              |
+| `decideAccess(actor, permission, principal)`  | Полная проверка: роль + активная личность (`Principal`) для `member` / `agent` / `integration`                     |
+| `DENIAL_REASONS`, `DenialReason`              | Коды отказа для журнала доступа                                                                                    |
 
 ## Правила
 
-- Любое изменение authoritative state проходит policy check.
-- Критические действия (выплаты, большие бюджеты, секреты, core policies) требуют human approval.
-
-## Текущий export surface
-
-- `PACKAGE_NAME` — идентификатор пакета (используется в import-тестах).
-
-Не добавлять логику до одобрения соответствующей Phase владельцем.
+- Решения, одобрения, стоп-кран и управление доступом агенту не выдаются никогда (§2.3).
+- Новое право или расширение роли — изменение core policy: только с одобрения владельца (§2.7).

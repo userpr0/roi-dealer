@@ -178,6 +178,12 @@ importers:
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../observability
+      '@roi-dealer/policies':
+        specifier: workspace:*
+        version: link:../policies
+      '@roi-dealer/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@roi-dealer/telegram':
         specifier: workspace:*
         version: link:../telegram
@@ -193,6 +199,9 @@ importers:
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../observability
+      '@roi-dealer/policies':
+        specifier: workspace:*
+        version: link:../policies
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../shared
@@ -224,7 +233,11 @@ importers:
 
   packages/observability: {}
 
-  packages/policies: {}
+  packages/policies:
+    dependencies:
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/rewards: {}
 

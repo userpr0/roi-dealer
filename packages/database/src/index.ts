@@ -1,11 +1,22 @@
 /**
- * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–03, 13b, ADR-0005).
+ * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–04, 13b, ADR-0005).
  *
  * Connection pool in UTC, SQL migrations with checksums and a lock, repositories that store
  * domain entities (validating every row they read) and append an event for every
- * write (PHASE 03), Event History reads and idempotent commands.
+ * write (PHASE 03), Event History reads, idempotent commands, and a permission check with an
+ * access log on every write (PHASE 04).
  * State still changes only through @roi-dealer/domain functions; repositories persist results.
  */
+export {
+  ACCESS_CHANNELS,
+  createAccessLog,
+  type AccessChannel,
+  type AccessLog,
+  type AccessLogEntry,
+  type AccessLogQuery,
+  type StoredAccessLogEntry,
+} from './access-log.js';
+export { findPrincipal, type AccessDeniedHandler } from './access.js';
 export {
   databaseConfigSchema,
   databaseConfigShape,
@@ -44,7 +55,7 @@ export {
   type Migration,
   type MigrationRunResult,
 } from './migrations.js';
-export { createRepositories, type Repositories } from './repositories.js';
+export { createRepositories, type PrincipalRepository, type Repositories } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
 
 export const PACKAGE_NAME = '@roi-dealer/database';

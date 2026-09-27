@@ -9,6 +9,7 @@
     { "path": "../shared" },
     { "path": "../observability" },
     { "path": "../domain" },
-    { "path": "../events" }
+    { "path": "../events" },
+    { "path": "../policies" }
   ]
 }

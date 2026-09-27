@@ -1,10 +1,25 @@
 /**
- * @roi-dealer/command-center — the owner's command center in Telegram (13b, D-002, D-009, D-010).
+ * @roi-dealer/command-center — the owner's command center in Telegram (13b, D-002, D-009, D-010;
+ * access and its audit — PHASE 04).
  *
  * Approvals with a confirmation, the automation kill switch, the journal and history for a day,
  * week or month, and the daily digest at 10:00 Kyiv. Every change runs as an idempotent database
  * command through @roi-dealer/domain with the `owner` actor; apps/bot only wires it to Telegram.
  */
+export {
+  ACCESS_PREFIX,
+  ACCESS_REQUEST_TTL_MS,
+  applyAccessDecision,
+  createAccessAudit,
+  handleAccessButton,
+  principalCardText,
+  REFUSED_THROTTLE_MS,
+  requestAccess,
+  sendAccessOverview,
+  type AccessAudit,
+  type AccessFlowDeps,
+  type RefusedAttempt,
+} from './access.js';
 export {
   APPROVAL_PREFIX,
   cardKeyboard,

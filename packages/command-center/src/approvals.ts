@@ -11,6 +11,7 @@ import {
 } from '@roi-dealer/domain';
 import { ConcurrencyError, type Database, type Repositories } from '@roi-dealer/database';
 import { callbackButton, type CallbackContext, type InlineKeyboard } from '@roi-dealer/telegram';
+import { applyAccessDecision } from './access.js';
 import { APPROVAL_KIND_LABELS, formatTime, shorten } from './texts.js';
 
 /** Buttons of approval cards: `ap:<action>:<request id>`. */
@@ -109,9 +110,20 @@ function decidedAt(request: ApprovalRequest): string {
   return request.resolution === undefined ? '' : ` ${formatTime(request.resolution.decidedAt)}`;
 }
 
+const ACCESS_NOTES = {
+  granted: '\n🔐 Доступ выдан — /access',
+  refused: '\n🔐 Доступ не выдан.',
+  none: '',
+} as const;
+
 /** The result of a confirmed press, stored with the idempotency key (JSON). */
 type ResolveOutcome =
-  | { readonly outcome: 'resolved'; readonly status: 'approved' | 'rejected' }
+  | {
+      readonly outcome: 'resolved';
+      readonly status: 'approved' | 'rejected';
+      /** For `access_grant` requests: whether the identity was granted (PHASE 04). */
+      readonly access?: 'granted' | 'refused' | undefined;
+    }
   | { readonly outcome: 'closed'; readonly text: string }
   | { readonly outcome: 'not_found' };
 
@@ -195,9 +207,11 @@ export async function handleApprovalButton(
           { actor, at },
         );
         await repositories.approvalRequests.update(resolved, actor);
+        const access = await applyAccessDecision(repositories, resolved, actor, at);
         return {
           outcome: 'resolved',
           status: resolved.status === 'approved' ? 'approved' : 'rejected',
+          ...(access === undefined ? {} : { access }),
         };
       },
     ));
@@ -225,9 +239,9 @@ export async function handleApprovalButton(
     status: result.status,
   });
   const verdict =
-    result.status === 'approved'
+    (result.status === 'approved'
       ? `✅ Одобрено${decidedAt(request)}${amountText(request)}`
-      : `❌ Отклонено${decidedAt(request)}`;
+      : `❌ Отклонено${decidedAt(request)}`) + ACCESS_NOTES[result.access ?? 'none'];
   await context.edit(`${cardText(request)}\n\n${verdict}`);
   await context.answer(result.status === 'approved' ? 'Одобрено' : 'Отклонено');
 }

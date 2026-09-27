@@ -1,6 +1,8 @@
 import postgres from 'postgres';
 import { correlationIdSchema, idempotencyKeySchema } from '@roi-dealer/events';
 import type { HealthCheck, Logger } from '@roi-dealer/observability';
+import { createAccessLog, type AccessLog, type AccessLogEntry } from './access-log.js';
+import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
 import { createEventStore, type EventStore } from './event-store.js';
 import { atomic, type Sql, type TransactionSql } from './executor.js';
@@ -50,6 +52,8 @@ export interface Database {
   readonly repositories: Repositories;
   /** Event History (read only; events are written by the repositories). */
   readonly events: EventStore;
+  /** Views and refused access attempts (PHASE 04); refused writes are recorded automatically. */
+  readonly access: AccessLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -73,12 +77,15 @@ const IDLE_TIMEOUT_SECONDS = 60;
 const CLOSE_TIMEOUT_SECONDS = 5;
 const COMMAND_NAME = /^[a-z][a-z0-9_.]{0,99}$/;
 
-function writeContext(options: TransactionOptions): WriteContext {
+function writeContext(
+  options: TransactionOptions,
+  onAccessDenied: AccessDeniedHandler,
+): WriteContext {
   const { correlationId } = options;
   if (correlationId !== undefined && !correlationIdSchema.safeParse(correlationId).success) {
     throw new InvalidWriteError('invalid_correlation_id', 'Correlation id has an invalid format');
   }
-  return { correlationId };
+  return { correlationId, onAccessDenied };
 }
 
 function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
@@ -101,61 +108,97 @@ export function createDatabase(options: DatabaseOptions): Database {
     },
   });
 
+  const access = createAccessLog(sql);
+  const recordDenial: AccessDeniedHandler = async (entry) => {
+    try {
+      await access.record(entry);
+    } catch (error) {
+      options.logger?.warn('access denial not recorded', { error });
+    }
+  };
+
+  /**
+   * Refusals inside a transaction are recorded after it ends (commit or rollback): recording
+   * needs another pooled connection, which must not be awaited while this one is held.
+   */
+  async function recordingDenials<T>(
+    transactionOptions: TransactionOptions,
+    run: (context: WriteContext) => Promise<T>,
+  ): Promise<T> {
+    const denials: AccessLogEntry[] = [];
+    const context = writeContext(transactionOptions, (entry) => {
+      denials.push(entry);
+      return Promise.resolve();
+    });
+    try {
+      return await run(context);
+    } finally {
+      for (const entry of denials) await recordDenial(entry);
+    }
+  }
+
   return {
     sql,
-    repositories: createRepositories(sql),
+    repositories: createRepositories(sql, { onAccessDenied: recordDenial }),
     events: createEventStore(sql),
+    access,
 
-    async transaction(work, transactionOptions = {}) {
-      const context = writeContext(transactionOptions);
-      return translated(() => atomic(sql, (tx) => work(scopeOf(tx, context))));
-    },
+    transaction: (work, transactionOptions = {}) =>
+      recordingDenials(transactionOptions, (context) =>
+        translated(() => atomic(sql, (tx) => work(scopeOf(tx, context)))),
+      ),
 
-    async command(commandOptions, work) {
-      const context = writeContext(commandOptions);
-      const { name, idempotencyKey } = commandOptions;
-      if (!idempotencyKeySchema.safeParse(idempotencyKey).success || !COMMAND_NAME.test(name)) {
-        throw new InvalidWriteError(
-          'invalid_idempotency_key',
-          'Idempotency key or command name has an invalid format',
-        );
-      }
-      return translated(() =>
-        atomic(sql, async (tx) => {
-          // A concurrent run with the same key waits here until the first one commits or rolls back.
-          const claimed = await tx`
-            insert into idempotency_keys (key, command, correlation_id)
-            values (${idempotencyKey}, ${name}, ${context.correlationId ?? null})
-            on conflict (key) do nothing
-            returning key
-          `;
-          if (claimed.length === 0) {
-            const [stored] = await tx<{ command: string; result: unknown }[]>`
-              select command, result from idempotency_keys where key = ${idempotencyKey}
-            `;
-            if (stored?.command !== name) {
-              throw new InvalidWriteError(
-                'idempotency_key_reused',
-                'The idempotency key was already used by another command',
-              );
-            }
-            return { outcome: 'duplicate' as const, result: stored.result as never };
-          }
-          const result = await work(scopeOf(tx, context));
-          await tx`
-            update idempotency_keys set result = ${tx.json(result ?? null)}
-            where key = ${idempotencyKey}
-          `;
-          return { outcome: 'executed' as const, result };
-        }),
-      );
-    },
+    command: (commandOptions, work) =>
+      recordingDenials(commandOptions, (context) => runCommand(commandOptions, context, work)),
 
     async ping() {
       await sql`select 1`;
     },
     close: () => sql.end({ timeout: CLOSE_TIMEOUT_SECONDS }),
   };
+
+  async function runCommand<T>(
+    commandOptions: CommandOptions,
+    context: WriteContext,
+    work: (scope: TransactionScope) => Promise<T>,
+  ): Promise<CommandResult<T>> {
+    const { name, idempotencyKey } = commandOptions;
+    if (!idempotencyKeySchema.safeParse(idempotencyKey).success || !COMMAND_NAME.test(name)) {
+      throw new InvalidWriteError(
+        'invalid_idempotency_key',
+        'Idempotency key or command name has an invalid format',
+      );
+    }
+    return translated(() =>
+      atomic(sql, async (tx) => {
+        // A concurrent run with the same key waits here until the first one commits or rolls back.
+        const claimed = await tx`
+            insert into idempotency_keys (key, command, correlation_id)
+            values (${idempotencyKey}, ${name}, ${context.correlationId ?? null})
+            on conflict (key) do nothing
+            returning key
+          `;
+        if (claimed.length === 0) {
+          const [stored] = await tx<{ command: string; result: unknown }[]>`
+              select command, result from idempotency_keys where key = ${idempotencyKey}
+            `;
+          if (stored?.command !== name) {
+            throw new InvalidWriteError(
+              'idempotency_key_reused',
+              'The idempotency key was already used by another command',
+            );
+          }
+          return { outcome: 'duplicate' as const, result: stored.result as never };
+        }
+        const result = await work(scopeOf(tx, context));
+        await tx`
+            update idempotency_keys set result = ${tx.json(result ?? null)}
+            where key = ${idempotencyKey}
+          `;
+        return { outcome: 'executed' as const, result };
+      }),
+    );
+  }
 }
 
 /** `GET /health` probe: the database answers a trivial query in time. */

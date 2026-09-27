@@ -8,6 +8,15 @@ import {
   type Migration,
   type Sql,
 } from '@roi-dealer/database';
+import {
+  approvePrincipal,
+  principalIdSchema,
+  proposePrincipal,
+  type Actor,
+  type Principal,
+} from '@roi-dealer/domain';
+import { uuidv7 } from '@roi-dealer/shared';
+import { AGENT, at, MEMBER, OWNER, SYSTEM } from './domain.js';
 
 /**
  * PostgreSQL server for integration tests: `pnpm infra:up` locally, a service container in CI.
@@ -56,8 +65,27 @@ async function admin<T>(work: (sql: Sql) => Promise<T>): Promise<T> {
 }
 
 /**
+ * Registers an active principal for `actor` the way production does: proposed by the system,
+ * granted by the owner (PHASE 04).
+ */
+export async function registerPrincipal(database: Database, actor: Actor): Promise<Principal> {
+  const proposed = proposePrincipal(
+    { actor, displayName: `Test ${actor.id}`, purpose: 'Integration test fixture' },
+    { id: principalIdSchema.parse(uuidv7()), actor: SYSTEM, at: at(-60) },
+  );
+  const active = approvePrincipal(proposed, { actor: OWNER, at: at(-59) });
+  await database.repositories.principals.insert(proposed);
+  await database.repositories.principals.update(active, OWNER);
+  return active;
+}
+
+/** Actors of the test fixtures that need an identity to write (tests/support/domain.ts). */
+export const FIXTURE_PRINCIPALS: readonly Actor[] = [AGENT, MEMBER];
+
+/**
  * Creates an empty database with a unique name, so test files can run in parallel
- * and every file starts from a clean schema. Migrations are applied unless `migrate: false`.
+ * and every file starts from a clean schema. Migrations are applied and the fixture actors
+ * registered unless `migrate: false`.
  */
 export async function createTestDatabase(
   options: { readonly migrate?: boolean } = {},
@@ -68,6 +96,7 @@ export async function createTestDatabase(
   const database = createDatabase({ url, applicationName: 'roi-dealer-tests', maxConnections: 4 });
   if (options.migrate ?? true) {
     await runMigrations(database.sql, await loadProjectMigrations());
+    for (const actor of FIXTURE_PRINCIPALS) await registerPrincipal(database, actor);
   }
   return {
     url,

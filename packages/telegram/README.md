@@ -1,6 +1,6 @@
 # @roi-dealer/telegram
 
-**Статус:** реализован (фазы 13a и 13b, [ADR-0003](../../docs/ADR/0003-early-telegram-owner-bot.md)).
+**Статус:** реализован (фазы 13a, 13b и PHASE 04, [ADR-0003](../../docs/ADR/0003-early-telegram-owner-bot.md)).
 
 Интеграция с Telegram Bot API без сторонних bot-фреймворков: `fetch` + Zod.
 

@@ -35,6 +35,7 @@ export const ENTITY_LABELS: Readonly<Record<EntityType, string>> = {
   reward: 'Вознаграждение',
   knowledge_asset: 'Знание',
   system_control: 'Стоп-кран',
+  principal: 'Доступ',
 };
 
 export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {
@@ -49,6 +50,7 @@ export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {
   secret_access: 'Доступ к секрету',
   policy_change: 'Изменение политики',
   budget_change: 'Изменение бюджета',
+  access_grant: 'Доступ для агента или интеграции',
 };
 
 /** One line, at most `max` characters. */
@@ -78,7 +80,15 @@ export function formatTime(timestamp: Timestamp): string {
   return formatKyivDateTime(timestampMs(timestamp));
 }
 
-const NAME_FIELDS = ['title', 'name', 'statement', 'description', 'excerpt', 'summary'] as const;
+const NAME_FIELDS = [
+  'title',
+  'name',
+  'displayName',
+  'statement',
+  'description',
+  'excerpt',
+  'summary',
+] as const;
 
 function stringField(snapshot: Readonly<Record<string, unknown>>, key: string): string | undefined {
   const value = snapshot[key];

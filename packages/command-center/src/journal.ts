@@ -30,7 +30,7 @@ const EXPERIMENT_MILESTONES = new Set(['running', 'stopped', 'completed', 'cance
 
 /**
  * 🕘 History: decisions and money only — owner decisions, approvals, experiment launches and
- * results, costs and the kill switch.
+ * results, costs, the kill switch and access grants.
  */
 export function isHistoryEvent(event: StoredEvent): boolean {
   switch (event.aggregate.type) {
@@ -38,6 +38,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'approval_request':
     case 'cost_entry':
     case 'system_control':
+    case 'principal':
       return true;
     case 'experiment': {
       const status = event.payload.snapshot['status'];

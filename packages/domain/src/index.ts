@@ -1,5 +1,5 @@
 /**
- * @roi-dealer/domain — core domain of ROI Dealer (PHASE 01; SystemControl — 13b).
+ * @roi-dealer/domain — core domain of ROI Dealer (PHASE 01; SystemControl — 13b; Principal — PHASE 04).
  *
  * Pure TypeScript + Zod: entities, value objects, lifecycles and invariants.
  * No I/O: persistence (PHASE 02) and events (PHASE 03) build on top of this package.
@@ -30,5 +30,6 @@ export * from './entities/cost.js';
 export * from './entities/reward.js';
 export * from './entities/knowledge.js';
 export * from './entities/system-control.js';
+export * from './entities/principal.js';
 
 export const PACKAGE_NAME = '@roi-dealer/domain';

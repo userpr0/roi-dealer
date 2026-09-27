@@ -10,6 +10,8 @@
     { "path": "../events" },
     { "path": "../database" },
     { "path": "../observability" },
-    { "path": "../telegram" }
+    { "path": "../telegram" },
+    { "path": "../policies" },
+    { "path": "../shared" }
   ]
 }

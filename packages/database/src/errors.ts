@@ -46,6 +46,8 @@ export type ConstraintKind =
   | 'invalid_value'
   /** An entity row was written without its event (checked at COMMIT, migration 0002). */
   | 'missing_event'
+  /** A member, agent or integration without an active principal (migration 0004). */
+  | 'access_denied'
   | 'other';
 
 const KIND_BY_SQLSTATE: Readonly<Record<string, ConstraintKind>> = {
@@ -124,8 +126,9 @@ export class MigrationError extends DatabaseError {
 }
 
 /**
- * Converts integrity (class 23) and data (class 22) errors from PostgreSQL into
- * `ConstraintViolationError`; everything else (connection, syntax…) is returned unchanged.
+ * Converts integrity (class 23), data (class 22) and insufficient-privilege (42501) errors from
+ * PostgreSQL into `ConstraintViolationError`; everything else (connection, syntax…) is returned
+ * unchanged.
  */
 export function translateError(error: unknown): unknown {
   if (!(error instanceof postgres.PostgresError)) return error;
@@ -134,6 +137,14 @@ export function translateError(error: unknown): unknown {
     const missingEvent = error.constraint_name?.endsWith('_requires_event') === true;
     return new ConstraintViolationError(
       missingEvent ? 'missing_event' : (KIND_BY_SQLSTATE[sqlState] ?? 'other'),
+      sqlState,
+      error.constraint_name,
+      error.table_name,
+    );
+  }
+  if (sqlState === '42501') {
+    return new ConstraintViolationError(
+      'access_denied',
       sqlState,
       error.constraint_name,
       error.table_name,
