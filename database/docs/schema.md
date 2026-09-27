@@ -1,6 +1,6 @@
 # Схема базы данных
 
-> Миграции [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02), [`0002_event_history.sql`](../migrations/0002_event_history.sql) (PHASE 03) и [`0003_system_control.sql`](../migrations/0003_system_control.sql) (13b). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [PHASE 02](../../docs/phases/02_postgresql_foundation.md); история — [PHASE 03](../../docs/phases/03_event_history.md); стоп-кран — [13b](../../docs/phases/13b_owner_approvals.md).
+> Миграции [`0001_core_domain.sql`](../migrations/0001_core_domain.sql) (PHASE 02), [`0002_event_history.sql`](../migrations/0002_event_history.sql) (PHASE 03) [`0003_system_control.sql`](../migrations/0003_system_control.sql) (13b) и [`0004_identity_access.sql`](../migrations/0004_identity_access.sql) (PHASE 04). Сущности и правила — [спецификация PHASE 01](../../docs/phases/01_core_domain.md); хранение — [PHASE 02](../../docs/phases/02_postgresql_foundation.md); история — [PHASE 03](../../docs/phases/03_event_history.md); стоп-кран — [13b](../../docs/phases/13b_owner_approvals.md); доступ — [PHASE 04](../../docs/phases/04_identity_access.md).
 
 ## Кто за что отвечает
 
@@ -40,6 +40,8 @@ rewards ─< reward_contributions >── contributions
 | `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)                           |
 | `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                     |
 | `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                       |
+| `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
+| `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
 | `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
 | `schema_migrations` | —               | служебная   | журнал раннера миграций                                            |
@@ -107,6 +109,20 @@ rewards ─< reward_contributions >── contributions
 - Защита та же, что у остальных сущностей с версиями: версия + 1 на каждое изменение, без удаления, событие на каждую версию.
 - Миграция расширила домен `entity_type` значением `system_control` (замена CHECK-ограничения; существующие значения остаются допустимыми).
 
+## Доступ (PHASE 04)
+
+- **`principals`** — зарегистрированные личности актора типа `member`, `agent` или `integration`: `actor_type` + `actor_id` (уникальны навсегда), имя, назначение, статус `pending` / `active` / `suspended` / `revoked`.
+  - Актор личности не меняется (`principals_actor_immutable`); отозванная личность не меняется (`principals_revoked_final`).
+  - Защита истории та же, что у других сущностей с версиями.
+- **Нет записи без доступа.** Триггер `events_actor_principal_active` (`BEFORE INSERT ON events`) отклоняет событие от `member` / `agent` / `integration` без активной личности. Каждая запись сущности — это событие (0002), поэтому правило покрывает все записи. Ошибка — `ConstraintViolationError`, `kind: 'access_denied'` (SQLSTATE 42501).
+- **Права ролей** БД не хранит: их проверяют репозитории по `@roi-dealer/policies` (`DomainError('permission_denied')`).
+- **`access_log`** — только добавление:
+  - время (по умолчанию часы БД), канал `telegram` / `database`;
+  - актор — `actor_type` пуст для неизвестного отправителя, тогда `actor_id` = `telegram:<id>`;
+  - право, решение `allowed` / `denied`, код причины (ровно у отказов), `correlation_id`.
+  - Текст сообщений не хранится.
+- **Новый вид запроса одобрения** `access_grant` (subject — личность); домен `entity_type` расширен значением `principal`.
+
 ## Ошибки
 
-`@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
+`@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.

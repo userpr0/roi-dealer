@@ -43,6 +43,7 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Change entity state only through `@roi-dealer/domain` functions (factories and transitions), never by assigning fields; validate untrusted input with `parseInput` from `@roi-dealer/schemas` first. Only the `owner` actor makes decisions; AI agents only propose.
 - Follow the owner decisions in `docs/OWNER_DECISIONS.md` (USD accounting, $20 approval threshold, budgets, markets).
 - Call the Telegram Bot API only through `@roi-dealer/telegram`. Any state-changing command or button must ask the owner for confirmation first and run as an idempotent `database.command` (key `tg-callback-<id>`, correlation `tg-update-<id>`). Never log the bot token or message text.
-- Owner command center logic lives in `@roi-dealer/command-center`; `apps/bot` only wires it.
+- Owner command center logic lives in `@roi-dealer/command-center`; `apps/bot` only wires it. Every panel command and button declares its permission and is recorded in the access log.
+- Access (PHASE 04): roles and permissions live in `@roi-dealer/policies`; repositories check every write against them. Members, agents and integrations write only through an active `Principal`; give a new one access with `requestAccess` (owner approves in `/decisions`), never by inserting an active principal. Build the actor only from an authenticated channel, never from input. AI never changes permissions.
 - Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.

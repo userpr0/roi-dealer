@@ -2,11 +2,12 @@
 
 Версионированные SQL-миграции PostgreSQL. Применяются командой `pnpm db:migrate` (раннер из `@roi-dealer/database`, [ADR-0005](../../docs/ADR/0005-postgresql-driver-and-migrations.md)).
 
-| Миграция                                             | Phase | Содержание                                                                             |
-| ---------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
-| [`0001_core_domain.sql`](0001_core_domain.sql)       | 02    | 13 сущностей PHASE 01, связи, ограничения, защита истории — [схема](../docs/schema.md) |
-| [`0002_event_history.sql`](0002_event_history.sql)   | 03    | Event History: `events`, проверка «нет изменения без события», `idempotency_keys`      |
-| [`0003_system_control.sql`](0003_system_control.sql) | 13b   | Стоп-кран: таблица `system_controls`, строка `automation` с событием                   |
+| Миграция                                               | Phase | Содержание                                                                                      |
+| ------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------- |
+| [`0001_core_domain.sql`](0001_core_domain.sql)         | 02    | 13 сущностей PHASE 01, связи, ограничения, защита истории — [схема](../docs/schema.md)          |
+| [`0002_event_history.sql`](0002_event_history.sql)     | 03    | Event History: `events`, проверка «нет изменения без события», `idempotency_keys`               |
+| [`0003_system_control.sql`](0003_system_control.sql)   | 13b   | Стоп-кран: таблица `system_controls`, строка `automation` с событием                            |
+| [`0004_identity_access.sql`](0004_identity_access.sql) | 04    | Личности `principals`, запрос `access_grant`, запрет записи без активной личности, `access_log` |
 
 ## Правила
 
