@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { startService, type ServiceProcess } from '../../support/service-process.js';
 
 describe('api process', () => {
@@ -63,5 +64,53 @@ describe('api process with invalid configuration', () => {
     expect(fatal?.['message']).toBe('api failed to start');
     expect(JSON.stringify(fatal)).toContain('API_PORT');
     expect(JSON.stringify(fatal)).not.toContain('not-a-port');
+  });
+});
+
+describe('api process with a database', () => {
+  let database: TestDatabase;
+
+  beforeAll(async () => {
+    database = await createTestDatabase();
+  });
+
+  afterAll(async () => {
+    await database.drop();
+  });
+
+  async function healthOf(databaseUrl: string): Promise<{ status: number; body: unknown }> {
+    const service = startService('apps/api/src/main.ts', {
+      NODE_ENV: 'test',
+      API_HOST: '127.0.0.1',
+      API_PORT: '0',
+      DATABASE_URL: databaseUrl,
+      DATABASE_CONNECT_TIMEOUT_SECONDS: '1',
+    });
+    try {
+      const listening = await service.waitForLog((line) => line['message'] === 'api listening');
+      const response = await fetch(`http://127.0.0.1:${String(listening['port'])}/health`);
+      const body: unknown = await response.json();
+      service.child.kill('SIGTERM');
+      await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });
+      expect(JSON.stringify(service.logs)).not.toContain('roi_dealer_dev_only');
+      return { status: response.status, body };
+    } finally {
+      service.kill();
+    }
+  }
+
+  it('reports the database check in GET /health', async () => {
+    await expect(healthOf(database.url)).resolves.toMatchObject({
+      status: 200,
+      body: { status: 'ok', service: 'api', checks: { database: { status: 'ok' } } },
+    });
+  });
+
+  it('answers 503 when the database is unreachable', async () => {
+    const unreachable = 'postgresql://roi_dealer:roi_dealer_dev_only@127.0.0.1:1/roi_dealer_dev';
+    await expect(healthOf(unreachable)).resolves.toMatchObject({
+      status: 503,
+      body: { status: 'down', checks: { database: { status: 'down' } } },
+    });
   });
 });

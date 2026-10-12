@@ -2,12 +2,17 @@
 
 PostgreSQL — **authoritative source of truth** бизнес-состояния (конституция §2.1).
 
-| Каталог                               | Назначение                                   | Phase    |
-| ------------------------------------- | -------------------------------------------- | -------- |
-| [`migrations/`](migrations/README.md) | Версионированные миграции схемы              | PHASE 02 |
-| [`seeds/`](seeds/README.md)           | Данные для локальной разработки и тестов     | PHASE 02 |
-| [`docs/`](docs/README.md)             | Документация схемы, ER-диаграммы, соглашения | PHASE 02 |
+| Каталог                               | Назначение                                                  |
+| ------------------------------------- | ----------------------------------------------------------- |
+| [`migrations/`](migrations/README.md) | Версионированные SQL-миграции (PHASE 02)                    |
+| [`docs/`](docs/schema.md)             | Схема: таблицы, связи, какие правила домена проверяет БД    |
+| [`seeds/`](seeds/README.md)           | Пока не используются: тесты создают данные фабриками домена |
 
-**PHASE 00:** схемы, миграций и драйвера нет. Локальная БД запускается командой `pnpm infra:up` (см. [`infra/README.md`](../infra/README.md)).
+Код доступа к БД — пакет [`@roi-dealer/database`](../packages/database/README.md): подключение в UTC, раннер миграций, репозитории. Инструменты — [ADR-0005](../docs/ADR/0005-postgresql-driver-and-migrations.md).
 
-Принципы, заложенные на PHASE 02 (из playbook): UUID-идентификаторы (PostgreSQL 18 поддерживает `uuidv7()`), время в UTC, constraints в БД, append-only история (PHASE 03).
+```bash
+pnpm infra:up      # локальный PostgreSQL 18
+pnpm db:migrate    # применить миграции к DATABASE_URL
+```
+
+Облачная БД и резервные копии — [`docs/deploy/database.md`](../docs/deploy/database.md).

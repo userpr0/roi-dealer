@@ -2,7 +2,7 @@
   "name": "@roi-dealer/api",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer HTTP API (PHASE 00: health endpoint only)",
+  "description": "ROI Dealer HTTP API (health endpoint; database health check from PHASE 02)",
   "type": "module",
   "scripts": {
     "build": "tsc -b",
@@ -10,6 +10,7 @@
     "start": "node --enable-source-maps dist/main.js"
   },
   "dependencies": {
+    "@roi-dealer/database": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "zod": "^4.6.5"

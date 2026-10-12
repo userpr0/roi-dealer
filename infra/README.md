@@ -19,6 +19,6 @@ pnpm infra:down    # остановить (данные в volume сохраня
 docker compose -f infra/docker/compose.yaml down --volumes
 ```
 
-Подключение: `postgresql://roi_dealer:roi_dealer_dev_only@localhost:5432/roi_dealer_dev`
+Подключение: `postgresql://roi_dealer:roi_dealer_dev_only@localhost:5432/roi_dealer_dev` (`DATABASE_URL` в `.env.example`). Схема создаётся командой `pnpm db:migrate`; integration-тесты создают на этом сервере временные БД и удаляют их после себя.
 
 **Эти учётные данные только для локальной разработки.** Их можно переопределить переменными окружения `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` в shell. В production секреты берутся из Secret Manager / Vault.

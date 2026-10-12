@@ -37,6 +37,8 @@ export const APPROVAL_KINDS = [
   'secret_access',
   'policy_change',
   'budget_change',
+  /** Access for a new agent, integration or team member (PHASE 04); subject — the Principal. */
+  'access_grant',
 ] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 

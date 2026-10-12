@@ -13,10 +13,9 @@ Source → Evidence → Signal → Pain → Opportunity → Business Model → 5
 
 ## Текущая фаза
 
-**PHASE 00 — Project Bootstrap**: инженерный фундамент, без бизнес-логики.
-Актуальный статус — [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
+Актуальная фаза, её статус и что разрешено дальше — [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md); план — [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-> ⚠️ **Правило:** следующая Phase начинается **только после явного approval владельца**. Реализация PHASE 01 без approval запрещена.
+> ⚠️ **Правило:** следующая Phase начинается **только после явного approval владельца**.
 
 ## Prerequisites
 
@@ -34,8 +33,9 @@ cp .env.example .env   # опционально: значения по умол�
 ## Local start
 
 ```bash
-pnpm infra:up   # PostgreSQL 18 на 127.0.0.1:5432 (ждёт healthy)
-pnpm dev        # api (:3000), worker, miniapp (:5173) в watch-режиме (бот — отдельно, см. ниже)
+pnpm infra:up     # PostgreSQL 18 на 127.0.0.1:5432 (ждёт healthy)
+pnpm db:migrate   # применить миграции к DATABASE_URL из .env (cp .env.example .env)
+pnpm dev          # api (:3000), worker, miniapp (:5173) в watch-режиме (бот — отдельно, см. ниже)
 
 curl http://127.0.0.1:3000/health
 # {"status":"ok","service":"api"}
@@ -57,8 +57,10 @@ pnpm dev:bot   # бот-пульт; нужен .env с TELEGRAM_* (исполь�
 ```bash
 pnpm test               # unit + integration
 pnpm test:unit          # in-process, без сокетов и процессов
-pnpm test:integration   # реальные HTTP-сокеты и OS-процессы (SIGTERM, exit codes)
+pnpm test:integration   # реальные HTTP-сокеты, OS-процессы и PostgreSQL
 ```
+
+Integration-тестам нужен PostgreSQL: `pnpm infra:up` (или `TEST_DATABASE_URL`). Каждый файл тестов создаёт свою временную БД и удаляет её в конце.
 
 ## Build and checks
 
@@ -69,7 +71,7 @@ pnpm format:check   # Prettier (pnpm format — исправить)
 pnpm build          # tsc -b + vite build (miniapp)
 ```
 
-CI (`.github/workflows/ci.yml`) на каждый push и PR: install → typecheck → lint → format check → unit tests → build → integration tests.
+CI (`.github/workflows/ci.yml`) на каждый push и PR: install → typecheck → lint → format check → unit tests → build → миграции → integration tests (с сервисом PostgreSQL 18).
 
 Miniapp после зелёного CI в default branch публикуется на GitHub Pages: https://userpr0.github.io/roi-dealer/ ([ADR-0002](docs/ADR/0002-miniapp-hosting-github-pages.md)).
 
@@ -77,18 +79,23 @@ Miniapp после зелёного CI в default branch публикуется 
 
 ```text
 apps/
-  api/          HTTP API — PHASE 00: GET /health
+  api/          HTTP API: GET /health (с проверкой БД, если задан DATABASE_URL)
   worker/       фоновый процесс — PHASE 00: lifecycle, graceful shutdown
   miniapp/      Telegram Mini App (React + Vite) — PHASE 00: placeholder
-  bot/          бот-пульт владельца в Telegram (фаза 13a): /status, уведомления, Docker-образ
+  bot/          бот-пульт владельца в Telegram (13a–13b): /status, решения, стоп-кран, журнал, дайджест
 packages/
   shared/         config validation (Zod), graceful shutdown
-  telegram/       Telegram Bot API: клиент, long polling, команды только для владельца
+  telegram/       Telegram Bot API: клиент, long polling, команды и кнопки только для владельца
+  command-center/ логика пульта: одобрения, стоп-кран, журнал, история, дайджест (13b)
   observability/  structured logger, health registry, correlation id
-  domain/ schemas/ events/ policies/ agents/ judges/ skills/
+  domain/         сущности, жизненные циклы и правила ROI CORE v0.1 (PHASE 01)
+  schemas/        строгие входные контракты (PHASE 01)
+  database/       PostgreSQL: подключение, миграции, репозитории, Event History (PHASE 02–03, 13b)
+  events/         контракты Event History (PHASE 03)
+  policies/ agents/ judges/ skills/
   ai-runtime/ economics/ rewards/          placeholders следующих Phase
 workflows/      Temporal workflows (PHASE 00: только README)
-database/       migrations/, seeds/, docs/ (с PHASE 02)
+database/       migrations/ (SQL), docs/schema.md
 infra/          docker/compose.yaml — локальный PostgreSQL
 tests/          unit/, integration/, e2e/, fixtures/, support/
 docs/           архитектура, конституция, протокол, состояние, ADR, phases, playbook
@@ -106,7 +113,8 @@ docs/           архитектура, конституция, протокол
 | [`docs/ROADMAP.md`](docs/ROADMAP.md)                                 | Что собрано и путь к рабочему состоянию                                              |
 | [`docs/ADR/`](docs/ADR/README.md)                                    | Architecture Decision Records                                                        |
 | [`docs/phases/`](docs/phases/README.md)                              | Спецификации и отчёты Phase                                                          |
-| [`docs/deploy/`](docs/deploy/telegram-bot.md)                        | Развёртывание бота-пульта в облаке                                                   |
+| [`docs/deploy/`](docs/deploy/telegram-bot.md)                        | Развёртывание бота-пульта и БД в облаке                                              |
+| [`docs/runbooks/`](docs/runbooks/README.md)                          | Инструкции на аварии                                                                 |
 | [`docs/playbook/`](docs/playbook/IMPLEMENTATION_PLAYBOOK_v1.1.md)    | Implementation Playbook v1.1 — исходная спецификация                                 |
 
 ## Security

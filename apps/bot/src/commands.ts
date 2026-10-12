@@ -1,15 +1,27 @@
 import type { HealthRegistry, HealthStatus } from '@roi-dealer/observability';
-import type { BotCommandDefinition } from '@roi-dealer/telegram';
+import type { BotCommandDefinition, CommandContext } from '@roi-dealer/telegram';
 
-/** Owner-facing texts. All commands are read-only. */
+/**
+ * Owner-facing texts. /status and /help are read-only; the command center commands that change
+ * state (decisions, /stop, /resume) always ask for confirmation first.
+ */
 export const TEXT = {
   help: [
     'Команды:',
+    '/decisions — решения, которые ждут вас',
+    '/stop [причина] — стоп-кран: остановить автоматизации',
+    '/resume — возобновить автоматизации',
+    '/journal — журнал изменений за день, неделю, месяц',
+    '/history — история решений и денег',
+    '/digest — дайджест сейчас (каждый день приходит в 10:00 по Киеву)',
+    '/access — доступы агентов и интеграций, отклонённые попытки',
     '/status — состояние системы',
     '/help — список команд',
     '',
+    'Одобрение, стоп-кран и изменение доступов — только после подтверждения кнопкой.',
     'Кнопка «Пульт» открывает панель управления.',
   ].join('\n'),
+  unknownButton: 'Кнопка устарела. Повторите команду.',
   unknownCommand: 'Неизвестная команда. /help — список команд.',
   failure: '⚠️ Не удалось выполнить команду. Подробности в логах сервиса.',
   stopped: '🔴 ROI Dealer bot остановлен',
@@ -45,11 +57,29 @@ export function startedText(info: RuntimeInfo): string {
 export interface BotCommandsDeps extends RuntimeInfo {
   readonly health: HealthRegistry;
   readonly startedAt: number;
+  /** Command center commands, listed in the menu before /status and /help. */
+  readonly panel?: readonly BotCommandDefinition[];
+  /** Extra /status lines (the kill switch); the request lets the view be audited. */
+  readonly statusLines?: (request: {
+    readonly userId: number;
+    readonly updateId: number;
+  }) => Promise<string[]>;
   readonly now?: () => number;
 }
 
 export function createBotCommands(deps: BotCommandsDeps): BotCommandDefinition[] {
   const now = deps.now ?? Date.now;
+
+  /** The database may be down: /status still answers and shows the failed check. */
+  async function statusLines(context: CommandContext): Promise<string[]> {
+    if (deps.statusLines === undefined) return [];
+    try {
+      return await deps.statusLines({ userId: context.userId, updateId: context.updateId });
+    } catch (error) {
+      context.logger.warn('kill switch state unavailable for /status', { error });
+      return ['⚠️ Стоп-кран: состояние недоступно'];
+    }
+  }
 
   return [
     {
@@ -57,6 +87,7 @@ export function createBotCommands(deps: BotCommandsDeps): BotCommandDefinition[]
       description: 'Начало работы с пультом',
       handler: (context) => context.reply(`👋 ROI Dealer — пульт владельца.\n\n${TEXT.help}`),
     },
+    ...(deps.panel ?? []),
     {
       name: 'status',
       description: 'Состояние системы',
@@ -71,6 +102,7 @@ export function createBotCommands(deps: BotCommandsDeps): BotCommandDefinition[]
           ...Object.entries(report.checks ?? {}).map(
             ([name, check]) => `${STATUS_ICON[check.status]} ${name}: ${check.status}`,
           ),
+          ...(await statusLines(context)),
         ];
         await context.reply(lines.join('\n'));
       },

@@ -85,6 +85,88 @@ describe('createTelegramClient', () => {
     expect(updates[1]?.message).toBeUndefined();
   });
 
+  it('parses button presses and drops malformed ones', async () => {
+    const client = createTelegramClient({
+      token: TOKEN,
+      fetch: fakeFetch({
+        ok: true,
+        result: [
+          {
+            update_id: 4,
+            callback_query: {
+              id: '4382bfdwdsb323b2d9',
+              from: { id: 5, is_bot: false, first_name: 'Owner' },
+              message: { message_id: 9, date: 0, chat: { id: 5, type: 'private' } },
+              chat_instance: '-1',
+              data: 'ap:x',
+            },
+          },
+          { update_id: 5, callback_query: { id: 'x', data: 'ap:x' } },
+        ],
+      }),
+    });
+
+    const [valid, broken] = await client.getUpdates({ timeoutSeconds: 0 });
+
+    expect(valid?.callback_query).toEqual({
+      id: '4382bfdwdsb323b2d9',
+      from: { id: 5, is_bot: false, first_name: 'Owner' },
+      message: { message_id: 9, date: 0, chat: { id: 5, type: 'private' } },
+      data: 'ap:x',
+    });
+    expect(broken?.callback_query).toBeUndefined();
+  });
+
+  it('sends inline keyboards, edits messages and answers button presses', async () => {
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true, result: true }))),
+    );
+    const client = createTelegramClient({ token: TOKEN, fetch: fetchMock });
+    const keyboard = [[{ text: 'Да', callback_data: 'ks:y:1' }]];
+
+    await client.sendMessage({ chatId: 1, text: 'Остановить?', keyboard });
+    await client.editMessageText({ chatId: 1, messageId: 9, text: 'Остановлено' });
+    await client.answerCallbackQuery({ callbackQueryId: 'q1', text: 'Готово' });
+
+    const bodies = fetchMock.mock.calls.map(([url, init]) => [
+      typeof url === 'string' ? url.split('/').at(-1) : undefined,
+      typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined,
+    ]);
+    expect(bodies).toEqual([
+      [
+        'sendMessage',
+        { chat_id: 1, text: 'Остановить?', reply_markup: { inline_keyboard: keyboard } },
+      ],
+      ['editMessageText', { chat_id: 1, message_id: 9, text: 'Остановлено' }],
+      ['answerCallbackQuery', { callback_query_id: 'q1', text: 'Готово' }],
+    ]);
+  });
+
+  it('treats an edit to the same content as done', async () => {
+    const notModified = {
+      ok: false,
+      error_code: 400,
+      description:
+        'Bad Request: message is not modified: specified new message content is the same',
+    };
+    await expect(
+      createTelegramClient({ token: TOKEN, fetch: fakeFetch(notModified, 400) }).editMessageText({
+        chatId: 1,
+        messageId: 9,
+        text: 'same',
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      createTelegramClient({
+        token: TOKEN,
+        fetch: fakeFetch(
+          { ...notModified, description: 'Bad Request: message to edit not found' },
+          400,
+        ),
+      }).editMessageText({ chatId: 1, messageId: 9, text: 'x' }),
+    ).rejects.toBeInstanceOf(TelegramApiError);
+  });
+
   it('turns ok:false into TelegramApiError with code and retry_after', async () => {
     const client = createTelegramClient({
       token: TOKEN,

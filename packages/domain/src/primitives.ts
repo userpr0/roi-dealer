@@ -14,6 +14,8 @@ export const ENTITY_TYPES = [
   'contribution',
   'reward',
   'knowledge_asset',
+  'system_control',
+  'principal',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -45,6 +47,10 @@ export const rewardIdSchema = z.uuid().brand<'RewardId'>();
 export type RewardId = z.infer<typeof rewardIdSchema>;
 export const knowledgeAssetIdSchema = z.uuid().brand<'KnowledgeAssetId'>();
 export type KnowledgeAssetId = z.infer<typeof knowledgeAssetIdSchema>;
+export const systemControlIdSchema = z.uuid().brand<'SystemControlId'>();
+export type SystemControlId = z.infer<typeof systemControlIdSchema>;
+export const principalIdSchema = z.uuid().brand<'PrincipalId'>();
+export type PrincipalId = z.infer<typeof principalIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();
@@ -87,6 +93,7 @@ export function uniqueList<T extends z.ZodType>(item: T, bounds: { min?: number;
 }
 
 export const ACTOR_TYPES = ['owner', 'member', 'agent', 'system', 'integration'] as const;
+export type ActorType = (typeof ACTOR_TYPES)[number];
 
 /**
  * Who performs an action. `agent` is an AI agent: it may propose, never decide (§2.3).

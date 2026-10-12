@@ -5,6 +5,7 @@ import {
   telegramUserSchema,
   type BotCommand,
   type BotCommandScope,
+  type InlineKeyboard,
   type TelegramUpdate,
   type TelegramUser,
 } from './api-types.js';
@@ -58,7 +59,26 @@ export interface TelegramClient {
   getMe(): Promise<TelegramUser>;
   getUpdates(params: GetUpdatesParams, signal?: AbortSignal): Promise<TelegramUpdate[]>;
   /** Sends plain text (no parse mode, so user-provided text cannot inject markup). */
-  sendMessage(params: { readonly chatId: number; readonly text: string }): Promise<void>;
+  sendMessage(params: {
+    readonly chatId: number;
+    readonly text: string;
+    readonly keyboard?: InlineKeyboard | undefined;
+  }): Promise<void>;
+  /**
+   * Replaces the text of a sent message; buttons are replaced by `keyboard` or removed.
+   * Editing to the same text and buttons is not an error.
+   */
+  editMessageText(params: {
+    readonly chatId: number;
+    readonly messageId: number;
+    readonly text: string;
+    readonly keyboard?: InlineKeyboard | undefined;
+  }): Promise<void>;
+  /** Stops the loading indicator of a pressed button, optionally with a short notice. */
+  answerCallbackQuery(params: {
+    readonly callbackQueryId: string;
+    readonly text?: string | undefined;
+  }): Promise<void>;
   setMyCommands(params: {
     readonly commands: readonly BotCommand[];
     readonly scope?: BotCommandScope;
@@ -70,6 +90,10 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 /** Removes every occurrence of `secret` from `text`. */
 export function redactSecret(text: string, secret: string): string {
   return secret.length === 0 ? text : text.split(secret).join('[REDACTED]');
+}
+
+function replyMarkup(keyboard: InlineKeyboard | undefined): Record<string, unknown> {
+  return keyboard === undefined ? {} : { reply_markup: { inline_keyboard: keyboard } };
 }
 
 function describeFailure(error: unknown): string {
@@ -160,8 +184,36 @@ export function createTelegramClient(options: TelegramClientOptions): TelegramCl
       return parseResult('getUpdates', z.array(telegramUpdateSchema), result);
     },
 
-    async sendMessage({ chatId, text }) {
-      await call('sendMessage', { chat_id: chatId, text });
+    async sendMessage({ chatId, text, keyboard }) {
+      await call('sendMessage', { chat_id: chatId, text, ...replyMarkup(keyboard) });
+    },
+
+    async editMessageText({ chatId, messageId, text, keyboard }) {
+      try {
+        await call('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+          ...replyMarkup(keyboard),
+        });
+      } catch (error) {
+        // A repeated press renders the same content again: nothing to change.
+        if (
+          error instanceof TelegramApiError &&
+          error.errorCode === 400 &&
+          error.message.includes('message is not modified')
+        ) {
+          return;
+        }
+        throw error;
+      }
+    },
+
+    async answerCallbackQuery({ callbackQueryId, text }) {
+      await call('answerCallbackQuery', {
+        callback_query_id: callbackQueryId,
+        ...(text === undefined ? {} : { text }),
+      });
     },
 
     async setMyCommands({ commands, scope }) {
