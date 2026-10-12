@@ -13,7 +13,7 @@ import {
   type SystemControl,
 } from '@roi-dealer/domain';
 import { ConstraintViolationError, translateError, type Database } from '@roi-dealer/database';
-import { at, createCtx, ctx, OWNER, SYSTEM } from '../../support/domain.js';
+import { after, at, createCtx, ctx, OWNER, SYSTEM } from '../../support/domain.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 
 let test: TestDatabase;
@@ -74,8 +74,11 @@ describe('automation kill switch (migration 0003)', () => {
 
   it('is paused and resumed through the repository with events of the owner', async () => {
     const control = await automation();
-    const paused = pauseSystem(control, 'Проверяю расходы', ctx(OWNER, 1));
-    const resumed = resumeSystem(paused, ctx(OWNER, 2));
+    const paused = pauseSystem(control, 'Проверяю расходы', {
+      actor: OWNER,
+      at: after(control.createdAt, 1),
+    });
+    const resumed = resumeSystem(paused, { actor: OWNER, at: after(control.createdAt, 2) });
 
     await db.transaction((scope) => scope.repositories.systemControls.update(paused, OWNER), {
       correlationId: 'tg-update-1',
