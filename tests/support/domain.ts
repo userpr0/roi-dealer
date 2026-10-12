@@ -1,4 +1,5 @@
 import {
+  timestampMs,
   toTimestamp,
   usd,
   type Actor,
@@ -14,6 +15,7 @@ import {
   type OpportunityId,
   type PainId,
   type SourceId,
+  type Timestamp,
 } from '@roi-dealer/domain';
 import { uuidv7 } from '@roi-dealer/shared';
 
@@ -26,6 +28,14 @@ const BASE_MS = Date.parse('2026-10-01T10:00:00.000Z');
 
 /** Deterministic UTC timestamp `minutes` after the test epoch. */
 export const at = (minutes = 0) => toTimestamp(new Date(BASE_MS + minutes * 60_000));
+
+/**
+ * UTC timestamp `minutes` after `from`. For records the database creates at its
+ * own current time (the kill switch of migration 0003), whose later versions
+ * cannot be dated at the fixed test epoch.
+ */
+export const after = (from: Timestamp, minutes: number) =>
+  toTimestamp(new Date(timestampMs(from) + minutes * 60_000));
 
 export const ctx = (actor: Actor = OWNER, minutes = 0): DomainContext => ({
   actor,

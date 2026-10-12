@@ -22,7 +22,7 @@ import {
   type ApprovalRequest,
 } from '@roi-dealer/domain';
 import type { InlineKeyboard } from '@roi-dealer/telegram';
-import { at, createCtx, sourceData, SYSTEM } from '../../support/domain.js';
+import { after, at, createCtx, sourceData, SYSTEM } from '../../support/domain.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { createCapturingLogger } from '../../support/logger.js';
 
@@ -209,6 +209,20 @@ describe('📥 decisions', () => {
 });
 
 describe('🛑 kill switch', () => {
+  // Migration 0003 creates the switch at the database's current time, so it is
+  // switched after that rather than at the fixed test epoch.
+  let switchClock = clock;
+
+  beforeAll(async () => {
+    const control = await db.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
+    switchClock = timestampMs(after(control?.createdAt ?? never(), 1));
+    clock = switchClock;
+  });
+
+  afterAll(() => {
+    clock = timestampMs(at(30));
+  });
+
   it('pauses after a confirmation, with the reason and the owner in /status', async () => {
     const [question] = await command('stop', 'Проверяю расходы');
     expect(question?.text).toContain('Причина: Проверяю расходы');
@@ -237,6 +251,10 @@ describe('🛑 kill switch', () => {
     const [already] = await command('stop');
     expect(already?.text).toContain('на паузе');
     expect(already?.keyboard).toBeUndefined();
+
+    expect((await press('jr:day')).edit.text).toContain(
+      'Стоп-кран: running → paused («Проверяю расходы»)',
+    );
   });
 
   it('resumes only after a confirmation that has not expired', async () => {
@@ -257,7 +275,7 @@ describe('🛑 kill switch', () => {
       const [fresh] = buttons(third);
       expect((await press(fresh ?? '')).edit.text).toContain('▶️ Автоматизации возобновлены');
     } finally {
-      clock = timestampMs(at(30));
+      clock = switchClock;
     }
     const control = await db.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
     expect(control).toMatchObject({ status: 'running' });
@@ -281,7 +299,6 @@ describe('🧾 journal and 🕘 history', () => {
     expect(journal.text).toMatch(
       /Владелец · Запрос одобрения «Buy a domain» · \$35\.00: pending → approved/,
     );
-    expect(journal.text).toContain('Стоп-кран: running → paused («Проверяю расходы»)');
     expect(journal.keyboard?.flat().map((button) => button.text)).toEqual([
       '• День',
       'Неделя',
