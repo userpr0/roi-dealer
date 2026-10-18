@@ -13,7 +13,8 @@
 ## Таблицы
 
 ```text
-sources ─┬─< evidence >──────────────┬─< signal_evidence >── signals ─< pain_signals >── pains
+sources ─┬─< source_snapshots ─< evidence (snapshot_id + source_id, PHASE 05)
+         ├─< evidence >──────────────┬─< signal_evidence >── signals ─< pain_signals >── pains
          │                           ├─< pain_evidence >────────────────────────────────── pains
          │                           ├─< decision_evidence >── decisions
          │                           └─< knowledge_asset_evidence >── knowledge_assets
@@ -41,6 +42,7 @@ rewards ─< reward_contributions >── contributions
 | `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                     |
 | `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                       |
 | `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
+| `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                      |
 | `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
 | `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
@@ -122,6 +124,22 @@ rewards ─< reward_contributions >── contributions
   - право, решение `allowed` / `denied`, код причины (ровно у отказов), `correlation_id`.
   - Текст сообщений не хранится.
 - **Новый вид запроса одобрения** `access_grant` (subject — личность); домен `entity_type` расширен значением `principal`.
+
+## Evidence Engine (PHASE 05)
+
+- **`sources.catalog_key`** — запись каталога `@roi-dealer/evidence`, по которой подключён источник:
+  - формат `sources_catalog_key_format`;
+  - один источник на запись (`sources_catalog_key_key`).
+- **`source_snapshots`** — одна загрузка из источника:
+  - время, URL запроса, `content_sha256` ответа, число новых элементов и сохранённых доказательств;
+  - сырой ответ не хранится;
+  - только добавление, событие обязательно;
+  - `(id, source_id)` уникальны, `evidence_count ≤ item_count`, `fetched_at ≤ created_at`.
+- **`evidence`:**
+  - `snapshot_id` с составным FK `evidence_snapshot_same_source`: снимок того же источника;
+  - `external_id` — id у источника, уникален в пределах источника (`evidence_source_external_key`): повторный сбор не создаёт дубликатов;
+  - CHECK `evidence_excerpt_without_email`: в цитате нет email. Телефоны и прочие идентификаторы отсекает домен (`containsContactData`) и очистка перед записью.
+- Домен `entity_type` расширен значением `source_snapshot`.
 
 ## Ошибки
 

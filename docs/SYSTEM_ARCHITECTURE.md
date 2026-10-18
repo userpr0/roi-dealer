@@ -104,7 +104,7 @@ Real Pain / Opportunity
 
 ---
 
-## Архитектура реализации (as built — PHASE 03)
+## Архитектура реализации (as built — PHASE 05)
 
 ### Стиль
 
@@ -131,15 +131,15 @@ TypeScript **modular monolith** в pnpm monorepo:
                      └─► ai-runtime ─► AI providers (заменяемые)   └─► S3-compatible storage
 ```
 
-| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                       | Появится                                                                                              |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                                                                       | Бизнес-API — по Phase                                                                                 |
-| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                                                                                                                                                                                          | Temporal workers — после выбора интеграции Temporal                                                   |
-| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                                                                  | PHASE 13 — Owner Command Center                                                                       |
-| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`); Docker-образ с миграциями | Alerts, Input Router, Mini App с данными — PHASE 13+                                                  |
-| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 15 сущностей (миграции `0001`–`0004`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                                    | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота |
-| Temporal              | Не запущен                                                                                                                                                                                                                                                                                              | Отдельный шаг с ADR                                                                                   |
-| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                              | При первой потребности (Evidence snapshots, media)                                                    |
+| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                       | Появится                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                                                                       | Бизнес-API — по Phase                                                                                          |
+| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown; с `DATABASE_URL` — сбор Evidence из источников каталога по расписанию (PHASE 05, `@roi-dealer/evidence`); Docker-образ с миграциями                                                                                                                     | Задачи AI (PHASE 09+); Temporal — ADR при первом долгом workflow                                               |
+| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                                                                  | PHASE 13 — Owner Command Center                                                                                |
+| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`); Docker-образ с миграциями | Alerts, Input Router, Mini App с данными — PHASE 13+                                                           |
+| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 16 сущностей (миграции `0001`–`0005`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                                    | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота и worker |
+| Temporal              | Не запущен                                                                                                                                                                                                                                                                                              | Отдельный шаг с ADR                                                                                            |
+| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                              | При первой потребности (Evidence snapshots, media)                                                             |
 
 ### Направления зависимостей
 
@@ -151,6 +151,8 @@ apps/bot ──► packages/telegram     (Telegram Bot API только чере
 apps/bot ──► packages/command-center ──► packages/database, packages/telegram, packages/domain   (логика пульта, 13b)
 apps/* ──► packages/database ──► packages/events ──► packages/domain   (PostgreSQL только через database)
 packages/database, packages/command-center ──► packages/policies ──► packages/domain   (права, PHASE 04)
+apps/worker ──► packages/evidence ──► packages/database, packages/domain   (сбор данных, PHASE 05)
+apps/worker ──► packages/command-center   (ensureAccessRequest передаётся в evidence как зависимость)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -244,6 +246,23 @@ events (INSERT) ──► триггер: у member / agent / integration ест
 - **Роли:** `owner` — всё; `system` — автоматизации без решений; `agent` — исследование, Evidence, планы экспериментов, запросы одобрения; `integration` — Evidence и расходы; `member` — исследование и чтение (команда позже, D-004). Решения, одобрения, стоп-кран и доступы — только владелец (кроме автоматических действий системы).
 - **Личность (`Principal`)** выдаёт, приостанавливает, возвращает и отзывает только владелец (`/access`); отзыв окончателен, идентификатор актора не переиспользуется.
 - **Журнал доступа** (`access_log`, append-only): просмотры и действия пульта, отказы репозиториев, попытки посторонних (не чаще раза в 10 минут на отправителя, без текста сообщений).
+
+### Сбор данных (PHASE 05)
+
+```text
+worker (по расписанию) ──► стоп-кран ──► каталог (@roi-dealer/evidence, вердикт allowed)
+  ├─ нет источника / доступа ──► Source (system) + ensureAccessRequest ──► карточка access_grant в /decisions
+  └─ доступ активен ──► коннектор (официальный API, лимиты каталога) ──► redactPersonalData
+        ──► одна транзакция: SourceSnapshot + Evidence (актор integration source:<ключ>, correlation evidence-collect-<id>)
+```
+
+- **Каталог источников** — в коде (`packages/evidence/src/catalog.ts`): условия, стоимость, лимиты, поля данных, риск ПД, вердикт и дата проверки. Источник без записи или без `allowed` не подключается.
+- **Provenance:** Evidence → `SourceSnapshot` (время, запрос, SHA-256 ответа; сам ответ не хранится) → `Source.catalogKey` → запись каталога.
+- **Приватность:**
+  - контакты, профили, ники, SSN, карты и IP заменяются до записи;
+  - автор не запрашивается;
+  - домен и БД не пропускают email (домен — и телефоны).
+- **Worker без Temporal:** планировщик внутри процесса, без наложения запусков; Temporal — ADR при первом долгом workflow.
 
 ### Сквозные механизмы (реализованы в PHASE 00)
 
