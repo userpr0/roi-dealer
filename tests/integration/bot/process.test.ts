@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   approvalRequestIdSchema,
   AUTOMATION_CONTROL_ID,
@@ -181,9 +181,12 @@ describe('owner bot process with a database (13b)', () => {
       actor: { type: 'owner', id: `telegram:${OWNER_ID}` },
       correlationId: expect.stringMatching(/^tg-update-\d+$/) as unknown,
     });
-    expect(
-      telegram.calls.filter((call) => call.method === 'answerCallbackQuery').length,
-    ).toBeGreaterThanOrEqual(2);
+    // The router answers a press after logging it as handled.
+    await vi.waitFor(() => {
+      expect(
+        telegram.calls.filter((call) => call.method === 'answerCallbackQuery').length,
+      ).toBeGreaterThanOrEqual(2);
+    });
     expect(service.logs).toContainEqual(
       expect.objectContaining({
         message: 'telegram button press rejected: sender is not the owner',
