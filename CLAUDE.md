@@ -7,7 +7,7 @@ This repository is built phase by phase under an owner-approval protocol. Before
 
 ## Non-negotiable rules
 
-- **Never start the next phase without explicit owner approval.** Finish a phase with a Phase Report, update `docs/CURRENT_STATE.md`, then stop.
+- **Never start a phase without explicit owner approval.** Finish a phase with a Phase Report and update `docs/CURRENT_STATE.md`. An approval may cover several phases: under D-020 every phase up to full Level 2 is approved in the order of `docs/ROADMAP.md`, so continue to the next approved phase and stop only when the owner must act (merge a PR, Railway, API keys, test bot), a decision changes the stack or adds a paid service beyond the plan (ADR), money exceeds the D-007 limits, or Level 3 (payments, ads, legal) begins.
 - **No silent architecture changes.** If a stack or architecture decision should change: write an ADR proposal in `docs/ADR/`, explain reason, impact and alternatives, and stop for approval.
 - **Never commit secrets.** `.env` is git-ignored; `.env.example` holds safe local placeholders only.
 - **Do not disable or skip failing tests.** Report failures as they are.
@@ -45,5 +45,6 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Call the Telegram Bot API only through `@roi-dealer/telegram`. Any state-changing command or button must ask the owner for confirmation first and run as an idempotent `database.command` (key `tg-callback-<id>`, correlation `tg-update-<id>`). Never log the bot token or message text.
 - Owner command center logic lives in `@roi-dealer/command-center`; `apps/bot` only wires it. Every panel command and button declares its permission and is recorded in the access log.
 - Access (PHASE 04): roles and permissions live in `@roi-dealer/policies`; repositories check every write against them. Members, agents and integrations write only through an active `Principal`; give a new one access with `requestAccess` (owner approves in `/decisions`), never by inserting an active principal. Build the actor only from an authenticated channel, never from input. AI never changes permissions.
+- Evidence (PHASE 05): add a source only as a `SOURCE_CATALOG` entry in `@roi-dealer/evidence` with checked terms and verdict `allowed` — terms first, connector code second. Collect only through `collectEvidence` (kill switch, catalog, active integration principal) and redact with `redactPersonalData` before anything is stored. Never request or store authors, profiles or raw responses; keep excerpts short (`MAX_EXCERPT_LENGTH`). External APIs in tests are local fakes (`tests/support/fake-*.ts`).
 - Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.
