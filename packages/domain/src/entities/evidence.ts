@@ -7,12 +7,14 @@ import {
   httpUrlSchema,
   languageTagSchema,
   sourceIdSchema,
+  sourceSnapshotIdSchema,
   text,
   timestampMs,
   timestampSchema,
   type EvidenceId,
   type SourceId,
 } from '../primitives.js';
+import { containsContactData } from '../privacy.js';
 
 export const EVIDENCE_KINDS = [
   'quote',
@@ -25,16 +27,25 @@ export const EVIDENCE_KINDS = [
   'document',
   'other',
 ] as const;
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
+
+/** Id of an item at its source, e.g. a Hacker News item id; unique per source. */
+export const externalIdSchema = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/);
 
 const newEvidenceShape = {
   sourceId: sourceIdSchema,
   kind: z.enum(EVIDENCE_KINDS),
-  /** Verbatim excerpt or measured value, as observed. */
-  excerpt: text(5_000),
+  /** Excerpt or measured value, as observed, without contact data (D-014 п.6). */
+  excerpt: text(5_000).refine((excerpt) => !containsContactData(excerpt), {
+    message: 'excerpt must not contain an email address or phone number; redact it first',
+  }),
   url: httpUrlSchema.optional(),
   observedAt: timestampSchema,
   market: countryCodeSchema.optional(),
   language: languageTagSchema.optional(),
+  /** The load it was collected in (PHASE 05 provenance); absent for manual evidence. */
+  snapshotId: sourceSnapshotIdSchema.optional(),
+  externalId: externalIdSchema.optional(),
 };
 
 /** An immutable fact captured from a source. Corrections are new Evidence (§2.2). */

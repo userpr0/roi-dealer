@@ -1,32 +1,34 @@
 # @roi-dealer/domain
 
-**Статус:** реализован (PHASE 01, [спецификация](../../docs/phases/01_core_domain.md)).
+**Статус:** реализован (PHASE 01, [спецификация](../../docs/phases/01_core_domain.md); SystemControl — 13b, Principal — PHASE 04, SourceSnapshot и приватность Evidence — [PHASE 05](../../docs/phases/05_evidence_engine.md)).
 
 Доменная модель ROI CORE v0.1: сущности главного цикла, их жизненные циклы и правила. Чистый TypeScript + Zod: **без I/O**, без часов и случайности — время (`at`) и идентификаторы (`id`) передаёт вызывающий код.
 
 ## Сущности
 
-| Сущность                   | Создание                                                   | Изменение                                                                                                                                                     |
-| -------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source                     | `createSource`                                             | `changeSourceStatus`                                                                                                                                          |
-| Evidence (immutable)       | `createEvidence`                                           | —                                                                                                                                                             |
-| Signal                     | `createSignal`                                             | `changeSignalStatus`                                                                                                                                          |
-| Pain                       | `createPain`                                               | `validatePain` (≥ 2 источника), `changePainStatus`                                                                                                            |
-| Opportunity                | `createOpportunity`                                        | `submitOpportunityForReview`, `applyOpportunityDecision`, `startOpportunityValidation`, `archiveOpportunity`                                                  |
-| Decision (immutable)       | `createDecision` (только owner)                            | —                                                                                                                                                             |
-| ApprovalRequest            | `createApprovalRequest`                                    | `resolveApprovalRequest` (только owner, до `expiresAt`), `expireApprovalRequest`, `cancelApprovalRequest`                                                     |
-| Hypothesis                 | `createHypothesis`, `assertDistinctHypothesisSet`          | `changeHypothesisStatus`                                                                                                                                      |
-| Experiment                 | `createExperiment` (только для `selected` гипотезы)        | `requestExperimentApproval`, `approveExperiment`, `startExperiment`, `stopExperiment`, `completeExperiment`, `returnExperimentToPlanning`, `cancelExperiment` |
-| CostEntry (immutable)      | `recordCostEntry` (human gate D-006)                       | сторно — новой записью `reversalOf`; итоги — `summarizeCosts`                                                                                                 |
-| Contribution               | `createContribution`                                       | `reviewContribution` (только owner)                                                                                                                           |
-| Reward                     | `calculateReward` (только verified-вклады одного человека) | `approveReward` (payout approval), `markRewardPayable`, `markRewardPaid`, `cancelReward`                                                                      |
-| KnowledgeAsset (immutable) | `createKnowledgeAsset`                                     | новая версия — `supersedes`                                                                                                                                   |
+| Сущность                   | Создание                                                                                 | Изменение                                                                                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source                     | `createSource`                                                                           | `changeSourceStatus`                                                                                                                                          |
+| Evidence (immutable)       | `createEvidence` (без email и телефонов в цитате; `snapshotId`, `externalId` — PHASE 05) | —                                                                                                                                                             |
+| Signal                     | `createSignal`                                                                           | `changeSignalStatus`                                                                                                                                          |
+| Pain                       | `createPain`                                                                             | `validatePain` (≥ 2 источника), `changePainStatus`                                                                                                            |
+| Opportunity                | `createOpportunity`                                                                      | `submitOpportunityForReview`, `applyOpportunityDecision`, `startOpportunityValidation`, `archiveOpportunity`                                                  |
+| Decision (immutable)       | `createDecision` (только owner)                                                          | —                                                                                                                                                             |
+| ApprovalRequest            | `createApprovalRequest`                                                                  | `resolveApprovalRequest` (только owner, до `expiresAt`), `expireApprovalRequest`, `cancelApprovalRequest`                                                     |
+| Hypothesis                 | `createHypothesis`, `assertDistinctHypothesisSet`                                        | `changeHypothesisStatus`                                                                                                                                      |
+| Experiment                 | `createExperiment` (только для `selected` гипотезы)                                      | `requestExperimentApproval`, `approveExperiment`, `startExperiment`, `stopExperiment`, `completeExperiment`, `returnExperimentToPlanning`, `cancelExperiment` |
+| CostEntry (immutable)      | `recordCostEntry` (human gate D-006)                                                     | сторно — новой записью `reversalOf`; итоги — `summarizeCosts`                                                                                                 |
+| Contribution               | `createContribution`                                                                     | `reviewContribution` (только owner)                                                                                                                           |
+| Reward                     | `calculateReward` (только verified-вклады одного человека)                               | `approveReward` (payout approval), `markRewardPayable`, `markRewardPaid`, `cancelReward`                                                                      |
+| KnowledgeAsset (immutable) | `createKnowledgeAsset`                                                                   | новая версия — `supersedes`                                                                                                                                   |
+| SourceSnapshot (immutable) | `createSourceSnapshot` — одна загрузка из источника, PHASE 05                            | —                                                                                                                                                             |
 
 ## Общие элементы
 
 - **Value objects:** branded UUID (`OpportunityId`, …), `Timestamp` (только UTC), `Money` (целые центы USD), `Actor` (`owner`, `member`, `agent`, `system`, `integration`), `EntityRef`, `Metric`.
 - **State machines:** `defineStateMachine`; каждая изменяемая сущность экспортирует `…Lifecycle` и список статусов.
 - **Политика одобрений:** `requiresOwnerApproval`, `DEFAULT_APPROVAL_POLICY` (порог $20, D-006), `assertApprovalCovers`.
+- **Приватность (PHASE 05):** `containsContactData`, `EMAIL_PATTERN`, `PHONE_PATTERN`; `Source.catalogKey` — запись каталога источников.
 - **Ошибки:** `DomainError` с кодом `invalid_transition` | `owner_required` | `evidence_required` | `approval_required` | `approval_expired` | `invariant_violation`; без значений полей.
 
 ## Правила использования

@@ -14,14 +14,17 @@ import type {
   Reward,
   Signal,
   Source,
+  SourceId,
+  SourceSnapshot,
   SystemControl,
 } from '@roi-dealer/domain';
 import { findPrincipal } from './access.js';
 import { translated } from './errors.js';
-import type { Executor } from './executor.js';
+import type { Executor, Row } from './executor.js';
 import {
   createRepository,
   createVersionedRepository,
+  readRows,
   type Repository,
   type VersionedRepository,
   type WriteContext,
@@ -40,14 +43,15 @@ import {
   principalsTable,
   rewardsTable,
   signalsTable,
+  sourceSnapshotsTable,
   sourcesTable,
   systemControlsTable,
 } from './tables.js';
 
 /** One repository per domain entity; append-only records have no `update`. */
 export interface Repositories {
-  readonly sources: VersionedRepository<Source>;
-  readonly evidence: Repository<Evidence>;
+  readonly sources: SourceRepository;
+  readonly evidence: EvidenceRepository;
   readonly signals: VersionedRepository<Signal>;
   readonly pains: VersionedRepository<Pain>;
   readonly opportunities: VersionedRepository<Opportunity>;
@@ -63,6 +67,18 @@ export interface Repositories {
   readonly systemControls: VersionedRepository<SystemControl>;
   /** Identities of members, agents and integrations (PHASE 04). */
   readonly principals: PrincipalRepository;
+  /** Loads from catalog sources (PHASE 05). */
+  readonly sourceSnapshots: Repository<SourceSnapshot>;
+}
+
+export interface SourceRepository extends VersionedRepository<Source> {
+  /** The source connected by this catalog entry (PHASE 05), whatever its status. */
+  getByCatalogKey(catalogKey: string): Promise<Source | undefined>;
+}
+
+export interface EvidenceRepository extends Repository<Evidence> {
+  /** Which of `externalIds` are already stored for the source (repeated collection, PHASE 05). */
+  knownExternalIds(sourceId: SourceId, externalIds: readonly string[]): Promise<Set<string>>;
 }
 
 export interface PrincipalRepository extends VersionedRepository<Principal> {
@@ -76,8 +92,29 @@ export interface PrincipalRepository extends VersionedRepository<Principal> {
  */
 export function createRepositories(executor: Executor, context: WriteContext = {}): Repositories {
   return {
-    sources: createVersionedRepository(executor, sourcesTable, context),
-    evidence: createRepository(executor, evidenceTable, context),
+    sources: {
+      ...createVersionedRepository(executor, sourcesTable, context),
+      getByCatalogKey: (catalogKey) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`
+            select * from sources where catalog_key = ${catalogKey}
+          `;
+          const [source] = await readRows(executor, sourcesTable, rows);
+          return source;
+        }),
+    },
+    evidence: {
+      ...createRepository(executor, evidenceTable, context),
+      knownExternalIds: (sourceId, externalIds) =>
+        translated(async () => {
+          if (externalIds.length === 0) return new Set<string>();
+          const rows = await executor<{ external_id: string }[]>`
+            select external_id from evidence
+            where source_id = ${sourceId} and external_id = any(${externalIds}::text[])
+          `;
+          return new Set(rows.map((row) => row.external_id));
+        }),
+    },
     signals: createVersionedRepository(executor, signalsTable, context),
     pains: createVersionedRepository(executor, painsTable, context),
     opportunities: createVersionedRepository(executor, opportunitiesTable, context),
@@ -94,5 +131,6 @@ export function createRepositories(executor: Executor, context: WriteContext = {
       ...createVersionedRepository(executor, principalsTable, context),
       getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
     },
+    sourceSnapshots: createRepository(executor, sourceSnapshotsTable, context),
   };
 }

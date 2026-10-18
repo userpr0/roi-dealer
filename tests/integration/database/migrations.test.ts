@@ -40,6 +40,7 @@ const PROJECT_MIGRATIONS = [
   '0002_event_history',
   '0003_system_control',
   '0004_identity_access',
+  '0005_evidence_engine',
 ];
 
 describe('runMigrations with the project migrations', () => {

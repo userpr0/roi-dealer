@@ -17,6 +17,7 @@
     { "path": "./packages/rewards" },
     { "path": "./packages/telegram" },
     { "path": "./packages/command-center" },
+    { "path": "./packages/evidence" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/bot" },

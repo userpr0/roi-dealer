@@ -32,6 +32,9 @@ importers:
       '@roi-dealer/events':
         specifier: workspace:*
         version: link:packages/events
+      '@roi-dealer/evidence':
+        specifier: workspace:*
+        version: link:packages/evidence
       '@roi-dealer/judges':
         specifier: workspace:*
         version: link:packages/judges
@@ -150,6 +153,15 @@ importers:
 
   apps/worker:
     dependencies:
+      '@roi-dealer/command-center':
+        specifier: workspace:*
+        version: link:../../packages/command-center
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@roi-dealer/evidence':
+        specifier: workspace:*
+        version: link:../../packages/evidence
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -225,6 +237,24 @@ importers:
       '@roi-dealer/domain':
         specifier: workspace:*
         version: link:../domain
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
+  packages/evidence:
+    dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@roi-dealer/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: ^4.6.5
         version: 4.6.5

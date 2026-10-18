@@ -38,6 +38,7 @@ export async function buildDigest(
     toMs: nowMs + 1,
   });
   const byOwner = events.filter((event) => event.actor.type === 'owner').length;
+  const evidence = events.filter((event) => event.type === 'evidence.created').length;
   const costs = events.flatMap((event): CostEntry[] => {
     if (event.type !== 'cost_entry.created') return [];
     const parsed = costEntrySchema.safeParse(event.payload.snapshot);
@@ -56,6 +57,9 @@ export async function buildDigest(
     costs.length === 0
       ? '💸 Расходов за сутки не записано.'
       : `💸 Расходы за сутки: ${formatUsd(summarizeCosts(costs).total)} · записей: ${costs.length} → /history`,
+    ...(evidence === 0
+      ? []
+      : [`📚 Новых доказательств за сутки: ${evidence}${partial ? '+' : ''} → /journal`]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
     await killSwitchStatus(database.repositories, database.events),
   ].join('\n');

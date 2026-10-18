@@ -5,6 +5,7 @@ import * as database from '@roi-dealer/database';
 import * as domain from '@roi-dealer/domain';
 import * as economics from '@roi-dealer/economics';
 import * as events from '@roi-dealer/events';
+import * as evidence from '@roi-dealer/evidence';
 import * as judges from '@roi-dealer/judges';
 import * as observability from '@roi-dealer/observability';
 import * as policies from '@roi-dealer/policies';
@@ -22,6 +23,7 @@ describe('workspace packages', () => {
     ['@roi-dealer/domain', domain],
     ['@roi-dealer/economics', economics],
     ['@roi-dealer/events', events],
+    ['@roi-dealer/evidence', evidence],
     ['@roi-dealer/judges', judges],
     ['@roi-dealer/observability', observability],
     ['@roi-dealer/policies', policies],

@@ -36,6 +36,7 @@ export const ENTITY_LABELS: Readonly<Record<EntityType, string>> = {
   knowledge_asset: 'Знание',
   system_control: 'Стоп-кран',
   principal: 'Доступ',
+  source_snapshot: 'Загрузка источника',
 };
 
 export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {
@@ -140,6 +141,51 @@ const MAX_EVENT_LINE = 130;
 export function eventLine(event: StoredEvent): string {
   return shorten(
     `${formatTime(event.occurredAt)} · ${actorLabel(event.actor)} · ${describeEvent(event)}`,
+    MAX_EVENT_LINE,
+  );
+}
+
+/** A run of events of one kind, by one actor, within one request. */
+export interface EventRun {
+  readonly first: StoredEvent;
+  readonly last: StoredEvent;
+  readonly count: number;
+}
+
+function sameRun(a: StoredEvent, b: StoredEvent): boolean {
+  return (
+    a.correlationId !== undefined &&
+    a.correlationId === b.correlationId &&
+    a.type === b.type &&
+    a.actor.type === b.actor.type &&
+    a.actor.id === b.actor.id
+  );
+}
+
+/**
+ * Collapses consecutive events of one kind written by one actor in one request, e.g. the
+ * evidence of one load (PHASE 05), so that bulk data does not bury the owner's decisions.
+ */
+export function eventRuns(events: readonly StoredEvent[]): EventRun[] {
+  const runs: EventRun[] = [];
+  for (const event of events) {
+    const previous = runs.at(-1);
+    if (previous !== undefined && sameRun(previous.last, event)) {
+      runs[runs.length - 1] = { ...previous, last: event, count: previous.count + 1 };
+    } else {
+      runs.push({ first: event, last: event, count: 1 });
+    }
+  }
+  return runs;
+}
+
+/** One event as `eventLine`; a run as `18.10 12:00 · Интеграция … · ➕ Доказательство ×28`. */
+export function runLine(run: EventRun): string {
+  if (run.count === 1) return eventLine(run.first);
+  const label = ENTITY_LABELS[run.first.aggregate.type];
+  const what = run.first.aggregateVersion === 1 ? `➕ ${label}` : `${label}: изменения`;
+  return shorten(
+    `${formatTime(run.last.occurredAt)} · ${actorLabel(run.first.actor)} · ${what} ×${run.count}`,
     MAX_EVENT_LINE,
   );
 }

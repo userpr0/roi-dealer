@@ -14,16 +14,32 @@ import {
   AUTOMATION_CONTROL_ID,
   costEntryIdSchema,
   createApprovalRequest,
+  createEvidence,
   createSource,
+  createSourceSnapshot,
+  evidenceIdSchema,
   recordCostEntry,
   sourceIdSchema,
+  sourceSnapshotIdSchema,
   timestampMs,
   usd,
   type ApprovalRequest,
 } from '@roi-dealer/domain';
 import type { InlineKeyboard } from '@roi-dealer/telegram';
-import { after, at, createCtx, sourceData, SYSTEM } from '../../support/domain.js';
-import { createTestDatabase, type TestDatabase } from '../../support/database.js';
+import {
+  after,
+  at,
+  createCtx,
+  evidenceData,
+  INTEGRATION,
+  sourceData,
+  SYSTEM,
+} from '../../support/domain.js';
+import {
+  createTestDatabase,
+  registerPrincipal,
+  type TestDatabase,
+} from '../../support/database.js';
 import { createCapturingLogger } from '../../support/logger.js';
 
 const OWNER_TG = 1001;
@@ -322,6 +338,48 @@ describe('🧾 journal and 🕘 history', () => {
     expect(lines).toHaveLength(30);
     expect(text).toMatch(/…и ещё \d+ раньше\. Показаны последние 30\./);
     expect(lines.at(-1)).toContain('Source 34');
+  });
+});
+
+describe('📚 evidence in the journal and the digest (PHASE 05)', () => {
+  it('shows one load of evidence as one line and counts it in the digest', async () => {
+    await registerPrincipal(db, INTEGRATION);
+    const source = createSource(
+      sourceData({ name: 'Test forum' }),
+      createCtx(sourceIdSchema, SYSTEM, 3),
+    );
+    await db.repositories.sources.insert(source);
+    const snapshot = createSourceSnapshot(
+      {
+        sourceId: source.id,
+        requestUrl: 'https://forum.example.com/api/latest.json',
+        fetchedAt: at(4),
+        contentSha256: 'b'.repeat(64),
+        itemCount: 3,
+        evidenceCount: 3,
+      },
+      createCtx(sourceSnapshotIdSchema, INTEGRATION, 4),
+    );
+    await db.transaction(
+      async ({ repositories }) => {
+        await repositories.sourceSnapshots.insert(snapshot);
+        for (let index = 0; index < 3; index += 1) {
+          await repositories.evidence.insert(
+            createEvidence(
+              evidenceData(source.id, { snapshotId: snapshot.id, externalId: `item-${index}` }),
+              createCtx(evidenceIdSchema, INTEGRATION, 4),
+            ),
+          );
+        }
+      },
+      { correlationId: `evidence-collect-${snapshot.id}` },
+    );
+
+    const journal = (await press('jr:day')).edit.text;
+    expect(journal).toContain('Интеграция source:test-forum · ➕ Загрузка источника');
+    expect(journal).toContain('01.10 13:04 · Интеграция source:test-forum · ➕ Доказательство ×3');
+    const [digest] = await command('digest');
+    expect(digest?.text).toMatch(/📚 Новых доказательств за сутки: \d+ → \/journal/);
   });
 });
 

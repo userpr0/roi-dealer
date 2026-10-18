@@ -1,6 +1,6 @@
 /**
  * @roi-dealer/command-center — the owner's command center in Telegram (13b, D-002, D-009, D-010;
- * access and its audit — PHASE 04).
+ * access and its audit — PHASE 04; evidence in the digest and runs in the journal — PHASE 05).
  *
  * Approvals with a confirmation, the automation kill switch, the journal and history for a day,
  * week or month, and the daily digest at 10:00 Kyiv. Every change runs as an idempotent database
@@ -11,6 +11,7 @@ export {
   ACCESS_REQUEST_TTL_MS,
   applyAccessDecision,
   createAccessAudit,
+  ensureAccessRequest,
   handleAccessButton,
   principalCardText,
   REFUSED_THROTTLE_MS,
@@ -18,6 +19,7 @@ export {
   sendAccessOverview,
   type AccessAudit,
   type AccessFlowDeps,
+  type AccessRequestState,
   type RefusedAttempt,
 } from './access.js';
 export {

@@ -13,6 +13,7 @@ import {
   rewardSchema,
   signalSchema,
   sourceSchema,
+  sourceSnapshotSchema,
   systemControlSchema,
   type ApprovalRequest,
   type Contribution,
@@ -29,6 +30,7 @@ import {
   type Reward,
   type Signal,
   type Source,
+  type SourceSnapshot,
   type SystemControl,
 } from '@roi-dealer/domain';
 import type { Row } from './executor.js';
@@ -50,8 +52,9 @@ import {
 } from './rows.js';
 
 /*
- * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b) and
- * Principal (migration 0004, PHASE 04) to their tables (database/docs/schema.md).
+ * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b),
+ * Principal (migration 0004, PHASE 04) and SourceSnapshot (migration 0005, PHASE 05) to their
+ * tables (database/docs/schema.md).
  * `toColumns` writes every column; `fromRow` rebuilds the domain object for schema validation.
  */
 
@@ -95,6 +98,7 @@ export const sourcesTable: TableSpec<Source> = {
     languages: source.languages,
     trust: source.trust,
     status: source.status,
+    catalog_key: source.catalogKey ?? null,
     ...mutableMetaColumns(source),
   }),
   fromRow: (row) =>
@@ -107,6 +111,7 @@ export const sourcesTable: TableSpec<Source> = {
       languages: row['languages'],
       trust: row['trust'],
       status: row['status'],
+      catalogKey: row['catalog_key'],
       ...readMutableMeta(row),
     }),
 };
@@ -125,6 +130,8 @@ export const evidenceTable: TableSpec<Evidence> = {
     observed_at: evidence.observedAt,
     market: evidence.market ?? null,
     language: evidence.language ?? null,
+    snapshot_id: evidence.snapshotId ?? null,
+    external_id: evidence.externalId ?? null,
     ...immutableMetaColumns(evidence),
   }),
   fromRow: (row) =>
@@ -137,6 +144,8 @@ export const evidenceTable: TableSpec<Evidence> = {
       observedAt: instant(row['observed_at']),
       market: row['market'],
       language: row['language'],
+      snapshotId: row['snapshot_id'],
+      externalId: row['external_id'],
       ...readImmutableMeta(row),
     }),
 };
@@ -665,4 +674,31 @@ export const principalsTable: TableSpec<Principal> = {
       status: row['status'],
       ...readMutableMeta(row),
     }),
+};
+
+export const sourceSnapshotsTable: TableSpec<SourceSnapshot> = {
+  entity: 'source_snapshot',
+  table: 'source_snapshots',
+  schema: sourceSnapshotSchema,
+  links: {},
+  toColumns: (snapshot) => ({
+    id: snapshot.id,
+    source_id: snapshot.sourceId,
+    request_url: snapshot.requestUrl,
+    fetched_at: snapshot.fetchedAt,
+    content_sha256: snapshot.contentSha256,
+    item_count: snapshot.itemCount,
+    evidence_count: snapshot.evidenceCount,
+    ...immutableMetaColumns(snapshot),
+  }),
+  fromRow: (row) => ({
+    id: row['id'],
+    sourceId: row['source_id'],
+    requestUrl: row['request_url'],
+    fetchedAt: instant(row['fetched_at']),
+    contentSha256: row['content_sha256'],
+    itemCount: row['item_count'],
+    evidenceCount: row['evidence_count'],
+    ...readImmutableMeta(row),
+  }),
 };

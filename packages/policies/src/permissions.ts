@@ -104,6 +104,7 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   knowledge_asset: { create: 'research.write' },
   system_control: { create: 'system.control', update: 'system.control' },
   principal: { create: 'access.propose', update: 'access.manage' },
+  source_snapshot: { create: 'evidence.write' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {
