@@ -52,6 +52,8 @@ jobs:
         run: pnpm --filter @roi-dealer/miniapp run build
         env:
           MINIAPP_BASE_PATH: /${{ github.event.repository.name }}/
+          # The api service's public address (PHASE 13, docs/deploy/api.md) — not a secret.
+          VITE_API_URL: ${{ vars.MINIAPP_API_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

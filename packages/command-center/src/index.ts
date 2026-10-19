@@ -11,6 +11,7 @@ export {
   ACCESS_REQUEST_TTL_MS,
   applyAccessDecision,
   createAccessAudit,
+  createSenderThrottle,
   ensureAccessRequest,
   handleAccessButton,
   principalCardText,
@@ -53,6 +54,13 @@ export {
   portfolioKeyboard,
   sendPortfolio,
 } from './portfolio.js';
+export {
+  authorizePanel,
+  panelSnapshot,
+  type PanelAccess,
+  type PanelCycle,
+  type PanelSnapshot,
+} from './panel.js';
 export {
   isReviewDay,
   REVIEW_DAYS,
@@ -121,6 +129,7 @@ export {
   MAX_EXPERIMENT_CARDS,
   METHOD_LABELS,
   activeExperimentViews,
+  EXPERIMENT_STATUS_LABELS,
   metricText,
   moneyLine,
   proposalKeyboard,

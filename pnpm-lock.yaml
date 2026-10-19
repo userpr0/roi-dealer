@@ -104,6 +104,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@roi-dealer/command-center':
+        specifier: workspace:*
+        version: link:../../packages/command-center
       '@roi-dealer/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -113,6 +116,9 @@ importers:
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@roi-dealer/telegram':
+        specifier: workspace:*
+        version: link:../../packages/telegram
       zod:
         specifier: ^4.6.5
         version: 4.6.5

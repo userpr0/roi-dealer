@@ -27,6 +27,15 @@ function send(
   response: ApiResponse,
   correlationId: string,
 ): void {
+  if (response.body === undefined) {
+    res.writeHead(response.status, {
+      ...response.headers,
+      'cache-control': 'no-store',
+      [CORRELATION_ID_HEADER]: correlationId,
+    });
+    res.end();
+    return;
+  }
   const payload = JSON.stringify(response.body);
   res.writeHead(response.status, {
     ...response.headers,
@@ -50,7 +59,13 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
 
     let response: ApiResponse;
     try {
-      response = await router({ method, path });
+      response = await router({
+        method,
+        path,
+        // Only what routes read; the authorization header is never logged.
+        headers: { origin: req.headers.origin, authorization: req.headers.authorization },
+        correlationId,
+      });
     } catch (error) {
       requestLogger.error('request handler failed', { method, path, error });
       response = { status: 500, body: { error: 'internal_error' } };

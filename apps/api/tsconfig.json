@@ -8,6 +8,8 @@
   "references": [
     { "path": "../../packages/shared" },
     { "path": "../../packages/observability" },
-    { "path": "../../packages/database" }
+    { "path": "../../packages/database" },
+    { "path": "../../packages/telegram" },
+    { "path": "../../packages/command-center" }
   ]
 }

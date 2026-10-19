@@ -187,7 +187,7 @@ export const CHECK_LABELS: Readonly<Record<HonestCheck, string>> = {
   crash_test: '2–3 человека прошли демо или прототип без подсказок',
 };
 
-const STATUS_LABELS: Readonly<Record<ExperimentStatus, string>> = {
+export const EXPERIMENT_STATUS_LABELS: Readonly<Record<ExperimentStatus, string>> = {
   planned: '📝 план',
   awaiting_approval: '⏳ ждёт ✅ в /decisions',
   approved: '✅ запуск одобрен',
@@ -401,7 +401,7 @@ export function experimentCardText(view: ExperimentView, at: Timestamp): string 
   const number = view.number > 0 ? `№${String(view.number)} · ` : '';
   const lines = [
     `🧪 ${number}«${shorten(opportunity.title, 120)}» — ${METHOD_LABELS[hypothesis.validationMethod]} · ${hypothesis.geo}`,
-    `Статус: ${STATUS_LABELS[experiment.status]}` +
+    `Статус: ${EXPERIMENT_STATUS_LABELS[experiment.status]}` +
       (day === undefined
         ? ''
         : ` · день ${String(Math.min(day.day, experiment.buildBudget.maxCalendarDays))} из ${String(experiment.buildBudget.maxCalendarDays)}`),
@@ -1130,7 +1130,7 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
       }
       if (experiment.status !== 'running' && experiment.status !== 'stopped') {
         await context.reply(
-          `Тест №${String(report.number)} ещё не запущен: ${STATUS_LABELS[experiment.status]}.`,
+          `Тест №${String(report.number)} ещё не запущен: ${EXPERIMENT_STATUS_LABELS[experiment.status]}.`,
         );
         return;
       }

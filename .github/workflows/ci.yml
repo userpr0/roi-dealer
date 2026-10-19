@@ -103,3 +103,16 @@ jobs:
 
       - name: Build image
         run: docker build -f apps/worker/Dockerfile --build-arg APP_VERSION=${{ github.sha }} -t roi-dealer-worker:ci .
+
+  api-image:
+    name: Build api Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build -f apps/api/Dockerfile --build-arg APP_VERSION=${{ github.sha }} -t roi-dealer-api:ci .

@@ -399,13 +399,35 @@ export interface AccessAudit {
 export const REFUSED_THROTTLE_MS = 10 * 60_000;
 const MAX_TRACKED_SENDERS = 1_000;
 
+/**
+ * Whether a refused sender's attempt is recorded now: at most once per sender per window, with
+ * a bounded memory of senders. Used by the bot and the Mini App's API (PHASE 13).
+ */
+export function createSenderThrottle(
+  windowMs: number = REFUSED_THROTTLE_MS,
+): (sender: string, nowMs: number) => boolean {
+  const lastRecorded = new Map<string, number>();
+  return (sender, nowMs) => {
+    const previous = lastRecorded.get(sender);
+    if (previous !== undefined && nowMs - previous < windowMs) return false;
+    if (lastRecorded.size >= MAX_TRACKED_SENDERS) {
+      for (const [known, at] of lastRecorded) {
+        if (nowMs - at >= windowMs) lastRecorded.delete(known);
+      }
+      if (lastRecorded.size >= MAX_TRACKED_SENDERS) lastRecorded.clear();
+    }
+    lastRecorded.set(sender, nowMs);
+    return true;
+  };
+}
+
 export function createAccessAudit(deps: {
   readonly database: Database;
   readonly logger: Logger;
   readonly now: () => Timestamp;
   readonly owner: (telegramUserId: number) => Actor;
 }): AccessAudit {
-  const lastRecorded = new Map<string, number>();
+  const shouldRecord = createSenderThrottle();
 
   async function record(entry: AccessLogEntry): Promise<void> {
     try {
@@ -434,16 +456,7 @@ export function createAccessAudit(deps: {
 
     async refused({ userId, reason, updateId }) {
       const actorId = `telegram:${userId ?? 'unknown'}`;
-      const nowMs = timestampMs(deps.now());
-      const previous = lastRecorded.get(actorId);
-      if (previous !== undefined && nowMs - previous < REFUSED_THROTTLE_MS) return;
-      if (lastRecorded.size >= MAX_TRACKED_SENDERS) {
-        for (const [sender, at] of lastRecorded) {
-          if (nowMs - at >= REFUSED_THROTTLE_MS) lastRecorded.delete(sender);
-        }
-        if (lastRecorded.size >= MAX_TRACKED_SENDERS) lastRecorded.clear();
-      }
-      lastRecorded.set(actorId, nowMs);
+      if (!shouldRecord(actorId, timestampMs(deps.now()))) return;
       await record({
         occurredAt: deps.now(),
         channel: 'telegram',
