@@ -294,6 +294,9 @@ importers:
       '@roi-dealer/policies':
         specifier: workspace:*
         version: link:../policies
+      '@roi-dealer/rewards':
+        specifier: workspace:*
+        version: link:../rewards
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../shared
@@ -423,7 +426,11 @@ importers:
         specifier: workspace:*
         version: link:../domain
 
-  packages/rewards: {}
+  packages/rewards:
+    dependencies:
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/schemas:
     dependencies:

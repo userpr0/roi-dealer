@@ -13,6 +13,7 @@ import { decidableRequests } from './approvals.js';
 import { reviewCount } from './opportunity-cards.js';
 import { collectEvents, PERIODS } from './journal.js';
 import { killSwitchStatus } from './kill-switch.js';
+import { rewardsDigestLine } from './rewards.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
 import { formatTime } from './texts.js';
 
@@ -37,6 +38,7 @@ export async function buildDigest(
     await database.repositories.experiments.listByStatus('running', { limit: 1_000 })
   ).filter((experiment) => experimentDay(experiment, now)?.overdue === true).length;
   const ai = await aiDigestLine(database.aiCalls, nowMs);
+  const rewards = await rewardsDigestLine(database.repositories);
   const refused = await database.access.count({
     from: toTimestamp(new Date(nowMs - PERIODS.day.ms)),
     to: toTimestamp(new Date(nowMs + 1)),
@@ -91,6 +93,7 @@ export async function buildDigest(
       ? []
       : [`⚠️ Сбоев агентов за сутки: ${String(agentFailures)} → /agents`]),
     ...(overdue === 0 ? [] : [`⏰ Просроченных тестов: ${String(overdue)} → /experiments`]),
+    ...(rewards === undefined ? [] : [rewards]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
     await killSwitchStatus(database.repositories, database.events),
   ].join('\n');

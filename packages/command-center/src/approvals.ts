@@ -13,6 +13,7 @@ import { ConcurrencyError, type Database, type Repositories } from '@roi-dealer/
 import { callbackButton, type CallbackContext, type InlineKeyboard } from '@roi-dealer/telegram';
 import { applyAccessDecision } from './access.js';
 import { applyExperimentLaunchDecision } from './experiments.js';
+import { applyPayoutDecision } from './rewards.js';
 import { APPROVAL_KIND_LABELS, formatTime, shorten } from './texts.js';
 
 /** Buttons of approval cards: `ap:<action>:<request id>`. */
@@ -116,6 +117,9 @@ const NOTES = {
   refused: '\n🔐 Доступ не выдан.',
   launch_approved: '\n🧪 Запуск одобрен: запустите тест и нажмите ▶️ в /experiments.',
   launch_rejected: '\n🧪 Тест вернулся к планированию — /experiments.',
+  payout_approved:
+    '\n🏆 Выплата одобрена: переведите деньги и отметьте /paid <номер> <ссылка> — /rewards.',
+  payout_rejected: '\n🏆 Начисление отменено: вклады снова можно вознаградить — /rewards.',
   none: '',
 } as const;
 
@@ -126,7 +130,8 @@ type ResolveOutcome =
       readonly status: 'approved' | 'rejected';
       /**
        * What the decision changed: the identity of an `access_grant` request (PHASE 04), the
-       * experiment of an `experiment_launch` request (PHASE 15).
+       * experiment of an `experiment_launch` request (PHASE 15), the reward of a `payout`
+       * request (PHASE 17).
        */
       readonly access?: Exclude<keyof typeof NOTES, 'none'> | undefined;
     }
@@ -215,7 +220,8 @@ export async function handleApprovalButton(
         await repositories.approvalRequests.update(resolved, actor);
         const access =
           (await applyAccessDecision(repositories, resolved, actor, at)) ??
-          (await applyExperimentLaunchDecision(repositories, resolved, actor, at));
+          (await applyExperimentLaunchDecision(repositories, resolved, actor, at)) ??
+          (await applyPayoutDecision(repositories, resolved, actor, at));
         return {
           outcome: 'resolved',
           status: resolved.status === 'approved' ? 'approved' : 'rejected',

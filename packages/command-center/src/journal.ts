@@ -38,6 +38,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'approval_request':
     case 'cost_entry':
     case 'revenue_entry':
+    case 'reward':
     case 'system_control':
     case 'principal':
       return true;
@@ -52,7 +53,6 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'opportunity':
     case 'hypothesis':
     case 'contribution':
-    case 'reward':
     case 'knowledge_asset':
     case 'source_snapshot':
       return false;

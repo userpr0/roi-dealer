@@ -7,31 +7,34 @@
   "include": ["src"],
   "references": [
     {
-      "path": "../domain"
-    },
-    {
       "path": "../brain"
-    },
-    {
-      "path": "../events"
     },
     {
       "path": "../database"
     },
     {
-      "path": "../observability"
+      "path": "../domain"
     },
     {
-      "path": "../telegram"
+      "path": "../economics"
+    },
+    {
+      "path": "../events"
+    },
+    {
+      "path": "../observability"
     },
     {
       "path": "../policies"
     },
     {
+      "path": "../rewards"
+    },
+    {
       "path": "../shared"
     },
     {
-      "path": "../economics"
+      "path": "../telegram"
     }
   ]
 }

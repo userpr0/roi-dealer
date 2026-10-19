@@ -54,6 +54,7 @@ import {
 } from './opportunity-cards.js';
 import { handlePainButton, PAIN_PREFIX, painsReply } from './pains.js';
 import { handlePortfolioButton, PORTFOLIO_PREFIX, sendPortfolio } from './portfolio.js';
+import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.js';
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
@@ -124,6 +125,10 @@ const DESCRIPTIONS = {
   stats: 'Статистика цикла и метрики системы',
   review: 'Недельный разбор сейчас',
   agents: 'Агенты: доступ, работа, AI за сутки',
+  rewards: 'Вклады и вознаграждения',
+  contribution: 'Записать вклад участника',
+  reward: 'Начислить вознаграждение за вклады',
+  paid: 'Отметить выплату вознаграждения',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -149,6 +154,8 @@ function withoutDatabase(): Pick<
       COST_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
+      CONTRIBUTION_PREFIX,
+      REWARD_PREFIX,
       KILL_SWITCH_PREFIX,
       ACCESS_PREFIX,
       NOTE_PREFIX,
@@ -188,6 +195,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const notes = createNoteFlow(deps);
   const funnel = createFunnelFlow(deps);
   const costs = createCostFlow(deps);
+  const rewards = createRewardFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -343,6 +351,10 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
       ),
+      command('rewards', 'history.read', rewards.rewards),
+      command('contribution', 'contribution.write', rewards.contribution),
+      command('reward', 'reward.write', rewards.reward),
+      command('paid', 'reward.write', rewards.paid),
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),
@@ -361,6 +373,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         handlePortfolioButton(deps, context),
       ),
       button(PAIN_PREFIX, 'research.write', (context) => handlePainButton(deps, context)),
+      button(CONTRIBUTION_PREFIX, 'contribution.write', rewards.handleContributionButton),
+      button(REWARD_PREFIX, 'reward.write', rewards.handleRewardButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
       button(NOTE_PREFIX, 'research.write', notes.handleButton),

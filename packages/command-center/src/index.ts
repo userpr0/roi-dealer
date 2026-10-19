@@ -92,6 +92,29 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  applyPayoutDecision,
+  CONTRIBUTION_KIND_LABELS,
+  CONTRIBUTION_PREFIX,
+  CONTRIBUTION_USAGE,
+  createRewardFlow,
+  memberActor,
+  NO_CONTRIBUTIONS_TEXT,
+  PAID_USAGE,
+  parseContribution,
+  parsePaid,
+  parseRewardCommand,
+  PAYOUT_REQUEST_DAYS,
+  REWARD_PREFIX,
+  REWARD_USAGE,
+  rewardsDigestLine,
+  rewardsReply,
+  type ContributionInput,
+  type PaidInput,
+  type RewardFlow,
+  type RewardFlowDeps,
+  type RewardInput,
+} from './rewards.js';
+export {
   handleHypothesisButton,
   HYPOTHESES_SHOWN,
   hypothesesReadyText,

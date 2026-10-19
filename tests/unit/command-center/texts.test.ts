@@ -106,6 +106,9 @@ describe('isHistoryEvent', () => {
     expect(isHistoryEvent(event('decision.created', 1, {}))).toBe(true);
     expect(isHistoryEvent(event('approval_request.updated', 2, {}))).toBe(true);
     expect(isHistoryEvent(event('cost_entry.created', 1, {}))).toBe(true);
+    // Rewards are money (PHASE 17); a contribution is not yet.
+    expect(isHistoryEvent(event('reward.updated', 3, {}))).toBe(true);
+    expect(isHistoryEvent(event('contribution.created', 1, {}))).toBe(false);
     expect(isHistoryEvent(event('system_control.updated', 2, {}))).toBe(true);
     expect(isHistoryEvent(event('experiment.updated', 4, { status: 'running' }))).toBe(true);
     expect(isHistoryEvent(event('experiment.updated', 2, { status: 'awaiting_approval' }))).toBe(

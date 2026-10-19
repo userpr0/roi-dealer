@@ -25,6 +25,7 @@
     "@roi-dealer/events": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
+    "@roi-dealer/rewards": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "@roi-dealer/telegram": "workspace:*"
   }
