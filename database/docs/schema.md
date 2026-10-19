@@ -65,25 +65,26 @@ rewards ─< reward_contributions >── contributions
 
 ## Правила домена в ограничениях БД
 
-| Правило (PHASE 01)                                               | Ограничение                                                                                             |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Статусы, виды, категории                                         | `CHECK (… IN (…))` в каждой таблице                                                                     |
-| Evidence → Source, связи списков, lineage                        | внешние ключи; `experiments_hypothesis_fkey` — гипотеза той же возможности                              |
-| Stop-loss ≤ бюджета                                              | `hypotheses_stop_loss_within_budget`, `experiments_stop_loss_within_budget`                             |
-| Суммы > 0 (цена ≥ 0)                                             | `CHECK` на колонках `*_usd_cents`                                                                       |
-| Evidence не из будущего                                          | `evidence_observed_not_after_created`                                                                   |
-| Одобрение имеет срок                                             | `approval_requests_expires_after_created`                                                               |
-| Денежные одобрения содержат сумму (D-006)                        | `approval_requests_amount_required`                                                                     |
-| Решение по одобрению записано ⇔ approved / rejected              | `approval_requests_resolution_complete`, `approval_requests_resolution_matches_status`                  |
-| Эксперимент не идёт без одобрения запуска                        | `experiments_launch_approval_referenced`                                                                |
-| Завершённый эксперимент имеет итог (§2.9)                        | `experiments_result_complete`, `experiments_result_matches_status`                                      |
-| Проверка вклада записана ⇔ verified / rejected                   | `contributions_review_complete`, `contributions_review_matches_status`                                  |
-| Reward только людям (§2.10)                                      | `rewards_contributor_type_check`                                                                        |
-| Одобренный Reward ссылается на одобрение выплаты                 | `rewards_payout_approval_referenced`                                                                    |
-| Выплаченный Reward записывает платёж                             | `rewards_payment_complete`, `rewards_payment_matches_status`                                            |
-| Неизменяемые записи (§2.2)                                       | триггеры `*_append_only`: `UPDATE` / `DELETE` → `<table>_update_forbidden` / `<table>_delete_forbidden` |
-| Строки не удаляются                                              | триггеры `*_no_delete`, `*_no_truncate`                                                                 |
-| Новая версия = `version + 1`, автор и время создания не меняются | триггер `*_versioned_update`: `<table>_version_increment`, `<table>_creation_immutable`                 |
+| Правило (PHASE 01)                                                                                 | Ограничение                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Статусы, виды, категории                                                                           | `CHECK (… IN (…))` в каждой таблице                                                                                                                  |
+| Evidence → Source, связи списков, lineage                                                          | внешние ключи; `experiments_hypothesis_fkey` — гипотеза той же возможности                                                                           |
+| Stop-loss ≤ бюджета                                                                                | `hypotheses_stop_loss_within_budget`, `experiments_stop_loss_within_budget`                                                                          |
+| Суммы > 0 (цена ≥ 0)                                                                               | `CHECK` на колонках `*_usd_cents`                                                                                                                    |
+| Evidence не из будущего                                                                            | `evidence_observed_not_after_created`                                                                                                                |
+| Одобрение имеет срок                                                                               | `approval_requests_expires_after_created`                                                                                                            |
+| Денежные одобрения содержат сумму (D-006)                                                          | `approval_requests_amount_required`                                                                                                                  |
+| Решение по одобрению записано ⇔ approved / rejected                                                | `approval_requests_resolution_complete`, `approval_requests_resolution_matches_status`                                                               |
+| Эксперимент не идёт без одобрения запуска                                                          | `experiments_launch_approval_referenced`                                                                                                             |
+| Завершённый эксперимент имеет итог (§2.9)                                                          | `experiments_result_complete`, `experiments_result_matches_status`                                                                                   |
+| Проверка вклада записана ⇔ verified / rejected                                                     | `contributions_review_complete`, `contributions_review_matches_status`                                                                               |
+| Reward только людям (§2.10)                                                                        | `rewards_contributor_type_check`                                                                                                                     |
+| Одобренный Reward ссылается на одобрение выплаты                                                   | `rewards_payout_approval_referenced`                                                                                                                 |
+| Выплаченный Reward записывает платёж                                                               | `rewards_payment_complete`, `rewards_payment_matches_status`                                                                                         |
+| Вклад в Reward: подтверждён, того же человека, в одном действующем Reward (§2.10, миграция `0014`) | триггер `reward_contributions_check`: `reward_contributions_verified`, `reward_contributions_same_contributor`, `reward_contributions_rewarded_once` |
+| Неизменяемые записи (§2.2)                                                                         | триггеры `*_append_only`: `UPDATE` / `DELETE` → `<table>_update_forbidden` / `<table>_delete_forbidden`                                              |
+| Строки не удаляются                                                                                | триггеры `*_no_delete`, `*_no_truncate`                                                                                                              |
+| Новая версия = `version + 1`, автор и время создания не меняются                                   | триггер `*_versioned_update`: `<table>_version_increment`, `<table>_creation_immutable`                                                              |
 
 Правила, которые БД не проверяет (их проверяет домен): минимальное число элементов в списках id (`evidenceIds ≥ 1`, `painIds ≥ 1`, `result.assetIds ≥ 1`), допустимые переходы статусов, решения только владельца, существование объекта в полиморфной ссылке `subject`, пять разных гипотез.
 
@@ -231,6 +232,14 @@ rewards ─< reward_contributions >── contributions
   - привязка к возможности, гипотезе, эксперименту; `reversal_of` — сторно.
 - **Возвраты клиентам** — `cost_entries` категории `refund` с `experiment_id`; траты теста и stop-loss считаются без них.
 - Суммы по журналам, деньги тестов и автоматические траты по дням — фиксированные запросы `database.economics`.
+
+## Rewards (PHASE 17)
+
+- **Новых таблиц нет:** `contributions`, `rewards`, `reward_contributions` есть с PHASE 01.
+- **Триггер `reward_contributions_check`** (миграция `0014`) при каждой связи начисления с вкладом:
+  - блокирует строку вклада (`FOR UPDATE`) — два одновременных начисления одного вклада не пройдут;
+  - вклад подтверждён (`verified`), принадлежит человеку начисления и не входит в другое неотменённое начисление.
+- **Выплата** — `cost_entries` категории `human` со ссылкой на одобренный запрос `payout`, без привязки к тесту.
 
 ## Ошибки
 
