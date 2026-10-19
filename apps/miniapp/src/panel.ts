@@ -79,7 +79,7 @@ export interface Panel {
 
 export type PanelResult =
   | { readonly kind: 'ok'; readonly panel: Panel }
-  /** The build has no API address (`VITE_API_URL`). */
+  /** No API address: neither `VITE_API_URL` nor the `api` parameter (`apiAddress`). */
   | { readonly kind: 'not_configured' }
   /** Opened in a browser, not from the bot: there is no Telegram signature. */
   | { readonly kind: 'outside_telegram' }

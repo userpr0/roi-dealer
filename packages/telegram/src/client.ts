@@ -6,6 +6,7 @@ import {
   type BotCommand,
   type BotCommandScope,
   type InlineKeyboard,
+  type MenuButton,
   type TelegramUpdate,
   type TelegramUser,
 } from './api-types.js';
@@ -82,6 +83,11 @@ export interface TelegramClient {
   setMyCommands(params: {
     readonly commands: readonly BotCommand[];
     readonly scope?: BotCommandScope;
+  }): Promise<void>;
+  /** Sets the menu button of one private chat. */
+  setChatMenuButton(params: {
+    readonly chatId: number;
+    readonly menuButton: MenuButton;
   }): Promise<void>;
 }
 
@@ -218,6 +224,10 @@ export function createTelegramClient(options: TelegramClientOptions): TelegramCl
 
     async setMyCommands({ commands, scope }) {
       await call('setMyCommands', { commands, ...(scope === undefined ? {} : { scope }) });
+    },
+
+    async setChatMenuButton({ chatId, menuButton }) {
+      await call('setChatMenuButton', { chat_id: chatId, menu_button: menuButton });
     },
   };
 }

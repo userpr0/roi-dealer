@@ -127,6 +127,12 @@ describe('createTelegramClient', () => {
     await client.sendMessage({ chatId: 1, text: 'Остановить?', keyboard });
     await client.editMessageText({ chatId: 1, messageId: 9, text: 'Остановлено' });
     await client.answerCallbackQuery({ callbackQueryId: 'q1', text: 'Готово' });
+    const menuButton = {
+      type: 'web_app',
+      text: 'Пульт',
+      web_app: { url: 'https://app.test/' },
+    } as const;
+    await client.setChatMenuButton({ chatId: 1, menuButton });
 
     const bodies = fetchMock.mock.calls.map(([url, init]) => [
       typeof url === 'string' ? url.split('/').at(-1) : undefined,
@@ -139,6 +145,7 @@ describe('createTelegramClient', () => {
       ],
       ['editMessageText', { chat_id: 1, message_id: 9, text: 'Остановлено' }],
       ['answerCallbackQuery', { callback_query_id: 'q1', text: 'Готово' }],
+      ['setChatMenuButton', { chat_id: 1, menu_button: menuButton }],
     ]);
   });
 

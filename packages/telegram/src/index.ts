@@ -10,6 +10,7 @@ export {
   type BotCommandScope,
   type InlineKeyboard,
   type InlineKeyboardButton,
+  type MenuButton,
   type TelegramCallbackQuery,
   type TelegramChat,
   type TelegramMessage,

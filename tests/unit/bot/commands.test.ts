@@ -6,7 +6,7 @@ import {
   startedText,
   TEXT,
 } from '../../../apps/bot/src/commands.js';
-import { loadBotConfig } from '../../../apps/bot/src/config.js';
+import { loadBotConfig, panelMenuButton } from '../../../apps/bot/src/config.js';
 import { createCapturingLogger } from '../../support/logger.js';
 
 const TOKEN = '1234567:TEST-fake-token-not-real-0000000000';
@@ -144,8 +144,33 @@ describe('bot config', () => {
       TELEGRAM_API_BASE_URL: 'https://api.telegram.org',
       DATABASE_POOL_MAX: 5,
       DATABASE_CONNECT_TIMEOUT_SECONDS: 10,
+      MINIAPP_URL: 'https://userpr0.github.io/roi-dealer/',
       DECISION_CARDS_INTERVAL_MS: 300_000,
     });
+  });
+
+  it('builds the owner menu button with the api address only when it is known', () => {
+    const base = { TELEGRAM_BOT_TOKEN: TOKEN, TELEGRAM_OWNER_USER_ID: '1001' };
+    expect(panelMenuButton(loadBotConfig(base))).toBeUndefined();
+    expect(
+      panelMenuButton(loadBotConfig({ ...base, PUBLIC_API_URL: 'https://api.example.test/' })),
+    ).toEqual({
+      type: 'web_app',
+      text: 'Пульт',
+      web_app: {
+        url: 'https://userpr0.github.io/roi-dealer/?api=https%3A%2F%2Fapi.example.test',
+      },
+    });
+    expect(() => loadBotConfig({ ...base, MINIAPP_URL: 'http://example.test/' })).toThrow(
+      /MINIAPP_URL/,
+    );
+  });
+
+  it('runs without the api address when it is not a valid https address', () => {
+    const base = { TELEGRAM_BOT_TOKEN: TOKEN, TELEGRAM_OWNER_USER_ID: '1001' };
+    for (const value of ['https://', 'https://${{api.RAILWAY_PUBLIC_DOMAIN}}', 'http://api.test']) {
+      expect(loadBotConfig({ ...base, PUBLIC_API_URL: value }).PUBLIC_API_URL).toBeUndefined();
+    }
   });
 
   it('accepts an optional PostgreSQL URL for the command center', () => {

@@ -3,8 +3,8 @@
 ```text
 Current Phase: 20b — Приём оплат
 Phase Status: PASS
-Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, PR awaiting merge), 09 — AI Runtime (PASS, PR awaiting merge), 06 — Signals & Pain (PASS, PR awaiting merge), 07 — Opportunity Engine (PASS, PR awaiting merge), 08 — Company Brain v0.1 (PASS, PR awaiting merge), 10 — Agents (PASS, PR awaiting merge), 11 — Judges (PASS, PR awaiting merge), 12 — Decision Engine (PASS, PR awaiting merge), 14 — Five Hypothesis Engine (PASS, PR awaiting merge), 15 — Experiment Engine (PASS, PR awaiting merge), 16 — Economics (PASS, PR awaiting merge), 13 — Owner Command Center (PASS, PR awaiting merge), 17 — Reward Engine (PASS, PR awaiting merge), 19a — Media Factory (PASS, PR awaiting merge), 21 — Solution Factory (PASS, PR awaiting merge), 20 — CRM / Outcomes (PASS, PR awaiting merge), 20b — Payments (PASS, PR awaiting merge)
-Level: 1 reached (2026-10-18: bot + cloud PostgreSQL in Railway); Level 2 built — all D-020 phases PASS, awaiting merge and owner setup; Level 3 minimum built (D-022: 19a, 21, 20, 20b) — awaiting merge and owner setup (deploy/START.md)
+Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, merged 2026-10-19, PR #4), 09 — AI Runtime (PASS, merged 2026-10-19, PR #4), 06 — Signals & Pain (PASS, merged 2026-10-19, PR #4), 07 — Opportunity Engine (PASS, merged 2026-10-19, PR #4), 08 — Company Brain v0.1 (PASS, merged 2026-10-19, PR #4), 10 — Agents (PASS, merged 2026-10-19, PR #4), 11 — Judges (PASS, merged 2026-10-19, PR #4), 12 — Decision Engine (PASS, merged 2026-10-19, PR #4), 14 — Five Hypothesis Engine (PASS, merged 2026-10-19, PR #4), 15 — Experiment Engine (PASS, merged 2026-10-19, PR #4), 16 — Economics (PASS, merged 2026-10-19, PR #4), 13 — Owner Command Center (PASS, merged 2026-10-19, PR #4), 17 — Reward Engine (PASS, merged 2026-10-19, PR #4), 19a — Media Factory (PASS, merged 2026-10-19, PR #4), 21 — Solution Factory (PASS, merged 2026-10-19, PR #4), 20 — CRM / Outcomes (PASS, merged 2026-10-19, PR #4), 20b — Payments (PASS, merged 2026-10-19, PR #4)
+Level: 1 reached (2026-10-18: bot + cloud PostgreSQL in Railway); Level 2 and the minimum Level 3 (D-022: 19a, 21, 20, 20b) merged to main 2026-10-19 (PR #4); awaiting owner setup (deploy/START.md)
 Approval mode: D-020 — all phases up to full Level 2 approved; order 05 → 09 → 06 → 07 → 08 → 10 → 11 → 12 → 14 → 15 → 16 → 13 → 17; D-021 — three AI providers, daily AI budget; D-022 — Level 3 approved, order 19a → 21 → 20 → 20b
 Playbook: v1.1
 Updated: 2026-10-19
@@ -18,12 +18,12 @@ Updated: 2026-10-19
 
 - pnpm monorepo (`apps/*`, `packages/*`), воспроизводимая установка (`pnpm install --frozen-lockfile`).
 - TypeScript 6.0 strict + project references (`tsc -b`), ESLint 10 (type-aware, `no-console`), Prettier.
-- Vitest: 83 test files, 859 tests (568 unit, 291 integration); integration-тесты работают с настоящим PostgreSQL 18.
+- Vitest: 84 test files, 866 tests (573 unit, 293 integration); integration-тесты работают с настоящим PostgreSQL 18.
 - Config validation (Zod), structured JSON logging с редактированием секретов, correlation id, health registry, graceful shutdown.
 - `GET /health` → `{"status":"ok","service":"api"}`; при заданном `DATABASE_URL` — ещё проверка `database` (недоступна → HTTP 503); `GET /api/panel` — данные Mini App владельцу по подписи Telegram (PHASE 13).
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
 - GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → миграции → integration tests (сервис PostgreSQL 18) → compose validation; сборка Docker-образов бота, worker и api. Первый запуск на GitHub — success ([run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452)).
-- Документация: конституция, архитектура, стек, протокол, ADR (ADR-0001…0009 Accepted), решения владельца (D-001…D-022), план кнопок пульта, phases, runbooks, playbook v1.1.
+- Документация: конституция, архитектура, стек, протокол, ADR (ADR-0001…0009 Accepted), решения владельца (D-001…D-023), план кнопок пульта, phases, runbooks, playbook v1.1.
 - **PHASE 01 — Core Domain:** `@roi-dealer/domain` — 13 сущностей цикла ROI CORE v0.1 (Source → … → Reward, ApprovalRequest), value objects (UUID, UTC, USD в центах, Actor), state machines и 11 правил (решения только владельца, evidence first, 5 разных гипотез, human gate $20, актив по итогам эксперимента, Reward только за проверенный вклад); `@roi-dealer/schemas` — строгие входные контракты; `uuidv7()` в `@roi-dealer/shared`.
 - **PHASE 02 — PostgreSQL Foundation:** пакет `@roi-dealer/database` (postgres.js, [ADR-0005](ADR/0005-postgresql-driver-and-migrations.md)) — пул в UTC, раннер SQL-миграций (SHA-256, блокировка, транзакция на файл), 13 репозиториев с optimistic locking и проверкой прочитанного доменной схемой, транзакции, ошибки без значений; миграция `0001_core_domain` — таблицы 13 сущностей, связи, CHECK / FK для денег, времени и human gates, триггеры защиты истории ([схема](../database/docs/schema.md)); `pnpm db:migrate`; инструкция для облачной БД [`docs/deploy/database.md`](deploy/database.md).
 - **PHASE 03 — Event History:** пакет `@roi-dealer/events` (22 типа событий `<entity>.created` / `.updated`, конверт, correlation id, ключи идемпотентности); миграция `0002_event_history` — таблица `events` (append-only, одна версия — одно событие), проверка при `COMMIT` «нет изменения сущности без события», `idempotency_keys`; репозитории пишут событие на каждую запись в той же транзакции (`update(entity, actor)` с блокировкой строки); `database.events.history` / `list` (журнал за период, постранично); `database.transaction(work, { correlationId })`; `database.command({ idempotencyKey })` — ровно один раз, в том числе при одновременных повторах.
@@ -164,6 +164,11 @@ Updated: 2026-10-19
   - **Webhook `POST /webhooks/lemonsqueezy`:** подпись HMAC; тестовый платёж проверяет ссылку (Release Gate); оплата — выручка без налога и шаг воронки `payment`; возврат — расход `refund`; каждое событие один раз; данные покупателя не хранятся; миграция `0018`.
   - **Уведомления** о тестовом платеже, оплатах и возвратах; строка «💳 Оплата» в карточке теста.
   - **Запуск всего — [`deploy/START.md`](deploy/START.md).**
+- **Запуск с минимумом действий владельца (D-023, после вливания PR #4):**
+  - **Кнопка «Пульт»:** бот с `PUBLIC_API_URL` сам ставит владельцу кнопку меню — Mini App с адресом `api` в `?api=`. Переменная GitHub `MINIAPP_API_URL` и @BotFather не нужны ([ADR-0008, поправка](ADR/0008-miniapp-data-through-api.md#поправка-2026-10-19-адрес-api-из-кнопки-меню-d-023)).
+  - **Неверный `PUBLIC_API_URL`** бот не использует и продолжает работать: стоп-кран остаётся доступен.
+  - **«✅ Одобрить все доступы (N)»** в `/decisions`: список до 20 запросов доступа и одно подтверждение одобряют ровно этот набор одной командой владельца. Если набор изменился — новый вопрос.
+  - **[`deploy/START.md`](deploy/START.md)** — блоки переменных Railway со ссылками `${{bot.…}}`, `${{Postgres.…}}`, `${{api.RAILWAY_PUBLIC_DOMAIN}}`. Config as Code Railway для новых сервисов больше не принимает, поэтому сервисы создаёт владелец.
 - **Фаза 13a (по запросу владельца, [ADR-0003](ADR/0003-early-telegram-owner-bot.md)):** бот-пульт в Telegram — только владелец, `/start` `/status` `/help`, уведомления о запуске / остановке, long polling; пакет `@roi-dealer/telegram`; Docker-образ `apps/bot/Dockerfile` (собирается в CI); инструкция [`docs/deploy/telegram-bot.md`](deploy/telegram-bot.md).
 - **По запросу владельца после PHASE 00:** публикация placeholder miniapp на GitHub Pages (https://userpr0.github.io/roi-dealer/) для открытия в Telegram — [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md), workflow `.github/workflows/miniapp-pages.yml`.
 
@@ -256,21 +261,17 @@ Integration-тесты запускают реальные процессы api 
 
 ## Next Allowed Phase
 
-**Уровень 2 собран:** все фазы D-020 (05 → … → 13 → 17) — PASS и ждут вливания PR. **Уровень 3 одобрен (D-022):** 19a, 21, 20 и 20b — PASS: **минимальный Уровень 3 собран.** Дальше — запуск владельцем по [`deploy/START.md`](deploy/START.md) и первые тесты; этап F (18, 22, 23) и 19b — по их итогам, отдельным решением. Тестовый бот (A5) нужен для staging и запуска на ПК; разработку не блокирует.
+**Уровень 2 собран и влит в `main`** (PR #4, 2026-10-19): все фазы D-020 (05 → … → 13 → 17) — PASS. **Уровень 3 одобрен (D-022):** 19a, 21, 20 и 20b — PASS: **минимальный Уровень 3 собран и влит.** Дальше — запуск владельцем по [`deploy/START.md`](deploy/START.md) и первые тесты; этап F (18, 22, 23) и 19b — по их итогам, отдельным решением. Тестовый бот (A5) нужен для staging и запуска на ПК; разработку не блокирует.
 
-Действия владельца для PHASE 05–17 ([worker](deploy/worker.md), [api](deploy/api.md)):
+Действия владельца — около 20 минут; всё, что не требует аккаунтов и секретов владельца, сделано (D-023):
 
-1. Влить PR.
-2. Создать сервис worker.
-3. Одобрить «Доступ: Hacker News» в `/decisions`.
-4. Включить копии БД.
-5. Вписать ключи Claude, GPT и Gemini в Variables worker; лимиты в кабинетах — в сумме ≤ $50/мес.
-6. Одобрить в `/decisions` доступ шести агентов: болей и сигналов, возможностей, исследований, рыночного контекста, судей и гипотез.
-7. Пульт с данными: сервис `api` в Railway и переменная GitHub `MINIAPP_API_URL`.
-8. Счета Railway вносить через `/cost`.
-9. PHASE 19a: одобрить «Доступ: Автор лендингов» в `/decisions`; в Variables бота — `PUBLIC_API_URL` (адрес сервиса `api`).
-10. PHASE 21: одобрить «Доступ: Сайт тестов» в `/decisions` (придёт после запуска `api`).
-11. PHASE 20: в Variables сервиса `api` — `PUBLIC_CONTACT_EMAIL` (адрес для запросов об удалении данных).
-12. PHASE 20b, для платного предзаказа: Lemon Squeezy, webhook и `LEMONSQUEEZY_WEBHOOK_SECRET` у `api`, «Доступ: Платежи Lemon Squeezy», `/checkout` и тестовый платёж.
+1. ✅ PR влит (#4, 2026-10-19).
+2. Railway: сервис бота переименовать в `bot`; включить копии Postgres.
+3. Сервис `worker`: вставить блок переменных с ключами AI (лимиты в кабинетах — в сумме ≤ $50/мес), задать Pre-deploy.
+4. Сервис `api`: вставить блок переменных с `PUBLIC_CONTACT_EMAIL`, создать домен на порту 8080.
+5. Бот: `PUBLIC_API_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}` — кнопка «Пульт» появится сама.
+6. `/decisions` → «✅ Одобрить все доступы»: Hacker News, семь агентов, «Сайт тестов».
+7. Счета Railway вносить через `/cost`.
+8. Для платного предзаказа — Lemon Squeezy, webhook, `LEMONSQUEEZY_WEBHOOK_SECRET` у `api`, `/checkout` и тестовый платёж.
 
 **Всё по порядку на одной странице — [`deploy/START.md`](deploy/START.md).**

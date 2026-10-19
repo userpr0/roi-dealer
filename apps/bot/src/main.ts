@@ -10,7 +10,7 @@ import {
   toBotCommands,
 } from '@roi-dealer/telegram';
 import { createBotCommands, startedText, TEXT } from './commands.js';
-import { loadBotConfig } from './config.js';
+import { loadBotConfig, panelMenuButton } from './config.js';
 
 const SERVICE = 'bot';
 
@@ -86,6 +86,16 @@ async function main(): Promise<void> {
     });
   } catch (error) {
     logger.warn('telegram command menu not updated', { error });
+  }
+  const menuButton = panelMenuButton(config);
+  if (menuButton !== undefined) {
+    try {
+      // The owner's menu button opens the Mini App connected to the api (ADR-0008).
+      await client.setChatMenuButton({ chatId: ownerUserId, menuButton });
+      logger.info('mini app menu button set');
+    } catch (error) {
+      logger.warn('mini app menu button not set', { error });
+    }
   }
 
   const poller = createLongPoller({
