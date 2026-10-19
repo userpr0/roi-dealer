@@ -12,6 +12,7 @@
   "dependencies": {
     "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "@roi-dealer/site": "workspace:*",

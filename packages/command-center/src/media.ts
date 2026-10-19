@@ -1,29 +1,38 @@
 import {
   approveMediaAsset,
+  DomainError,
   formatUsd,
   mediaAssetIdSchema,
   MAX_LANDING_REWRITES,
   rejectMediaAsset,
+  releaseGate,
+  releaseMediaAsset,
+  RELEASE_OWNER_CHECKS,
   startOfUtcMonth,
   toTimestamp,
   usd,
   type Actor,
   type MediaAsset,
   type Money,
+  type ReleaseCodeCheck,
+  type ReleaseFacts,
+  type ReleaseOwnerCheck,
   type Timestamp,
 } from '@roi-dealer/domain';
 import { ConcurrencyError, type Database, type Repositories } from '@roi-dealer/database';
-import { priceLabel } from '@roi-dealer/media';
+import { isStaticPage, priceLabel, renderLanding } from '@roi-dealer/media';
+import { landingPath, MEASUREMENT_NOTE, SITE_TRACKER } from '@roi-dealer/site';
 import { callbackButton, type CallbackContext, type InlineKeyboard } from '@roi-dealer/telegram';
 import { shorten } from './texts.js';
 
 /*
  * Landings in the panel (PHASE 19a, D-012): the agent's draft arrives as a card with the
  * text, the ads and a private preview link; ✅ approves it, ❌ sends it back for a rewrite.
- * Each press asks for confirmation and is one idempotent owner command (§2.3).
+ * An approved landing passes the Release Gate and is published (PHASE 21, §7.2). Each press
+ * asks for confirmation and is one idempotent owner command (§2.3).
  */
 
-/** Buttons of landing cards: `ma:<a|r|ya|yr|c>:<asset id>:<version>`. */
+/** Buttons of landing cards: `ma:<a|r|g|ya|yr|yg|c>:<asset id>:<version>`. */
 export const MEDIA_PREFIX = 'ma';
 /** The AI task whose calls make up the cost of a landing (PHASE 19a). */
 export const LANDING_TASK = 'write-landing';
@@ -51,6 +60,63 @@ const STATUS_LABELS: Readonly<Record<MediaAsset['status'], string>> = {
   retired: 'снят',
 };
 
+/** The Release Gate's checks in the owner's words: what is checked and how to fix it. */
+export const RELEASE_CHECK_LABELS: Readonly<
+  Record<ReleaseCodeCheck, { readonly label: string; readonly fix: string }>
+> = {
+  page_approved: { label: 'Лендинг одобрен вами', fix: 'одобрите лендинг ✅' },
+  launch_approved: {
+    label: 'Запуск теста одобрен: бюджет, stop-loss, лимиты',
+    fix: 'запросите запуск в /experiments и одобрите в /decisions',
+  },
+  metric_fixed: {
+    label: 'Метрика успеха и stop-loss заданы до запуска',
+    fix: 'у теста нет метрики воронки или stop-loss',
+  },
+  honest_checks: {
+    label: 'Чек-лист честной проверки подтверждён',
+    fix: 'подтвердите чек-лист в /experiments',
+  },
+  tracking: {
+    label: 'Счётчик воронки работает',
+    fix: 'одобрите «Доступ: Сайт тестов» в /decisions (появится, когда запущен сервис api)',
+  },
+  page_static: {
+    label: 'Страница без скриптов и внешних адресов',
+    fix: 'страница не прошла проверку — напишите Claude',
+  },
+  payment_flow: {
+    label: 'Оплата проверена тестовым платежом',
+    fix: 'подключите приём оплат и проведите тестовый платёж (PHASE 20b)',
+  },
+  refund_terms: {
+    label: 'На странице — условия полного возврата',
+    fix: 'перепишите лендинг ❌',
+  },
+};
+
+/** What the owner confirms at the gate (§7.2: Early User Crash Test, no known blockers). */
+export const RELEASE_OWNER_LABELS: Readonly<Record<ReleaseOwnerCheck, string>> = {
+  crash_test:
+    '2–3 человека открыли предпросмотр без подсказок и поняли, что предлагается и что будет после кнопки',
+  no_blockers: 'Страница проверена на телефоне: текст, цена и кнопка верны, блокирующих ошибок нет',
+};
+
+/** The public page of a released landing, when the api's public address is known. */
+export function publicUrl(
+  asset: Pick<MediaAsset, 'slug'>,
+  publicApiUrl: string | undefined,
+): string | undefined {
+  if (publicApiUrl === undefined) return undefined;
+  return `${publicApiUrl.replace(/\/+$/, '')}${landingPath(asset)}`;
+}
+
+/** An address for ads: the page with UTM tags of the hypothesis's channel. */
+export function adUrl(pageUrl: string, channel: string): string {
+  const source = /[a-z0-9]+/.exec(channel.toLowerCase())?.[0] ?? 'ads';
+  return `${pageUrl}?utm_source=${source}&utm_medium=cpc&utm_campaign=launch`;
+}
+
 /** The private preview of an asset, when the api's public address is known. */
 export function previewUrl(
   asset: MediaAsset,
@@ -71,6 +137,7 @@ export function landingCardText(
 ): string {
   const { content } = asset;
   const url = previewUrl(asset, context.publicApiUrl);
+  const page = publicUrl(asset, context.publicApiUrl);
   return [
     `🎨 Лендинг для теста${context.number === undefined ? '' : ` №${String(context.number)}`} «${shorten(context.title, 120)}»`,
     '',
@@ -89,6 +156,9 @@ export function landingCardText(
     url === undefined
       ? 'Предпросмотр — когда в боте задан PUBLIC_API_URL (адрес сервиса api).'
       : `Предпросмотр: ${url}`,
+    ...(asset.status === 'released'
+      ? [`Страница: ${page ?? `<адрес сервиса api>${landingPath(asset)}`}`]
+      : []),
     `Статус: ${STATUS_LABELS[asset.status]}`,
   ].join('\n');
 }
@@ -98,8 +168,61 @@ function mediaButton(text: string, action: string, asset: MediaAsset) {
 }
 
 export function landingKeyboard(asset: MediaAsset): InlineKeyboard | undefined {
+  if (asset.status === 'approved') return [[mediaButton('🚦 Release Gate', 'g', asset)]];
   if (asset.status !== 'draft') return undefined;
   return [[mediaButton('✅ Одобрить', 'a', asset), mediaButton('❌ Переписать', 'r', asset)]];
+}
+
+/** The facts of the Release Gate from the database (PHASE 21). */
+export async function releaseFacts(
+  scope: Pick<Database, 'repositories'>,
+  asset: MediaAsset,
+): Promise<ReleaseFacts | undefined> {
+  const { repositories } = scope;
+  const experiment = await repositories.experiments.getById(asset.experimentId);
+  const hypothesis = await repositories.hypotheses.getById(asset.hypothesisId);
+  if (experiment === undefined || hypothesis === undefined) return undefined;
+  const tracker = await repositories.principals.getByActor(SITE_TRACKER);
+  const html = renderLanding(asset.content, {
+    mode: 'public',
+    ctaHref: landingPath(asset, 'go'),
+    footerNote: MEASUREMENT_NOTE,
+  });
+  return {
+    asset,
+    experiment,
+    hypothesis,
+    trackerActive: tracker?.status === 'active',
+    pageStatic: isStaticPage(html),
+    // Payments arrive with PHASE 20b; until then a paid preorder is not released.
+    checkoutReady: false,
+  };
+}
+
+/** The gate as the owner reads it: ✅ / ❌ per check with the fix. */
+export function releaseGateText(facts: ReleaseFacts): { text: string; passed: boolean } {
+  const items = releaseGate(facts);
+  const lines = items.map((item) => {
+    const words = RELEASE_CHECK_LABELS[item.check];
+    return item.passed ? `✅ ${words.label}` : `❌ ${words.label} — ${words.fix}`;
+  });
+  const passed = items.every((item) => item.passed);
+  return {
+    passed,
+    text: [
+      '🚦 Release Gate (§7.2) — перед публичным трафиком:',
+      ...lines,
+      ...(passed
+        ? [
+            '',
+            'Подтвердите сами:',
+            ...RELEASE_OWNER_CHECKS.map((check) => `• ${RELEASE_OWNER_LABELS[check]}`),
+            '',
+            '❓ Всё так? Страница станет публичной; просмотры и нажатия пойдут в воронку, когда тест запущен.',
+          ]
+        : ['', 'Исправьте ❌ и откройте Release Gate снова.']),
+    ].join('\n'),
+  };
 }
 
 /** The test's title and its number among the active tests, for the card. */
@@ -120,11 +243,15 @@ async function rejectedCount(repositories: Repositories, asset: MediaAsset): Pro
 }
 
 type ReviewOutcome =
-  | { readonly outcome: 'reviewed'; readonly status: 'approved' | 'rejected' }
+  | { readonly outcome: 'reviewed'; readonly status: 'approved' | 'rejected' | 'released' }
+  | { readonly outcome: 'blocked' }
   | { readonly outcome: 'closed' }
   | { readonly outcome: 'not_found' };
 
-/** ✅ / ❌ on a landing card: ask → confirm → one owner command; a stale card changes nothing. */
+/**
+ * ✅ / ❌ / 🚦 on a landing card: ask → confirm → one owner command; a stale card changes
+ * nothing. The release re-checks the gate inside the command.
+ */
 export async function handleMediaButton(
   deps: MediaFlowDeps,
   context: CallbackContext,
@@ -133,7 +260,7 @@ export async function handleMediaButton(
   const id = mediaAssetIdSchema.safeParse(rawId);
   const version = Number(rawVersion);
   if (
-    !['a', 'r', 'ya', 'yr', 'c'].includes(action ?? '') ||
+    !['a', 'r', 'g', 'ya', 'yr', 'yg', 'c'].includes(action ?? '') ||
     !id.success ||
     !Number.isSafeInteger(version)
   ) {
@@ -148,6 +275,29 @@ export async function handleMediaButton(
     });
     await context.edit(note === undefined ? text : `${text}\n\n${note}`, keyboard);
   };
+
+  if (action === 'g') {
+    const asset = await repositories.mediaAssets.getById(id.data);
+    if (asset === undefined) {
+      await context.edit('Лендинг не найден.');
+      return;
+    }
+    const facts =
+      asset.status === 'approved' ? await releaseFacts(deps.database, asset) : undefined;
+    if (asset.version !== version || facts === undefined) {
+      await show(asset, STALE_TEXT, landingKeyboard(asset));
+      return;
+    }
+    const gate = releaseGateText(facts);
+    await show(
+      asset,
+      gate.text,
+      gate.passed
+        ? [[mediaButton('🚀 Да, выпустить', 'yg', asset), mediaButton('Назад', 'c', asset)]]
+        : [[mediaButton('Назад', 'c', asset)]],
+    );
+    return;
+  }
 
   if (action === 'a' || action === 'r' || action === 'c') {
     const asset = await repositories.mediaAssets.getById(id.data);
@@ -193,6 +343,26 @@ export async function handleMediaButton(
       async (scope): Promise<ReviewOutcome> => {
         const asset = await scope.repositories.mediaAssets.getById(id.data);
         if (asset === undefined) return { outcome: 'not_found' };
+        if (action === 'yg') {
+          if (asset.version !== version || asset.status !== 'approved')
+            return { outcome: 'closed' };
+          const facts = await releaseFacts(scope, asset);
+          if (facts === undefined) return { outcome: 'not_found' };
+          let released: MediaAsset;
+          try {
+            released = releaseMediaAsset(asset, facts, RELEASE_OWNER_CHECKS, {
+              actor,
+              at: deps.now(),
+            });
+          } catch (error) {
+            if (error instanceof DomainError && error.code === 'invariant_violation') {
+              return { outcome: 'blocked' };
+            }
+            throw error;
+          }
+          await scope.repositories.mediaAssets.update(released, actor);
+          return { outcome: 'reviewed', status: 'released' };
+        }
         if (asset.version !== version || asset.status !== 'draft') return { outcome: 'closed' };
         const reviewed =
           action === 'ya'
@@ -215,16 +385,49 @@ export async function handleMediaButton(
     await show(asset, STALE_TEXT, landingKeyboard(asset));
     return;
   }
+  if (result.outcome === 'blocked') {
+    const facts = await releaseFacts(deps.database, asset);
+    await show(asset, facts === undefined ? STALE_TEXT : releaseGateText(facts).text, [
+      [mediaButton('Назад', 'c', asset)],
+    ]);
+    return;
+  }
   context.logger.info('landing reviewed by the owner', { status: result.status });
-  await show(
-    asset,
+  await show(asset, await resultNote(deps, asset, result.status), landingKeyboard(asset));
+  await context.answer(
     result.status === 'approved'
-      ? '✅ Одобрено. Дальше — Release Gate и запуск теста в /experiments.'
-      : (await rejectedCount(repositories, asset)) <= MAX_LANDING_REWRITES
-        ? '❌ Отклонено. Агент напишет новый вариант — карточка придёт сама.'
-        : '❌ Отклонено. Переписываний больше нет — лендинг для теста соберите сами.',
+      ? 'Одобрено'
+      : result.status === 'released'
+        ? 'Выпущено'
+        : 'Отклонено',
   );
-  await context.answer(result.status === 'approved' ? 'Одобрено' : 'Отклонено');
+}
+
+async function resultNote(
+  deps: MediaFlowDeps,
+  asset: MediaAsset,
+  status: 'approved' | 'rejected' | 'released',
+): Promise<string> {
+  const { repositories } = deps.database;
+  if (status === 'approved') {
+    return '✅ Одобрено. Дальше — 🚦 Release Gate: проверка перед публикацией.';
+  }
+  if (status === 'rejected') {
+    return (await rejectedCount(repositories, asset)) <= MAX_LANDING_REWRITES
+      ? '❌ Отклонено. Агент напишет новый вариант — карточка придёт сама.'
+      : '❌ Отклонено. Переписываний больше нет — лендинг для теста соберите сами.';
+  }
+  const page = publicUrl(asset, deps.publicApiUrl);
+  const hypothesis = await repositories.hypotheses.getById(asset.hypothesisId);
+  return [
+    page === undefined
+      ? `🌐 Опубликовано: <адрес сервиса api>${landingPath(asset)} (задайте PUBLIC_API_URL у бота, чтобы видеть ссылку).`
+      : `🌐 Опубликовано: ${page}`,
+    ...(page === undefined || hypothesis === undefined
+      ? []
+      : [`Ссылка для рекламы: ${adUrl(page, hypothesis.channel)}`]),
+    'Просмотры и нажатия считаются, когда тест идёт: ▶️ «Тест запущен» в /experiments.',
+  ].join('\n');
 }
 
 /** The landing line of a test card (PHASE 19a). */
@@ -233,6 +436,8 @@ export function landingLine(asset: MediaAsset | undefined): string {
     return '🎨 Лендинг: пишет агент «Автор лендингов» (доступ — в /decisions)';
   }
   if (asset.status === 'rejected') return '🎨 Лендинг: ❌ отклонён — агент пишет новый вариант';
+  if (asset.status === 'approved') return '🎨 Лендинг: ✅ одобрен — дальше 🚦 Release Gate';
+  if (asset.status === 'released') return `🎨 Лендинг: 🌐 опубликован — ${landingPath(asset)}`;
   return `🎨 Лендинг: ${STATUS_LABELS[asset.status]}`;
 }
 

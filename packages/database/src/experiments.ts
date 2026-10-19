@@ -1,5 +1,7 @@
 import {
+  DomainError,
   funnelEventSchema,
+  needsPrincipal,
   usd,
   type Actor,
   type ExperimentId,
@@ -8,8 +10,9 @@ import {
   type FunnelTotals,
   type Money,
 } from '@roi-dealer/domain';
-import { assertPermitted } from '@roi-dealer/policies';
+import { decideAccess, type Permission } from '@roi-dealer/policies';
 import { uuidv7 } from '@roi-dealer/shared';
+import { findPrincipal } from './access.js';
 import { translated } from './errors.js';
 import type { Executor, Row } from './executor.js';
 
@@ -21,9 +24,10 @@ import type { Executor, Row } from './executor.js';
 
 export interface FunnelLog {
   /**
-   * Appends the events (validated by the domain schema) as `actor`, who needs the
-   * `experiment.write` permission. Throws `ConstraintViolationError` when an event names a
-   * hypothesis other than its experiment's.
+   * Appends the events (validated by the domain schema) as `actor`: events of own pages
+   * (`tracker`) need `funnel.track`, every other event `experiment.write`; a member, agent or
+   * integration also needs an active principal. Throws `ConstraintViolationError` when an
+   * event names a hypothesis other than its experiment's.
    */
   record(events: readonly FunnelEvent[], actor: Actor, correlationId?: string): Promise<void>;
   /** Events per stage of each experiment; an experiment without events is absent. */
@@ -36,9 +40,22 @@ export function createFunnelLog(executor: Executor): FunnelLog {
   return {
     record: (events, actor, correlationId) =>
       translated(async () => {
-        assertPermitted(actor, 'experiment.write');
-        for (const raw of events) {
-          const event = funnelEventSchema.parse(raw);
+        const parsed = events.map((raw) => funnelEventSchema.parse(raw));
+        const permissions = new Set<Permission>(
+          parsed.map((event) => (event.source === 'tracker' ? 'funnel.track' : 'experiment.write')),
+        );
+        const principal = needsPrincipal(actor) ? await findPrincipal(executor, actor) : undefined;
+        for (const permission of permissions) {
+          const decision = decideAccess(actor, permission, principal);
+          if (!decision.allowed) {
+            throw new DomainError('permission_denied', `The ${actor.type} may not ${permission}`, {
+              actor_type: actor.type,
+              permission,
+              reason: decision.reason,
+            });
+          }
+        }
+        for (const event of parsed) {
           await executor`
             insert into experiment_events (
               id, experiment_id, hypothesis_id, stage, quantity, channel, utm_source, utm_medium,

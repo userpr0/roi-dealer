@@ -69,13 +69,14 @@ import {
   type TransactionScope,
 } from '@roi-dealer/database';
 import { uuidv7 } from '@roi-dealer/shared';
+import { TRACKED_STAGES } from '@roi-dealer/site';
 import {
   callbackButton,
   type CallbackContext,
   type CommandContext,
   type InlineKeyboard,
 } from '@roi-dealer/telegram';
-import { landingLine } from './media.js';
+import { landingLine, MEDIA_PREFIX } from './media.js';
 import { formatTime, shorten } from './texts.js';
 
 /*
@@ -455,10 +456,28 @@ function button(text: string, action: string, experiment: Experiment) {
   );
 }
 
+/** A landing waiting for the owner (review or Release Gate) opens its card (PHASE 21). */
+function landingRow(view: ExperimentView): InlineKeyboard {
+  const { landing } = view;
+  if (landing === undefined || (landing.status !== 'draft' && landing.status !== 'approved')) {
+    return [];
+  }
+  return [
+    [callbackButton('🎨 Лендинг', `${MEDIA_PREFIX}:c:${landing.id}:${String(landing.version)}`)],
+  ];
+}
+
 export function experimentKeyboard(
   view: ExperimentView,
   at: Timestamp,
 ): InlineKeyboard | undefined {
+  const keyboard = statusKeyboard(view, at);
+  const landing = landingRow(view);
+  if (keyboard === undefined) return landing.length === 0 ? undefined : landing;
+  return [...keyboard, ...landing];
+}
+
+function statusKeyboard(view: ExperimentView, at: Timestamp): InlineKeyboard | undefined {
   const { experiment } = view;
   const cancel = button('✖️ Отменить', 'x', experiment);
   switch (experiment.status) {
@@ -852,6 +871,16 @@ async function go(
   if (!['approved', 'validating', 'scaling'].includes(opportunity.status)) {
     return closed('⛔ Возможность закрыта или на паузе — тест не запускается.');
   }
+  // §7.2: a test whose landing is in the system starts only after the page's release.
+  if (experiment.artifact === 'landing') {
+    const landings = await repositories.mediaAssets.listByExperiments([experiment.id]);
+    const live = landings.filter((item) => item.status === 'draft' || item.status === 'approved');
+    if (live.length > 0 && !landings.some((item) => item.status === 'released')) {
+      return closed(
+        '⛔ Сначала выпустите лендинг: кнопка «🎨 Лендинг» → 🚦 Release Gate → 🚀 Выпустить.',
+      );
+    }
+  }
   const context = { actor, at };
   await repositories.experiments.update(startExperiment(experiment, context), actor);
   await repositories.hypotheses.update(
@@ -1155,6 +1184,16 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
       const [view] = await viewsOf(deps.database, [experiment]);
       if (view === undefined) {
         await context.reply('Тест не найден.');
+        return;
+      }
+      // A released page counts these stages itself (PHASE 21): no double counting.
+      const tracked = TRACKED_STAGES.filter((stage) => report.increments[stage] !== undefined);
+      if (view.landing?.status === 'released' && tracked.length > 0) {
+        await context.reply(
+          `⛔ ${tracked.map((stage) => STAGE_LABELS[stage]).join(' и ')} теста №${String(report.number)} ` +
+            'считает его страница — вносить их не нужно. Показы, заявки, оплаты и траты — вносите. ' +
+            'Ничего не записано.',
+        );
         return;
       }
       const spendAfter = addMoney(view.spent, usd(report.spendCents));

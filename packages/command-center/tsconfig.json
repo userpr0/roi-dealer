@@ -37,6 +37,9 @@
       "path": "../shared"
     },
     {
+      "path": "../site"
+    },
+    {
       "path": "../telegram"
     }
   ]

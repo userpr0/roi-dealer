@@ -13,6 +13,9 @@
       "path": "../../packages/database"
     },
     {
+      "path": "../../packages/domain"
+    },
+    {
       "path": "../../packages/observability"
     },
     {

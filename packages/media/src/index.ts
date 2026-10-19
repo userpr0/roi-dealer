@@ -16,6 +16,7 @@ export {
 } from './landing.js';
 export {
   escapeHtml,
+  isStaticPage,
   landingSlug,
   newPreviewToken,
   renderLanding,

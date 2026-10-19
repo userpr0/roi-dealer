@@ -116,6 +116,9 @@ importers:
       '@roi-dealer/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -318,6 +321,9 @@ importers:
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../shared
+      '@roi-dealer/site':
+        specifier: workspace:*
+        version: link:../site
       '@roi-dealer/telegram':
         specifier: workspace:*
         version: link:../telegram
@@ -509,6 +515,9 @@ importers:
       '@roi-dealer/media':
         specifier: workspace:*
         version: link:../media
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
 
   packages/skills: {}
 

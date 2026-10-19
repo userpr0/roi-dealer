@@ -92,6 +92,7 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  adUrl,
   costPerApprovedLanding,
   handleMediaButton,
   LANDING_TASK,
@@ -101,6 +102,11 @@ export {
   landingLine,
   MEDIA_PREFIX,
   previewUrl,
+  publicUrl,
+  RELEASE_CHECK_LABELS,
+  RELEASE_OWNER_LABELS,
+  releaseFacts,
+  releaseGateText,
   type MediaFlowDeps,
 } from './media.js';
 export {

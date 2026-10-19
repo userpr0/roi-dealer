@@ -32,6 +32,8 @@ export const PERMISSIONS = [
   'decision.record',
   // Experiments, money and contribution.
   'experiment.write',
+  /** Funnel events of own pages (PHASE 21): the page tracker writes only these. */
+  'funnel.track',
   'cost.record',
   /** The revenue ledger (PHASE 16): money that came in, recorded by the owner. */
   'revenue.record',
@@ -58,7 +60,7 @@ export const PANEL_READS = [
 /**
  * Least privilege: every role gets only what its work needs. An AI agent proposes and never
  * decides, approves, stops the system or grants access (§2.3); an integration only delivers
- * evidence and costs.
+ * evidence, costs and the funnel events of own pages.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>> = {
   owner: PERMISSIONS,
@@ -69,6 +71,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>
     'approval.request',
     'approval.update',
     'experiment.write',
+    'funnel.track',
     'cost.record',
     'contribution.write',
     'reward.write',
@@ -76,7 +79,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>
     'access.propose',
   ],
   agent: ['research.write', 'evidence.write', 'approval.request', 'experiment.write'],
-  integration: ['evidence.write', 'cost.record'],
+  integration: ['evidence.write', 'cost.record', 'funnel.track'],
   member: [
     'decisions.read',
     'journal.read',

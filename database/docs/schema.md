@@ -252,6 +252,13 @@ rewards ─< reward_contributions >── contributions
 - **`media_assets_one_live`** — уникальный частичный индекс: у теста один лендинг в статусе `draft`, `approved` или `released`.
 - **`agent_work.subject_type`** — плюс `experiment` (первый текст лендинга) и `media_asset` (переписывание после ❌).
 
+## Release Gate (PHASE 21)
+
+- **`media_assets.release_checks`** (миграция `0016`) — что владелец подтвердил при выпуске: `crash_test`, `no_blockers`; **`released_at`** — время выпуска.
+  - `media_assets_release_complete`: время выпуска есть ⇔ есть подтверждения;
+  - `media_assets_release_confirmed`: выпущенный лендинг имеет оба.
+- **События страниц** — `experiment_events` с источником `tracker` от интеграции `site`: запись требует права `funnel.track` и активной личности (`database.funnel.record`).
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.

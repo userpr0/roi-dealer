@@ -5,7 +5,7 @@ import {
   resolveCorrelationId,
   type Logger,
 } from '@roi-dealer/observability';
-import type { ApiResponse, Router } from './router.js';
+import { loggedPath, type ApiResponse, type Router } from './router.js';
 
 export interface ApiServerOptions {
   readonly host: string;
@@ -33,12 +33,47 @@ export const PAGE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'referrer-policy': 'no-referrer',
 };
 
+const MAX_QUERY_PARAMS = 20;
+const MAX_HEADER_LENGTH = 1_000;
+
+/** The first value of each query parameter, bounded. */
+function queryOf(url: URL): Record<string, string> {
+  // No prototype: a parameter named like an Object property is just a key.
+  const query = Object.create(null) as Record<string, string>;
+  let count = 0;
+  for (const [key, value] of url.searchParams) {
+    if (count >= MAX_QUERY_PARAMS) break;
+    if (Object.hasOwn(query, key) || key.length > 50) continue;
+    query[key] = value.slice(0, 200);
+    count += 1;
+  }
+  return query;
+}
+
+/** A single header value, bounded; repeated headers are joined by Node. */
+function header(req: IncomingMessage, name: string): string | undefined {
+  const value = req.headers[name];
+  const text = Array.isArray(value) ? value.join(', ') : value;
+  return text === undefined ? undefined : text.slice(0, MAX_HEADER_LENGTH);
+}
+
 function send(
   res: ServerResponse,
   method: string | undefined,
   response: ApiResponse,
   correlationId: string,
 ): void {
+  if (response.redirect !== undefined) {
+    res.writeHead(response.status, {
+      ...response.headers,
+      ...PAGE_SECURITY_HEADERS,
+      location: response.redirect,
+      'cache-control': 'no-store',
+      [CORRELATION_ID_HEADER]: correlationId,
+    });
+    res.end();
+    return;
+  }
   if (response.html !== undefined) {
     res.writeHead(response.status, {
       ...response.headers,
@@ -79,26 +114,35 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
     const correlationId = resolveCorrelationId(req.headers[CORRELATION_ID_HEADER]);
     const requestLogger = logger.child({ correlation_id: correlationId });
     const method = req.method ?? 'GET';
-    const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const path = url.pathname;
 
     let response: ApiResponse;
     try {
       response = await router({
         method,
         path,
-        // Only what routes read; the authorization header is never logged.
-        headers: { origin: req.headers.origin, authorization: req.headers.authorization },
+        query: queryOf(url),
+        // Only what routes read; headers, the query and addresses are never logged.
+        headers: {
+          origin: req.headers.origin,
+          authorization: req.headers.authorization,
+          userAgent: header(req, 'user-agent'),
+          purpose: header(req, 'sec-purpose') ?? header(req, 'purpose'),
+          forwardedFor: header(req, 'x-forwarded-for'),
+        },
+        remoteAddress: req.socket.remoteAddress,
         correlationId,
       });
     } catch (error) {
-      requestLogger.error('request handler failed', { method, path, error });
+      requestLogger.error('request handler failed', { method, path: loggedPath(path), error });
       response = { status: 500, body: { error: 'internal_error' } };
     }
 
     send(res, method, response, correlationId);
     requestLogger.info('request completed', {
       method,
-      path,
+      path: loggedPath(path),
       status: response.status,
       duration_ms: Math.round(performance.now() - startedAt),
     });

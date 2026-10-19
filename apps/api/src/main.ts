@@ -1,13 +1,30 @@
-import { createDatabase, createDatabaseHealthCheck } from '@roi-dealer/database';
-import { createHealthRegistry, createLogger } from '@roi-dealer/observability';
+import { ensureAccessRequest } from '@roi-dealer/command-center';
+import { createDatabase, createDatabaseHealthCheck, type Database } from '@roi-dealer/database';
+import { toTimestamp } from '@roi-dealer/domain';
+import { createHealthRegistry, createLogger, type Logger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
-import { previewPage } from '@roi-dealer/site';
+import { createSiteTracker, landingPage, previewPage, SITE_ACCESS } from '@roi-dealer/site';
 import { loadApiConfig } from './config.js';
 import { createPanelRoute } from './panel.js';
 import { createRouter, type PanelRoute, type SiteRoutes } from './router.js';
 import { startApiServer } from './server.js';
 
 const SERVICE = 'api';
+/** How often the page counter's access request is renewed while the owner has not decided. */
+const SITE_ACCESS_INTERVAL_MS = 6 * 60 * 60_000;
+
+/** The page counter asks the owner for access in /decisions (PHASE 21); never throws. */
+async function requestSiteAccess(database: Database, logger: Logger): Promise<void> {
+  try {
+    const { state } = await ensureAccessRequest(database, SITE_ACCESS, {
+      at: toTimestamp(new Date()),
+      correlationId: 'site-connect',
+    });
+    logger.info('page counter access', { state });
+  } catch (error) {
+    logger.warn('page counter access not requested', { error });
+  }
+}
 
 async function main(): Promise<void> {
   const config = loadApiConfig(process.env);
@@ -37,8 +54,23 @@ async function main(): Promise<void> {
     });
     health.register(createDatabaseHealthCheck(database));
     shutdown.register('database', () => database.close());
-    // Public pages of experiments (PHASE 19a): landing previews.
-    site = { preview: (token) => previewPage(database, token) };
+    // Pages of experiments: landing previews (PHASE 19a), released landings (PHASE 21).
+    const tracker = createSiteTracker({ database, logger });
+    site = {
+      preview: (token) => previewPage(database, token),
+      landing: (slug, step, visit) => landingPage({ database, tracker }, slug, step, visit),
+    };
+    // In the background: the api serves pages even while the database is slow to answer.
+    void requestSiteAccess(database, logger);
+    const renewal = setInterval(
+      () => void requestSiteAccess(database, logger),
+      SITE_ACCESS_INTERVAL_MS,
+    );
+    renewal.unref();
+    shutdown.register('site-access', () => {
+      clearInterval(renewal);
+      return Promise.resolve();
+    });
     // The Mini App's data (PHASE 13): only with the bot token to check Telegram's signature.
     if (config.TELEGRAM_BOT_TOKEN !== undefined && config.TELEGRAM_OWNER_USER_ID !== undefined) {
       panel = createPanelRoute({

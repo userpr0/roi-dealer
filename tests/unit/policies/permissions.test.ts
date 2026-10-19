@@ -54,8 +54,10 @@ describe('roles and permissions (PHASE 04)', () => {
     expect(isPermitted(AGENT, 'approval.request')).toBe(true);
   });
 
-  it('let an integration deliver only evidence and costs', () => {
-    expect(ROLE_PERMISSIONS.integration).toEqual(['evidence.write', 'cost.record']);
+  it('let an integration deliver only evidence, costs and the funnel events of own pages', () => {
+    expect(ROLE_PERMISSIONS.integration).toEqual(['evidence.write', 'cost.record', 'funnel.track']);
+    // Funnel numbers reported by the owner and experiment changes stay out of reach (PHASE 21).
+    expect(isPermitted({ type: 'integration', id: 'site' }, 'experiment.write')).toBe(false);
   });
 
   it('let the system run automations but not decide', () => {

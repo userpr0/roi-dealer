@@ -575,6 +575,8 @@ export const mediaAssetsTable: TableSpec<MediaAsset> = {
     slug: asset.slug,
     preview_token: asset.previewToken,
     status: asset.status,
+    release_checks: [...asset.releaseChecks],
+    released_at: asset.releasedAt ?? null,
     ...mutableMetaColumns(asset),
   }),
   fromRow: (row) =>
@@ -588,6 +590,8 @@ export const mediaAssetsTable: TableSpec<MediaAsset> = {
       slug: row['slug'],
       previewToken: row['preview_token'],
       status: row['status'],
+      releaseChecks: row['release_checks'],
+      releasedAt: instant(row['released_at']),
       ...readMutableMeta(row),
     }),
 };

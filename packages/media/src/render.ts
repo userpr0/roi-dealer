@@ -17,6 +17,8 @@ export interface LandingPageOptions {
   readonly privacyHref?: string | undefined;
   /** HTML of a block after the offer (the email form, PHASE 20); trusted, built by code. */
   readonly afterOffer?: string | undefined;
+  /** A line of the footer, e.g. what the page measures (PHASE 21). */
+  readonly footerNote?: string | undefined;
 }
 
 const ESCAPES: Readonly<Record<string, string>> = {
@@ -107,6 +109,7 @@ export function renderLanding(content: LandingContent, options: LandingPageOptio
       (item) => `<details><summary>${e(item.question)}</summary><p>${e(item.answer)}</p></details>`,
     ),
     '<footer>',
+    options.footerNote === undefined ? '' : `<p>${e(options.footerNote)}</p>`,
     options.privacyHref === undefined ? '' : `<a href="${e(options.privacyHref)}">Privacy</a>`,
     '</footer>',
     '</main>',
@@ -115,6 +118,16 @@ export function renderLanding(content: LandingContent, options: LandingPageOptio
   ]
     .filter((line) => line !== '')
     .join('\n');
+}
+
+/**
+ * Whether a rendered page is static (Release Gate, PHASE 21): no scripts, frames, embedded or
+ * linked resources and no external addresses — nothing runs or loads on the visitor's side.
+ */
+export function isStaticPage(html: string): boolean {
+  return !/<(?:script|iframe|object|embed|link|img)\b|\son[a-z]+\s*=|\bsrc\s*=|https?:\/\/|javascript:/i.test(
+    html,
+  );
 }
 
 /** The public path segment of a landing: words of the title and part of its id. */

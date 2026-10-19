@@ -33,6 +33,7 @@ import {
   toTimestamp,
   usd,
   type Experiment,
+  type NewHypothesis,
   type Opportunity,
   type Pain,
   type Timestamp,
@@ -122,12 +123,17 @@ export async function approvedOpportunity(
 
 /**
  * A landing-page test of the opportunity with a $50 budget, a $20 stop-loss and the metric
- * "leads ≥ 20": checklist confirmed, launch approved, started at `startedAtMs`.
+ * "leads ≥ 20": checklist confirmed, launch approved, started at `startedAtMs` — or left
+ * approved with `start: false` (PHASE 21: the page is released before the start).
  */
 export async function runningTest(
   db: Database,
   opportunity: Opportunity,
-  options: { readonly startedAtMs?: number } = {},
+  options: {
+    readonly startedAtMs?: number;
+    readonly start?: boolean;
+    readonly hypothesis?: Partial<NewHypothesis>;
+  } = {},
 ): Promise<Experiment> {
   const now = Date.now();
   const startedAt = at(options.startedAtMs ?? now);
@@ -137,6 +143,7 @@ export async function runningTest(
       budget: usd(5_000),
       stopLoss: usd(2_000),
       channel: 'Reddit ads',
+      ...options.hypothesis,
     }),
     { id: hypothesisIdSchema.parse(uuidv7()), actor: SYSTEM, at: startedAt },
   );
@@ -173,6 +180,7 @@ export async function runningTest(
   await db.repositories.experiments.update(awaiting, OWNER);
   const ready = approveExperiment(awaiting, launch, { actor: OWNER, at: startedAt });
   await db.repositories.experiments.update(ready, OWNER);
+  if (options.start === false) return ready;
   const started = startExperiment(ready, { actor: OWNER, at: startedAt });
   await db.repositories.experiments.update(started, OWNER);
   await db.repositories.hypotheses.update(

@@ -33,7 +33,7 @@ import {
 } from '@roi-dealer/media';
 import { createHealthRegistry } from '@roi-dealer/observability';
 import { uuidv7 } from '@roi-dealer/shared';
-import { previewPage } from '@roi-dealer/site';
+import { NOT_FOUND, previewPage } from '@roi-dealer/site';
 import type { CallbackContext, InlineKeyboard } from '@roi-dealer/telegram';
 import { createRouter } from '../../../apps/api/src/router.js';
 import { startApiServer, type ApiServer } from '../../../apps/api/src/server.js';
@@ -225,7 +225,10 @@ beforeAll(async () => {
     port: 0,
     router: createRouter({
       health: createHealthRegistry({ service: 'api' }),
-      site: { preview: (token) => previewPage(db, token) },
+      site: {
+        preview: (token) => previewPage(db, token),
+        landing: () => Promise.resolve(NOT_FOUND),
+      },
     }),
     logger,
   });
