@@ -60,3 +60,7 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - AI (PHASE 09, ADR-0006, D-021): call models only through `runTask` from `@roi-dealer/ai-runtime`; provider SDKs never leave its adapters. A new AI task is an `AiTask` in `AI_TASKS` with Zod input and output, a golden set of ≥ 20 cases with a score, `maxCostMicroUsd` covering the worst call and a `dailyShare` (all shares plus evals ≤ 1). A changed prompt is a new `version`. Code applies what the model proposes. Never log or store prompts, outputs or keys; tests use the local fakes in `tests/support/fake-ai.ts`.
 - Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.
+
+## Routine helper
+
+Delegate routine work to the `routine` subagent (`.claude/agents/routine.md`, Sonnet) to save the main model's limits: code and reference searches, reading documents, mechanical updates of Russian documents from facts you give it. Give it one narrow task and the exact files. Phase specs, code, migrations, tests, owner decisions, commits and pushes stay in the main session; check what it changed before committing.
