@@ -38,7 +38,31 @@ export {
   type CommandCenter,
   type CommandCenterOptions,
 } from './command-center.js';
-export { NO_PAINS_TEXT, painsText, PAINS_SHOWN } from './pains.js';
+export {
+  handlePainButton,
+  NO_PAINS_TEXT,
+  PAIN_PREFIX,
+  painsReply,
+  painsText,
+  PAINS_SHOWN,
+} from './pains.js';
+export {
+  handlePortfolioButton,
+  MAX_PORTFOLIO_CARDS,
+  PORTFOLIO_PREFIX,
+  portfolioKeyboard,
+  sendPortfolio,
+} from './portfolio.js';
+export {
+  isReviewDay,
+  REVIEW_DAYS,
+  sendWeeklyReview,
+  STATS_DAYS,
+  statsText,
+  weeklyProposals,
+  weeklyReviewText,
+  type ReviewProposal,
+} from './stats.js';
 export {
   answerText,
   ASK_USAGE,
@@ -96,8 +120,10 @@ export {
   LAUNCH_REQUEST_DAYS,
   MAX_EXPERIMENT_CARDS,
   METHOD_LABELS,
+  activeExperimentViews,
   metricText,
   moneyLine,
+  proposalKeyboard,
   parseFunnelReport,
   sendExperiments,
   STAGE_LABELS,

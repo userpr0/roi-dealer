@@ -356,6 +356,11 @@ async function viewsOf(
   return views;
 }
 
+/** Views of every experiment not completed or cancelled, numbered as in /experiments. */
+export async function activeExperimentViews(scope: Scope): Promise<ExperimentView[]> {
+  return viewsOf(scope, await activeExperiments(scope.repositories));
+}
+
 /** The view of one experiment with its number among the active ones. */
 async function viewOf(scope: Scope, experiment: Experiment): Promise<ExperimentView | undefined> {
   const active = await activeExperiments(scope.repositories);
@@ -544,6 +549,33 @@ function resultPreview(view: ExperimentView): string {
     `${reached ? 'достигнута' : 'не достигнута'}. Гипотеза будет ` +
     `${VERDICT_LABELS[hypothesisVerdict(view.experiment, reached)]}. Выберите решение:`
   );
+}
+
+/**
+ * The weekly review's proposal for a test (PHASE 13): the proposed result as the first button
+ * (it asks for confirmation like any result), and the other results.
+ */
+export function proposalKeyboard(
+  experiment: Experiment,
+  outcome: ExperimentOutcome,
+): InlineKeyboard {
+  return [
+    [
+      button(`${OUTCOMES[outcome].label}`, OUTCOMES[outcome].ask, experiment),
+      button('🏁 Другой итог', 'o', experiment),
+    ],
+  ];
+}
+
+export const PROPOSAL_REASONS: Readonly<Record<ExperimentOutcome, string>> = {
+  scale: 'метрика успеха достигнута',
+  improve: 'срок теста вышел, метрика не достигнута',
+  pivot: 'тест остановлен stop-loss или бюджетом без метрики',
+  kill: 'возможность не подтвердилась',
+};
+
+export function outcomeLabel(outcome: ExperimentOutcome): string {
+  return OUTCOMES[outcome].label;
 }
 
 function outcomeKeyboard(experiment: Experiment): InlineKeyboard {

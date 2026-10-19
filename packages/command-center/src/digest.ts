@@ -1,5 +1,6 @@
 import {
   costEntrySchema,
+  experimentDay,
   formatUsd,
   summarizeCosts,
   toTimestamp,
@@ -24,10 +25,17 @@ export const DIGEST_RETRY_MS = 5 * 60_000;
 
 /** The morning summary, from the database only (§2.13). */
 export async function buildDigest(
-  database: Pick<Database, 'repositories' | 'events' | 'access' | 'aiCalls'>,
+  database: Pick<Database, 'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns'>,
   nowMs: number,
 ): Promise<string> {
   const now = toTimestamp(new Date(nowMs));
+  // Alerts (PHASE 13): failed agent runs and tests past their calendar limit.
+  const agentFailures = [
+    ...(await database.agentRuns.totals(toTimestamp(new Date(nowMs - PERIODS.day.ms)))).values(),
+  ].reduce((sum, totals) => sum + totals.failed, 0);
+  const overdue = (
+    await database.repositories.experiments.listByStatus('running', { limit: 1_000 })
+  ).filter((experiment) => experimentDay(experiment, now)?.overdue === true).length;
   const ai = await aiDigestLine(database.aiCalls, nowMs);
   const refused = await database.access.count({
     from: toTimestamp(new Date(nowMs - PERIODS.day.ms)),
@@ -79,6 +87,10 @@ export async function buildDigest(
           `💡 Новых возможностей за сутки: ${String(newOpportunities)}${partial ? '+' : ''} → /opportunities`,
         ]),
     ...(ai === undefined ? [] : [ai]),
+    ...(agentFailures === 0
+      ? []
+      : [`⚠️ Сбоев агентов за сутки: ${String(agentFailures)} → /agents`]),
+    ...(overdue === 0 ? [] : [`⏰ Просроченных тестов: ${String(overdue)} → /experiments`]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
     await killSwitchStatus(database.repositories, database.events),
   ].join('\n');
@@ -170,7 +182,15 @@ export async function sendDailyDigest(
     async (scope) => {
       // Delivered inside the command: a failed delivery stores nothing and can be retried.
       await deliver(
-        await buildDigest({ ...scope, access: database.access, aiCalls: database.aiCalls }, nowMs),
+        await buildDigest(
+          {
+            ...scope,
+            access: database.access,
+            aiCalls: database.aiCalls,
+            agentRuns: database.agentRuns,
+          },
+          nowMs,
+        ),
       );
       return { sentAt: toTimestamp(new Date(nowMs)) };
     },

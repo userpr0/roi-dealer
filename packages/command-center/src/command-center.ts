@@ -52,7 +52,9 @@ import {
   reviewQueue,
   sendOpportunityCards,
 } from './opportunity-cards.js';
-import { painsText } from './pains.js';
+import { handlePainButton, PAIN_PREFIX, painsReply } from './pains.js';
+import { handlePortfolioButton, PORTFOLIO_PREFIX, sendPortfolio } from './portfolio.js';
+import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
 
@@ -72,7 +74,8 @@ export interface CommandCenterOptions {
 export interface CommandCenter {
   /**
    * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
-   * /search, /ask, /note, /hypotheses, /experiments, /funnel, /economics, /cost, /agents
+   * /search, /ask, /note, /hypotheses, /experiments, /funnel, /economics, /cost, /portfolio,
+   * /stats, /review, /agents
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
@@ -117,6 +120,9 @@ const DESCRIPTIONS = {
   funnel: 'Внести цифры теста: воронка, траты, выручка',
   economics: 'Экономика месяца: расходы, лимиты, выручка, ROI',
   cost: 'Записать расход вне тестов',
+  portfolio: 'Возможности в работе: пауза, продолжить, закрыть',
+  stats: 'Статистика цикла и метрики системы',
+  review: 'Недельный разбор сейчас',
   agents: 'Агенты: доступ, работа, AI за сутки',
 } as const;
 
@@ -141,6 +147,8 @@ function withoutDatabase(): Pick<
       EXPERIMENT_PREFIX,
       FUNNEL_PREFIX,
       COST_PREFIX,
+      PORTFOLIO_PREFIX,
+      PAIN_PREFIX,
       KILL_SWITCH_PREFIX,
       ACCESS_PREFIX,
       NOTE_PREFIX,
@@ -236,7 +244,16 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     logger,
     now: nowMs,
     send: async (date) => {
-      const outcome = await sendDailyDigest(database, date, nowMs(), options.deliverDigest);
+      // D-014 п.12: on Monday the weekly review replaces the daily digest.
+      const outcome = isReviewDay(date)
+        ? await sendWeeklyReview(
+            database,
+            date,
+            nowMs(),
+            options.deliverDigest,
+            options.deliverCard,
+          )
+        : await sendDailyDigest(database, date, nowMs(), options.deliverDigest);
       logger.info('daily digest', { date, outcome, correlation_id: `digest-${date}` });
     },
   });
@@ -283,9 +300,10 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('access', 'access.read', (context) =>
         sendAccessOverview(deps, (text, keyboard) => context.reply(text, keyboard)),
       ),
-      command('pains', 'research.read', async (context) =>
-        context.reply(await painsText(database.repositories)),
-      ),
+      command('pains', 'research.read', async (context) => {
+        const reply = await painsReply(database.repositories);
+        await context.reply(reply.text, reply.keyboard);
+      }),
       command('opportunities', 'research.read', async (context) =>
         context.reply(
           await opportunitiesText(
@@ -313,6 +331,15 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         context.reply(await economicsReply(database, nowMs())),
       ),
       command('cost', 'cost.record', costs.cost),
+      command('portfolio', 'research.read', (context) =>
+        sendPortfolio(deps, (text, keyboard) => context.reply(text, keyboard)),
+      ),
+      command('stats', 'history.read', async (context) =>
+        context.reply(await statsText(database, nowMs())),
+      ),
+      command('review', 'history.read', async (context) =>
+        context.reply(await weeklyReviewText(database, nowMs())),
+      ),
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
       ),
@@ -330,6 +357,10 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       button(FUNNEL_PREFIX, 'experiment.write', funnel.handleButton),
       button(COST_PREFIX, 'cost.record', costs.handleButton),
+      button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
+        handlePortfolioButton(deps, context),
+      ),
+      button(PAIN_PREFIX, 'research.write', (context) => handlePainButton(deps, context)),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
       button(NOTE_PREFIX, 'research.write', notes.handleButton),

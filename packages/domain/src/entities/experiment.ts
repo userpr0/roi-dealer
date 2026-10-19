@@ -479,3 +479,24 @@ export function experimentDay(
   const day = Math.floor((Date.parse(end) - Date.parse(experiment.startedAt)) / 86_400_000) + 1;
   return { day, overdue: day > experiment.buildBudget.maxCalendarDays };
 }
+
+/**
+ * What the system proposes for a test in the weekly review (D-014 п.12, PHASE 13): the metric
+ * reached → scale; stopped by the stop-loss or the budget without it → pivot; past its calendar
+ * limit without it → improve; otherwise nothing yet. The owner decides.
+ */
+export function proposeExperimentOutcome(
+  experiment: Experiment,
+  reached: boolean,
+  at: Timestamp,
+): ExperimentResult['outcome'] | undefined {
+  if (experiment.status !== 'running' && experiment.status !== 'stopped') return undefined;
+  if (reached) return 'scale';
+  if (
+    experiment.stopReason === STOP_REASONS.stopLoss ||
+    experiment.stopReason === STOP_REASONS.budget
+  ) {
+    return 'pivot';
+  }
+  return experimentDay(experiment, at)?.overdue === true ? 'improve' : undefined;
+}

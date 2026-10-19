@@ -12,6 +12,7 @@ import { createAiCallLog, type AiCallLog } from './ai-calls.js';
 import { createBrainQueries, type BrainQueries } from './brain.js';
 import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
+import { createStatsQueries, type StatsQueries } from './stats.js';
 import { createJudgementLog, type JudgementLog } from './judgements.js';
 import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
@@ -100,6 +101,8 @@ export interface Database {
   readonly funnel: FunnelLog;
   /** Sums over the cost and revenue ledgers and the automated spend per day (PHASE 16). */
   readonly economics: EconomicsQueries;
+  /** Counts of the cycle and the system's metrics (PHASE 13). */
+  readonly stats: StatsQueries;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -207,6 +210,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     judgements: createJudgementLog(sql),
     funnel: createFunnelLog(sql),
     economics: createEconomicsQueries(sql),
+    stats: createStatsQueries(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

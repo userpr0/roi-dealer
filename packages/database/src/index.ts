@@ -114,6 +114,7 @@ export {
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
 export { createEconomicsQueries, type EconomicsQueries, type MoneyPeriod } from './economics.js';
 export { createFunnelLog, type FunnelLog } from './experiments.js';
+export { createStatsQueries, type CycleCounts, type StatsQueries } from './stats.js';
 export {
   createJudgementLog,
   JUDGEMENT_OUTCOMES,
