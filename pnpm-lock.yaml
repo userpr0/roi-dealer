@@ -162,6 +162,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@roi-dealer/agents':
+        specifier: workspace:*
+        version: link:../../packages/agents
       '@roi-dealer/ai-runtime':
         specifier: workspace:*
         version: link:../../packages/ai-runtime
@@ -190,7 +193,35 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
-  packages/agents: {}
+  packages/agents:
+    dependencies:
+      '@roi-dealer/ai-runtime':
+        specifier: workspace:*
+        version: link:../ai-runtime
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/evidence':
+        specifier: workspace:*
+        version: link:../evidence
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@roi-dealer/opportunities':
+        specifier: workspace:*
+        version: link:../opportunities
+      '@roi-dealer/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@roi-dealer/signals':
+        specifier: workspace:*
+        version: link:../signals
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/ai-runtime:
     dependencies:

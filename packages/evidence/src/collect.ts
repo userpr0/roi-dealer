@@ -31,6 +31,7 @@ import {
   type CatalogEntry,
 } from './catalog.js';
 import type { SourceConnector } from './connector.js';
+import { EvidenceEngineError } from './errors.js';
 import { redactionTotal, redactPersonalData } from './privacy.js';
 
 /** Stored quotes stay short (§2.20: evidence of a pattern, not a copy of the material). */
@@ -159,7 +160,14 @@ function shortExcerpt(text: string): string {
  */
 export async function collectEvidence(
   connector: SourceConnector,
-  deps: EngineDeps & { readonly signal?: AbortSignal | undefined },
+  deps: EngineDeps & {
+    readonly signal?: AbortSignal | undefined;
+    /**
+     * A search instead of the regular load (PHASE 10): at most `limits.maxItemsPerSearch` new
+     * items; the source must have a search endpoint.
+     */
+    readonly query?: string | undefined;
+  },
 ): Promise<CollectOutcome> {
   const { database, logger } = deps;
   await assertRunning(database);
@@ -173,10 +181,20 @@ export async function collectEvidence(
   if (principal === undefined) return { status: 'skipped', reason: 'access_missing' };
   if (principal.status !== 'active') return { status: 'skipped', reason: 'access_not_active' };
 
+  let maxItems = entry.limits.maxItemsPerRun;
+  if (deps.query !== undefined) {
+    if (entry.access.searchEndpoint === undefined || entry.limits.maxItemsPerSearch === undefined) {
+      throw new EvidenceEngineError('bad_request', `Source ${entry.key} has no search`, {
+        catalog_key: entry.key,
+      });
+    }
+    maxItems = entry.limits.maxItemsPerSearch;
+  }
   const run = await connector.fetch({
-    maxItems: entry.limits.maxItemsPerRun,
+    maxItems,
     known: (ids) => database.repositories.evidence.knownExternalIds(source.id, ids),
     signal: deps.signal,
+    query: deps.query,
   });
   if (run.itemCount === 0) return { status: 'skipped', reason: 'nothing_new' };
 

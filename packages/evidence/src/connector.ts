@@ -20,6 +20,8 @@ export interface FetchRequest {
   /** Which of these ids are already stored. */
   readonly known: (externalIds: readonly string[]) => Promise<ReadonlySet<string>>;
   readonly signal?: AbortSignal | undefined;
+  /** Words to search for (PHASE 10); only search connectors take it. */
+  readonly query?: string | undefined;
 }
 
 export interface ConnectorRun {

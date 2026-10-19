@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { painAnalystAgent, runAgent } from '@roi-dealer/agents';
 import { createAiRuntime, createAnthropicProvider, type AiRuntime } from '@roi-dealer/ai-runtime';
 import { buildDigest, ensureAccessRequest, painsText } from '@roi-dealer/command-center';
 import type { Database } from '@roi-dealer/database';
@@ -18,7 +19,6 @@ import {
 } from '@roi-dealer/domain';
 import {
   analyzeEvidence,
-  createSignalsScheduler,
   extractSignalTask,
   matchPainTask,
   PAIN_ANALYST,
@@ -167,19 +167,25 @@ describe('the pain analyst needs the owner’s grant (PHASE 04)', () => {
       reason: 'access_missing',
     });
 
-    const scheduler = createSignalsScheduler({
-      ...deps(),
-      ensureAccess: ensureAccessRequest,
-      intervalMs: 60_000,
-    });
-    await scheduler.runOnce();
+    await expect(
+      runAgent(painAnalystAgent(), {
+        ...deps(),
+        ensureAccess: ensureAccessRequest,
+        now: Date.now,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toBe('no_access');
     const [request] = (await db.repositories.approvalRequests.listByStatus('pending')).filter(
       (item) => item.kind === 'access_grant',
     );
     expect(request?.title).toBe('Доступ: Агент болей и сигналов');
     expect(request?.summary).toContain('Только предлагает');
     expect(records).toContainEqual(
-      expect.objectContaining({ message: 'pain analysis skipped', reason: 'access_not_active' }),
+      expect.objectContaining({
+        message: 'agent run',
+        agent: 'pain-analyst',
+        outcome: 'no_access',
+      }),
     );
     expect(claude.calls).toEqual([]);
 

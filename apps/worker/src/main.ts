@@ -1,4 +1,12 @@
 import {
+  AGENT_TASKS,
+  createAgentScheduler,
+  marketAnalystAgent,
+  opportunityAnalystAgent,
+  painAnalystAgent,
+  researcherAgent,
+} from '@roi-dealer/agents';
+import {
   AI_TASKS,
   createAiMaintenance,
   createAiRuntime,
@@ -13,12 +21,13 @@ import { createDatabase } from '@roi-dealer/database';
 import {
   createEvidenceScheduler,
   createHackerNewsConnector,
+  createHackerNewsSearchConnector,
   EVIDENCE_ENGINE_ACTOR,
 } from '@roi-dealer/evidence';
 import { createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
-import { createOpportunitiesScheduler, OPPORTUNITY_TASKS } from '@roi-dealer/opportunities';
-import { createSignalsScheduler, SIGNAL_TASKS } from '@roi-dealer/signals';
+import { OPPORTUNITY_TASKS } from '@roi-dealer/opportunities';
+import { SIGNAL_TASKS } from '@roi-dealer/signals';
 import { loadWorkerConfig } from './config.js';
 import { createWorker } from './worker.js';
 
@@ -87,54 +96,53 @@ function main(): void {
     runtime: ai,
     database,
     logger,
-    tasks: [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS],
+    tasks: [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS, ...AGENT_TASKS],
     intervalMs: config.AI_MAINTENANCE_INTERVAL_MS,
   });
 
+  const namesPass =
+    providers.length === 0
+      ? undefined
+      : (text: string) => redactNames(ai, text, { actor: EVIDENCE_ENGINE_ACTOR });
   const evidence = createEvidenceScheduler({
     database,
     logger,
     connectors: [createHackerNewsConnector({ baseUrl: config.HACKER_NEWS_API_URL })],
     ensureAccess: ensureAccessRequest,
     intervalMs: config.EVIDENCE_COLLECT_INTERVAL_MS,
-    redactNames:
-      providers.length === 0
-        ? undefined
-        : (text) => redactNames(ai, text, { actor: EVIDENCE_ENGINE_ACTOR }),
+    redactNames: namesPass,
   });
-  // Pain analysis (PHASE 06) needs AI: without a provider it does not even ask for access.
-  const signals =
-    providers.length === 0
-      ? undefined
-      : createSignalsScheduler({
-          database,
-          logger,
-          runtime: ai,
-          ensureAccess: ensureAccessRequest,
-          intervalMs: config.SIGNALS_INTERVAL_MS,
-        });
-  // Opportunity assessment (PHASE 07) needs AI too.
-  const opportunities =
-    providers.length === 0
-      ? undefined
-      : createOpportunitiesScheduler({
-          database,
-          logger,
-          runtime: ai,
-          ensureAccess: ensureAccessRequest,
-          intervalMs: config.OPPORTUNITIES_INTERVAL_MS,
-        });
+  // The agents (PHASE 06, 07, 10) need AI: without a provider they do not even ask for access.
+  const agents = createAgentScheduler({
+    database,
+    logger,
+    runtime: ai,
+    ensureAccess: ensureAccessRequest,
+    agents:
+      providers.length === 0
+        ? []
+        : [
+            { agent: painAnalystAgent(), intervalMs: config.SIGNALS_INTERVAL_MS },
+            { agent: opportunityAnalystAgent(), intervalMs: config.OPPORTUNITIES_INTERVAL_MS },
+            {
+              agent: researcherAgent({
+                search: createHackerNewsSearchConnector({
+                  baseUrl: config.HACKER_NEWS_SEARCH_URL,
+                }),
+                redactNames: namesPass,
+              }),
+              intervalMs: config.RESEARCH_INTERVAL_MS,
+            },
+            { agent: marketAnalystAgent(), intervalMs: config.MARKET_INTERVAL_MS },
+          ],
+  });
   maintenance.start();
   evidence.start();
-  signals?.start();
-  opportunities?.start();
+  agents.start();
   // Registered last, so they stop first: work finishes before the database closes.
   shutdown.register('ai-maintenance', () => maintenance.stop());
   shutdown.register('evidence-collection', () => evidence.stop());
-  if (signals !== undefined) shutdown.register('pain-analysis', () => signals.stop());
-  if (opportunities !== undefined) {
-    shutdown.register('opportunity-assessment', () => opportunities.stop());
-  }
+  shutdown.register('agents', () => agents.stop());
 }
 
 try {

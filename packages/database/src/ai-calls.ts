@@ -57,6 +57,8 @@ export interface AiCallPeriod {
   /** Only the calls of this task. */
   readonly task?: string | undefined;
   readonly purpose?: AiCallPurpose | undefined;
+  /** Only the calls made for this actor id, e.g. an agent (PHASE 10). */
+  readonly actorId?: string | undefined;
 }
 
 export interface AiSpend {
@@ -106,6 +108,7 @@ export function createAiCallLog(executor: Executor): AiCallLog {
     ${query.to === undefined ? executor`` : executor`and occurred_at < ${query.to}`}
     ${query.task === undefined ? executor`` : executor`and task = ${query.task}`}
     ${query.purpose === undefined ? executor`` : executor`and purpose = ${query.purpose}`}
+    ${query.actorId === undefined ? executor`` : executor`and actor_id = ${query.actorId}`}
   `;
 
   return {

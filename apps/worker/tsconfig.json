@@ -13,6 +13,7 @@
     { "path": "../../packages/command-center" },
     { "path": "../../packages/ai-runtime" },
     { "path": "../../packages/signals" },
-    { "path": "../../packages/opportunities" }
+    { "path": "../../packages/opportunities" },
+    { "path": "../../packages/agents" }
   ]
 }

@@ -50,7 +50,13 @@ export {
   searchReply,
   searchResultText,
 } from './brain.js';
-export { NO_OPPORTUNITIES_TEXT, OPPORTUNITIES_SHOWN, opportunitiesText } from './opportunities.js';
+export {
+  marketLine,
+  NO_OPPORTUNITIES_TEXT,
+  OPPORTUNITIES_SHOWN,
+  opportunitiesText,
+} from './opportunities.js';
+export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
   buildDigest,
   createDigestScheduler,

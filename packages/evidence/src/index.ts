@@ -39,6 +39,11 @@ export {
   HACKER_NEWS_CATALOG_KEY,
   type HackerNewsOptions,
 } from './hacker-news.js';
+export {
+  createHackerNewsSearchConnector,
+  HACKER_NEWS_SEARCH_URL,
+  MAX_QUERY_LENGTH,
+} from './hacker-news-search.js';
 export { htmlToText } from './html.js';
 export {
   REDACTION_KINDS,

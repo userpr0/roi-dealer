@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { opportunityAnalystAgent, runAgent } from '@roi-dealer/agents';
 import { createAiRuntime, createAnthropicProvider, type AiRuntime } from '@roi-dealer/ai-runtime';
 import {
   buildDigest,
@@ -30,7 +31,6 @@ import {
 } from '@roi-dealer/domain';
 import {
   assessPains,
-  createOpportunitiesScheduler,
   frameOpportunityTask,
   OPPORTUNITY_ANALYST,
   OPPORTUNITY_TASKS,
@@ -194,11 +194,14 @@ describe('the opportunity analyst needs the owner’s grant and a passing eval',
       status: 'skipped',
       reason: 'access_missing',
     });
-    await createOpportunitiesScheduler({
-      ...deps(),
-      ensureAccess: ensureAccessRequest,
-      intervalMs: 60_000,
-    }).runOnce();
+    await expect(
+      runAgent(opportunityAnalystAgent(), {
+        ...deps(),
+        ensureAccess: ensureAccessRequest,
+        now: Date.now,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toBe('no_access');
     const [request] = (await db.repositories.approvalRequests.listByStatus('pending')).filter(
       (item) => item.kind === 'access_grant',
     );

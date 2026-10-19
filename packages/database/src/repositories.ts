@@ -9,6 +9,7 @@ import type {
   Hypothesis,
   KnowledgeAsset,
   Opportunity,
+  OpportunityId,
   Pain,
   Principal,
   Reward,
@@ -80,7 +81,11 @@ export interface KnowledgeAssetRepository extends Repository<KnowledgeAsset> {
   /** Assets carrying every one of `tags`, newest first (e.g. eval reports, PHASE 09). */
   listByTags(
     tags: readonly string[],
-    options?: { readonly limit?: number },
+    options?: {
+      readonly limit?: number;
+      /** Only assets linked to one of these opportunities (PHASE 10). */
+      readonly opportunityIds?: readonly OpportunityId[];
+    },
   ): Promise<KnowledgeAsset[]>;
 }
 
@@ -140,6 +145,11 @@ export function createRepositories(executor: Executor, context: WriteContext = {
           const limit = Math.min(Math.max(Math.trunc(options.limit ?? 20), 1), 1_000);
           const rows = await executor<Row[]>`
             select * from knowledge_assets where tags @> ${[...tags]}::text[]
+            ${
+              options.opportunityIds === undefined
+                ? executor``
+                : executor`and opportunity_id = any(${[...options.opportunityIds]}::uuid[])`
+            }
             order by created_at desc, id desc
             limit ${limit}
           `;

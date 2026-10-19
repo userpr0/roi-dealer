@@ -1,4 +1,11 @@
-import type { Opportunity, OpportunityId } from '@roi-dealer/domain';
+import {
+  MARKET_CONTEXT_TAG,
+  readMarketContext,
+  type MarketContextData,
+  type MoneyPeriod,
+  type Opportunity,
+  type OpportunityId,
+} from '@roi-dealer/domain';
 import type { OpportunityAssessmentLog, Repositories } from '@roi-dealer/database';
 
 /** At most this many opportunities are listed in /opportunities. */
@@ -29,16 +36,51 @@ const PART_LABELS: Readonly<Record<string, string>> = {
   buyer: 'покупатель',
 };
 
+const PERIOD_SUFFIX: Readonly<Record<MoneyPeriod, string>> = {
+  one_time: '',
+  hour: '/час',
+  week: '/нед',
+  month: '/мес',
+  year: '/год',
+  unknown: '',
+};
+const MAX_MARKET_ITEMS = 3;
+
+function usd(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount.toLocaleString('en-US')}` : `$${amount.toFixed(2)}`;
+}
+
+/** One line of the market context (PHASE 10): what people use now, money, who pays. */
+export function marketLine(context: MarketContextData): string | undefined {
+  const parts: string[] = [];
+  const list = (items: readonly string[]) =>
+    items.slice(0, MAX_MARKET_ITEMS).join(', ') +
+    (items.length > MAX_MARKET_ITEMS ? ` и ещё ${String(items.length - MAX_MARKET_ITEMS)}` : '');
+  if (context.alternatives.length > 0) {
+    parts.push(`сейчас — ${list(context.alternatives.map((item) => item.name))}`);
+  }
+  if (context.money.length > 0) {
+    parts.push(
+      `суммы — ${list(context.money.map((item) => `${usd(item.amountUsd)}${PERIOD_SUFFIX[item.period]}`))}`,
+    );
+  }
+  if (context.buyers.length > 0) {
+    parts.push(`платит — ${list(context.buyers.map((item) => item.role))}`);
+  }
+  return parts.length === 0 ? undefined : `   Рынок: ${parts.join(' · ')}`;
+}
+
 export const NO_OPPORTUNITIES_TEXT =
   '💡 Возможностей пока нет.\n\nАгент возможностей оценивает боли, которые встретились хотя бы ' +
   'дважды (/pains), когда в worker есть ключи AI и его доступ одобрен в /decisions.';
 
 /**
- * /opportunities (PHASE 07): draft opportunities with the best score first, with the parts of
- * the score, the business model and the pain. From the database only (§2.13).
+ * /opportunities (PHASE 07, 10): draft opportunities with the best score first, with the parts
+ * of the score, the business model, the market context and the pain. From the database only
+ * (§2.13).
  */
 export async function opportunitiesText(
-  repositories: Pick<Repositories, 'opportunities' | 'pains'>,
+  repositories: Pick<Repositories, 'opportunities' | 'pains' | 'knowledgeAssets'>,
   assessments: Pick<OpportunityAssessmentLog, 'scores'>,
 ): Promise<string> {
   const open: Opportunity[] = [];
@@ -52,6 +94,17 @@ export async function opportunitiesText(
   const top = [...open]
     .sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, OPPORTUNITIES_SHOWN);
+  // Newest first: the first entry of an opportunity is its latest context.
+  const markets = new Map<OpportunityId, MarketContextData>();
+  const entries = await repositories.knowledgeAssets.listByTags([MARKET_CONTEXT_TAG], {
+    opportunityIds: top.map((item) => item.id),
+    limit: 1_000,
+  });
+  for (const entry of entries) {
+    const id = entry.links.opportunityId;
+    const context = readMarketContext(entry);
+    if (id !== undefined && context !== undefined && !markets.has(id)) markets.set(id, context);
+  }
   const lines = [
     `💡 Возможности · открытых: ${String(open.length)}` +
       (open.length > OPPORTUNITIES_SHOWN
@@ -63,6 +116,8 @@ export async function opportunitiesText(
     const score = scores.get(opportunity.id);
     const [painId] = opportunity.painIds;
     const pain = painId === undefined ? undefined : await repositories.pains.getById(painId);
+    const market = markets.get(opportunity.id);
+    const marketText = market === undefined ? undefined : marketLine(market);
     const parts =
       score === undefined
         ? ''
@@ -76,6 +131,7 @@ export async function opportunitiesText(
       `   Модель: ${MODEL_LABELS[opportunity.businessModel.model]} · рынки: ${opportunity.markets.join(', ')}` +
         (opportunity.status === 'under_review' ? ' · ждёт решения' : ' · черновик'),
       ...(parts === '' ? [] : [`   Оценка: ${parts}`]),
+      ...(marketText === undefined ? [] : [marketText]),
       ...(pain === undefined ? [] : [`   Боль: ${pain.title}`]),
     );
   }

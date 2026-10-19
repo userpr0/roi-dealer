@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
-import { HACKER_NEWS_API_URL } from '@roi-dealer/evidence';
+import { HACKER_NEWS_API_URL, HACKER_NEWS_SEARCH_URL } from '@roi-dealer/evidence';
 import { LOG_LEVELS } from '@roi-dealer/observability';
 import { loadConfig, nodeEnvSchema, type EnvSource } from '@roi-dealer/shared';
 
@@ -20,6 +20,8 @@ const workerConfigSchema = z.object({
     .default(15 * 60_000),
   /** Official API by default; tests point it to a local fake. */
   HACKER_NEWS_API_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_API_URL),
+  /** HN Search (Algolia) for the research agent (PHASE 10); tests point it to a local fake. */
+  HACKER_NEWS_SEARCH_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_SEARCH_URL),
   /**
    * AI providers (PHASE 09, ADR-0006, D-021): optional; without a key its models are not used.
    * Secrets.
@@ -45,6 +47,18 @@ const workerConfigSchema = z.object({
     .default(15 * 60_000),
   /** How often the opportunity analyst assesses pains (PHASE 07). Default: one hour. */
   OPPORTUNITIES_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
+  /** How often the research agent searches for more posts about pains (PHASE 10). Default: 6 h. */
+  RESEARCH_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(6 * 3_600_000),
+  /** How often the market context agent reads draft opportunities (PHASE 10). Default: 6 h. */
+  MARKET_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(6 * 3_600_000),
   /** How often models, evals and the daily cost are maintained. Default: one hour. */
   AI_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
 });

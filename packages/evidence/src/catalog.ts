@@ -42,6 +42,8 @@ export const catalogEntrySchema = z.strictObject({
     method: z.enum(ACCESS_METHODS),
     endpoint: httpUrlSchema,
     authentication: z.enum(AUTHENTICATION_KINDS),
+    /** Search by words, for the research agent (PHASE 10); absent when the source has none. */
+    searchEndpoint: httpUrlSchema.optional(),
   }),
   terms: z.strictObject({
     urls: z.array(httpUrlSchema).min(1),
@@ -56,6 +58,8 @@ export const catalogEntrySchema = z.strictObject({
     /** Our own politeness limits: at most one load per interval, at most N items per load. */
     minIntervalMinutes: z.int().min(5).max(1_440),
     maxItemsPerRun: z.int().min(1).max(100),
+    /** At most N new items per search (PHASE 10); required with `access.searchEndpoint`. */
+    maxItemsPerSearch: z.int().min(1).max(30).optional(),
   }),
   dataFields: z.strictObject({
     provided: z.array(noteSchema).min(1),
@@ -87,9 +91,14 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       method: 'official_api',
       endpoint: 'https://hacker-news.firebaseio.com/v0',
       authentication: 'none',
+      searchEndpoint: 'https://hn.algolia.com/api/v1',
     },
     terms: {
-      urls: ['https://github.com/HackerNews/API', 'https://www.ycombinator.com/legal/'],
+      urls: [
+        'https://github.com/HackerNews/API',
+        'https://www.ycombinator.com/legal/',
+        'https://hn.algolia.com/api',
+      ],
       summary:
         'Официальный публичный read-only API Y Combinator. Отдельных условий для данных API нет; берём минимум.',
       conditions: [
@@ -97,6 +106,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'Без ников, профилей и контактов авторов',
         'Ничего не публикуем: цитаты — только доказательства внутри системы (§2.20)',
         'Ссылка на оригинал сохраняется для проверки',
+        'Поиск Ask HN по словам боли (агент исследований, PHASE 10) — HN Search API (Algolia), на который ведёт поиск сайта HN: до 10 постов на запрос, до 3 запросов за 6 часов',
       ],
     },
     cost: 'Бесплатно, без ключа',
@@ -104,6 +114,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       provider: 'Лимит не заявлен',
       minIntervalMinutes: 60,
       maxItemsPerRun: 30,
+      maxItemsPerSearch: 10,
     },
     dataFields: {
       provided: ['id', 'type', 'by', 'time', 'title', 'text (HTML)', 'url', 'score', 'kids'],
@@ -122,7 +133,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedBy: 'Claude (D-019)',
       checkedOn: '2026-10-18',
       notes:
-        'Документация API: бесплатно, без авторизации, лимит не заявлен. Аудитория глобальная англоязычная, ядро — США; рынок у Evidence не присваивается.',
+        'Документация API: бесплатно, без авторизации, лимит не заявлен. Аудитория глобальная англоязычная, ядро — США; рынок у Evidence не присваивается. Поиск (2026-10-19): отдельных условий у HN Search API не опубликовано; лимит 10 000 запросов в час с IP — по сторонним источникам.',
     },
   },
   {

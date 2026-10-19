@@ -25,6 +25,7 @@ import {
   periodKeyboard,
   type JournalKind,
 } from './journal.js';
+import { agentsText } from './agents.js';
 import { aiStatusLine } from './ai-status.js';
 import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
@@ -44,7 +45,7 @@ export interface CommandCenterOptions {
 export interface CommandCenter {
   /**
    * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
-   * /search, /ask, /note
+   * /search, /ask, /note, /agents
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
@@ -81,6 +82,7 @@ const DESCRIPTIONS = {
   search: 'Поиск по базе',
   ask: 'Спросить систему',
   note: 'Записать знание',
+  agents: 'Агенты: доступ, работа, AI за сутки',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -220,6 +222,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         context.reply(await askReply(database, context.args, nowMs())),
       ),
       command('note', 'research.write', notes.note),
+      command('agents', 'status.read', async (context) =>
+        context.reply(await agentsText(database, nowMs())),
+      ),
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),

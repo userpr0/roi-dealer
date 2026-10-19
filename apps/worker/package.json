@@ -13,6 +13,7 @@
     "start": "node --enable-source-maps dist/main.js"
   },
   "dependencies": {
+    "@roi-dealer/agents": "workspace:*",
     "@roi-dealer/ai-runtime": "workspace:*",
     "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",

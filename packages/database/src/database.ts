@@ -2,6 +2,12 @@ import postgres from 'postgres';
 import { correlationIdSchema, idempotencyKeySchema } from '@roi-dealer/events';
 import type { HealthCheck, Logger } from '@roi-dealer/observability';
 import { createAccessLog, type AccessLog, type AccessLogEntry } from './access-log.js';
+import {
+  createAgentRunLog,
+  createAgentWorkLog,
+  type AgentRunLog,
+  type AgentWorkLog,
+} from './agents.js';
 import { createAiCallLog, type AiCallLog } from './ai-calls.js';
 import { createBrainQueries, type BrainQueries } from './brain.js';
 import type { AccessDeniedHandler } from './access.js';
@@ -36,6 +42,8 @@ export interface TransactionScope {
   readonly signalExtractions: SignalExtractionLog;
   /** Recorded in the same transaction as the opportunity it created (PHASE 07). */
   readonly opportunityAssessments: OpportunityAssessmentLog;
+  /** Recorded in the same transaction as the result an agent stored (PHASE 10). */
+  readonly agentWork: AgentWorkLog;
 }
 
 export interface TransactionOptions {
@@ -73,6 +81,10 @@ export interface Database {
   readonly opportunityAssessments: OpportunityAssessmentLog;
   /** Company Brain: search, counts and totals by fixed parameterized queries (PHASE 08). */
   readonly brain: BrainQueries;
+  /** Journal of agent runs (PHASE 10). */
+  readonly agentRuns: AgentRunLog;
+  /** Journal of the object versions agents worked on (PHASE 10). */
+  readonly agentWork: AgentWorkLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -114,6 +126,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     events: createEventStore(tx),
     signalExtractions: createSignalExtractionLog(tx),
     opportunityAssessments: createOpportunityAssessmentLog(tx),
+    agentWork: createAgentWorkLog(tx),
   };
 }
 
@@ -171,6 +184,8 @@ export function createDatabase(options: DatabaseOptions): Database {
     signalExtractions: createSignalExtractionLog(sql),
     opportunityAssessments: createOpportunityAssessmentLog(sql),
     brain: createBrainQueries(sql),
+    agentRuns: createAgentRunLog(sql),
+    agentWork: createAgentWorkLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

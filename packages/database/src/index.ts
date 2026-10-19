@@ -46,6 +46,25 @@ export {
   type StatusEntity,
 } from './brain.js';
 export {
+  AGENT_RUN_OUTCOMES,
+  AGENT_STOPS,
+  AGENT_WORK_OUTCOMES,
+  createAgentRunLog,
+  createAgentWorkLog,
+  type AgentRunEntry,
+  type AgentRunLog,
+  type AgentRunOutcome,
+  type AgentRunTotals,
+  type AgentStop,
+  type AgentWorkEntry,
+  type AgentWorkLog,
+  type AgentWorkOutcome,
+  type AgentWorkResult,
+  type AgentWorkSubject,
+  type StoredAgentRun,
+  type StoredAgentWork,
+} from './agents.js';
+export {
   databaseConfigSchema,
   databaseConfigShape,
   databaseUrlSchema,

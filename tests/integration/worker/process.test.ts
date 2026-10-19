@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import {
+  MARKET_ANALYST,
+  marketContextTask,
+  RESEARCHER,
+  researchQueryTask,
+} from '@roi-dealer/agents';
 import { redactNamesTask } from '@roi-dealer/ai-runtime';
 import { frameOpportunityTask, OPPORTUNITY_ANALYST } from '@roi-dealer/opportunities';
 import { extractSignalTask, matchPainTask, PAIN_ANALYST } from '@roi-dealer/signals';
-import { approvePrincipal, toTimestamp } from '@roi-dealer/domain';
+import { approvePrincipal, readMarketContext, toTimestamp } from '@roi-dealer/domain';
+import {
+  agentGolden,
+  perfectMarketAnswer,
+  perfectResearchAnswer,
+} from '../../support/agent-answers.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { OWNER } from '../../support/domain.js';
 import { promptText, startFakeAi, type FakeAiRequest } from '../../support/fake-ai.js';
@@ -123,8 +134,8 @@ describe('worker process with a database (PHASE 05)', () => {
   });
 });
 
-describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
-  it('verifies models, runs evals, redacts names, finds pains and drafts an opportunity', async () => {
+describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
+  it('verifies models, runs evals, redacts names, finds pains, drafts an opportunity with its market', async () => {
     const test = await createTestDatabase();
     const hn = await startFakeHackerNews();
     const fakes = await Promise.all([
@@ -141,6 +152,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
     const frameGolden = new Map(
       frameOpportunityTask.evalCases.map((c) => [frameOpportunityTask.render(c.input), c.expected]),
     );
+    const agentsGolden = agentGolden();
     const frame = (
       buyer: 'business' | 'consumer',
       recurring: boolean,
@@ -193,6 +205,30 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
         // Outside the golden set: the second invoice post is the same pain.
         return { text: JSON.stringify({ match: matchGolden.get(request.prompt) ?? 'P1' }) };
       }
+      if (request.instructions === researchQueryTask.instructions) {
+        const expected = agentsGolden.research.get(request.prompt);
+        return {
+          text: JSON.stringify(
+            expected === undefined
+              ? { queries: ['chasing invoices'] }
+              : perfectResearchAnswer(expected),
+          ),
+        };
+      }
+      if (request.instructions === marketContextTask.instructions) {
+        const expected = agentsGolden.market.get(request.prompt);
+        // Outside the golden set: the excerpts of the prompt, quoted where they name money.
+        const excerpts = [...request.prompt.matchAll(/^E\d+\. """([\s\S]*?)"""$/gm)].map(
+          (match) => match[1] ?? '',
+        );
+        return {
+          text: JSON.stringify(
+            perfectMarketAnswer(
+              expected ?? { alternatives: [['assistant']], amounts: [], excerpts },
+            ),
+          ),
+        };
+      }
       if (request.instructions === frameOpportunityTask.instructions) {
         const expected = frameGolden.get(request.prompt);
         const output =
@@ -242,7 +278,10 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
       EVIDENCE_COLLECT_INTERVAL_MS: '200',
       SIGNALS_INTERVAL_MS: '200',
       OPPORTUNITIES_INTERVAL_MS: '200',
+      RESEARCH_INTERVAL_MS: '200',
+      MARKET_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
+      HACKER_NEWS_SEARCH_URL: hn.searchUrl,
       ...keys,
       ANTHROPIC_BASE_URL: claude.baseUrl,
       OPENAI_BASE_URL: gpt.baseUrl,
@@ -256,7 +295,14 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
       expect(configured['providers']).toEqual(['anthropic', 'openai', 'google']);
       await service.waitForLog((line) => line['message'] === 'ai models verified');
       // Evals first: a model without a passing report never runs a task.
-      for (const task of ['redact-names', 'extract-signal', 'match-pain', 'frame-opportunity']) {
+      for (const task of [
+        'redact-names',
+        'extract-signal',
+        'match-pain',
+        'frame-opportunity',
+        'research-query',
+        'market-context',
+      ]) {
         for (const model of ['claude-haiku-5-5', 'gemini-3.1-flash-lite', 'gpt-5.4-mini']) {
           await service.waitForLog(
             (line) =>
@@ -266,13 +312,13 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
           );
         }
       }
-      // Both agents ask for their access too; the owner grants them and the source.
-      for (const [message, agent] of [
-        ['pain analysis skipped', PAIN_ANALYST],
-        ['opportunity assessment skipped', OPPORTUNITY_ANALYST],
-      ] as const) {
+      // Every agent asks for its access too; the owner grants them and the source.
+      for (const agent of [PAIN_ANALYST, OPPORTUNITY_ANALYST, RESEARCHER, MARKET_ANALYST]) {
         await service.waitForLog(
-          (line) => line['message'] === message && line['reason'] === 'access_not_active',
+          (line) =>
+            line['message'] === 'agent run' &&
+            line['agent'] === agent.id &&
+            line['outcome'] === 'no_access',
         );
         const principal = await test.database.repositories.principals.getByActor(agent);
         if (principal === undefined) throw new Error(`${agent.id} did not ask for access`);
@@ -308,10 +354,31 @@ describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
           createdBy: OPPORTUNITY_ANALYST,
         },
       ]);
+      // The market context of the draft, quoted from its evidence.
+      await service.waitForLog(
+        (line) => line['message'] === 'market context' && line['stored'] === 1,
+      );
+      const [market] = await test.database.repositories.knowledgeAssets.listByTags([
+        'market-context',
+      ]);
+      expect(market === undefined ? undefined : readMarketContext(market)).toMatchObject({
+        money: [{ amountUsd: 300, period: 'month' }],
+      });
+      // The research agent searched HN for the pain while it had fewer than 3 signals.
+      expect(hn.searches).toContain('chasing invoices');
       const tasks = await test.database.aiCalls.list({ limit: 1_000 });
       expect(
         new Set(tasks.filter((call) => call.purpose === 'task').map((call) => call.task)),
-      ).toEqual(new Set(['redact-names', 'extract-signal', 'match-pain', 'frame-opportunity']));
+      ).toEqual(
+        new Set([
+          'redact-names',
+          'extract-signal',
+          'match-pain',
+          'frame-opportunity',
+          'research-query',
+          'market-context',
+        ]),
+      );
 
       service.child.kill('SIGTERM');
       await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });

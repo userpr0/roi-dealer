@@ -7,7 +7,9 @@ export type EvidenceEngineErrorCode =
   /** The source answered with an HTTP error or could not be reached. */
   | 'fetch_failed'
   /** The source answered with data of an unexpected shape. */
-  | 'bad_response';
+  | 'bad_response'
+  /** The connector was called without what it needs, e.g. a search without words. */
+  | 'bad_request';
 
 /** Carries a stable `code` and never the content that was fetched. */
 export class EvidenceEngineError extends Error {

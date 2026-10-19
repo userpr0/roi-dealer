@@ -29,11 +29,6 @@ export {
   type RoutingReason,
 } from './business-model.js';
 export {
-  createOpportunitiesScheduler,
-  type OpportunitiesScheduler,
-  type OpportunitiesSchedulerOptions,
-} from './scheduler.js';
-export {
   OPPORTUNITY_THRESHOLD,
   SCORE_WEIGHTS,
   scoreOpportunity,

@@ -21,12 +21,6 @@ export {
   type SignalsDeps,
 } from './analyze.js';
 export {
-  createSignalsScheduler,
-  type EnsureAccess,
-  type SignalsScheduler,
-  type SignalsSchedulerOptions,
-} from './scheduler.js';
-export {
   closestPains,
   MAX_CANDIDATES,
   MIN_SIMILARITY,

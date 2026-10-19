@@ -36,5 +36,6 @@ export * from './entities/principal.js';
 export * from './entities/source-snapshot.js';
 export * from './ai-budget.js';
 export * from './markets.js';
+export * from './market-context.js';
 
 export const PACKAGE_NAME = '@roi-dealer/domain';
