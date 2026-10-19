@@ -28,7 +28,7 @@ export interface FunnelLog {
   record(events: readonly FunnelEvent[], actor: Actor, correlationId?: string): Promise<void>;
   /** Events per stage of each experiment; an experiment without events is absent. */
   totals(ids: readonly ExperimentId[]): Promise<ReadonlyMap<ExperimentId, FunnelTotals>>;
-  /** Money spent on each experiment: its cost entries, reversals subtracted. */
+  /** Money spent on each experiment: its cost entries without refunds, reversals subtracted. */
   spent(ids: readonly ExperimentId[]): Promise<ReadonlyMap<ExperimentId, Money>>;
 }
 
@@ -82,7 +82,7 @@ export function createFunnelLog(executor: Executor): FunnelLog {
             sum(case when reversal_of is null then amount_usd_cents else -amount_usd_cents end)::bigint
               as spent
           from cost_entries
-          where experiment_id = any(${[...ids]}::uuid[])
+          where experiment_id = any(${[...ids]}::uuid[]) and category <> 'refund'
           group by experiment_id
         `;
         return new Map(

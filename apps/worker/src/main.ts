@@ -20,6 +20,7 @@ import {
 import { ensureAccessRequest } from '@roi-dealer/command-center';
 import { JUDGE_TASKS, judgesAgent } from '@roi-dealer/judges';
 import { createDatabase } from '@roi-dealer/database';
+import { createSpendGuard } from '@roi-dealer/economics';
 import {
   createEvidenceScheduler,
   createHackerNewsConnector,
@@ -140,13 +141,21 @@ function main(): void {
             { agent: hypothesisDesignerAgent(), intervalMs: config.HYPOTHESES_INTERVAL_MS },
           ],
   });
+  // The spend guard (PHASE 16) pauses automation when it spends twice its usual (D-014 п.10).
+  const spendGuard = createSpendGuard({
+    database,
+    logger,
+    intervalMs: config.SPEND_GUARD_INTERVAL_MS,
+  });
   maintenance.start();
   evidence.start();
   agents.start();
+  spendGuard.start();
   // Registered last, so they stop first: work finishes before the database closes.
   shutdown.register('ai-maintenance', () => maintenance.stop());
   shutdown.register('evidence-collection', () => evidence.stop());
   shutdown.register('agents', () => agents.stop());
+  shutdown.register('spend-guard', () => spendGuard.stop());
 }
 
 try {

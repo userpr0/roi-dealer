@@ -6,13 +6,32 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../domain" },
-    { "path": "../brain" },
-    { "path": "../events" },
-    { "path": "../database" },
-    { "path": "../observability" },
-    { "path": "../telegram" },
-    { "path": "../policies" },
-    { "path": "../shared" }
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../brain"
+    },
+    {
+      "path": "../events"
+    },
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../observability"
+    },
+    {
+      "path": "../telegram"
+    },
+    {
+      "path": "../policies"
+    },
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../economics"
+    }
   ]
 }

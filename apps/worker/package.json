@@ -2,7 +2,7 @@
   "name": "@roi-dealer/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer background worker: evidence collection (PHASE 05), pain analysis (PHASE 06), opportunity assessment (PHASE 07) and AI maintenance (PHASE 09)",
+  "description": "ROI Dealer background worker: evidence collection (PHASE 05), pain analysis (PHASE 06), opportunity assessment (PHASE 07) AI maintenance (PHASE 09), agents (PHASE 10\u201314) and the spend guard (PHASE 16)",
   "type": "module",
   "files": [
     "dist"
@@ -17,6 +17,7 @@
     "@roi-dealer/ai-runtime": "workspace:*",
     "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/economics": "workspace:*",
     "@roi-dealer/evidence": "workspace:*",
     "@roi-dealer/judges": "workspace:*",
     "@roi-dealer/observability": "workspace:*",

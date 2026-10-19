@@ -17,6 +17,7 @@ export const ENTITY_TYPES = [
   'system_control',
   'principal',
   'source_snapshot',
+  'revenue_entry',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -54,6 +55,8 @@ export const principalIdSchema = z.uuid().brand<'PrincipalId'>();
 export type PrincipalId = z.infer<typeof principalIdSchema>;
 export const sourceSnapshotIdSchema = z.uuid().brand<'SourceSnapshotId'>();
 export type SourceSnapshotId = z.infer<typeof sourceSnapshotIdSchema>;
+export const revenueEntryIdSchema = z.uuid().brand<'RevenueEntryId'>();
+export type RevenueEntryId = z.infer<typeof revenueEntryIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();

@@ -34,11 +34,13 @@ export * from './entities/knowledge.js';
 export * from './entities/system-control.js';
 export * from './entities/principal.js';
 export * from './entities/source-snapshot.js';
+export * from './entities/revenue.js';
 export * from './ai-budget.js';
 export * from './markets.js';
 export * from './market-context.js';
 export * from './judgement.js';
 export * from './decision-engine.js';
 export * from './funnel.js';
+export * from './economics.js';
 
 export const PACKAGE_NAME = '@roi-dealer/domain';

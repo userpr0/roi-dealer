@@ -33,6 +33,8 @@ export const PERMISSIONS = [
   // Experiments, money and contribution.
   'experiment.write',
   'cost.record',
+  /** The revenue ledger (PHASE 16): money that came in, recorded by the owner. */
+  'revenue.record',
   'contribution.write',
   'reward.write',
   // Controls.
@@ -107,6 +109,7 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   system_control: { create: 'system.control', update: 'system.control' },
   principal: { create: 'access.propose', update: 'access.manage' },
   source_snapshot: { create: 'evidence.write' },
+  revenue_entry: { create: 'revenue.record' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

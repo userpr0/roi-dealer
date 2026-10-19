@@ -174,6 +174,9 @@ importers:
       '@roi-dealer/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@roi-dealer/economics':
+        specifier: workspace:*
+        version: link:../../packages/economics
       '@roi-dealer/evidence':
         specifier: workspace:*
         version: link:../../packages/evidence
@@ -273,6 +276,9 @@ importers:
       '@roi-dealer/domain':
         specifier: workspace:*
         version: link:../domain
+      '@roi-dealer/economics':
+        specifier: workspace:*
+        version: link:../economics
       '@roi-dealer/events':
         specifier: workspace:*
         version: link:../events
@@ -319,7 +325,17 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
-  packages/economics: {}
+  packages/economics:
+    dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
 
   packages/events:
     dependencies:

@@ -15,6 +15,7 @@
     { "path": "../../packages/signals" },
     { "path": "../../packages/opportunities" },
     { "path": "../../packages/agents" },
-    { "path": "../../packages/judges" }
+    { "path": "../../packages/judges" },
+    { "path": "../../packages/economics" }
   ]
 }

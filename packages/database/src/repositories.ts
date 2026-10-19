@@ -12,6 +12,7 @@ import type {
   OpportunityId,
   Pain,
   Principal,
+  RevenueEntry,
   Reward,
   Signal,
   Source,
@@ -34,6 +35,7 @@ import {
   approvalRequestsTable,
   contributionsTable,
   costEntriesTable,
+  revenueEntriesTable,
   decisionsTable,
   evidenceTable,
   experimentsTable,
@@ -61,6 +63,8 @@ export interface Repositories {
   readonly hypotheses: HypothesisRepository;
   readonly experiments: VersionedRepository<Experiment>;
   readonly costEntries: Repository<CostEntry>;
+  /** The revenue ledger (PHASE 16). */
+  readonly revenueEntries: Repository<RevenueEntry>;
   readonly contributions: VersionedRepository<Contribution>;
   readonly rewards: VersionedRepository<Reward>;
   readonly knowledgeAssets: KnowledgeAssetRepository;
@@ -152,6 +156,7 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     },
     experiments: createVersionedRepository(executor, experimentsTable, context),
     costEntries: createRepository(executor, costEntriesTable, context),
+    revenueEntries: createRepository(executor, revenueEntriesTable, context),
     contributions: createVersionedRepository(executor, contributionsTable, context),
     rewards: createVersionedRepository(executor, rewardsTable, context),
     knowledgeAssets: {

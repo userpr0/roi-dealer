@@ -21,6 +21,7 @@ export const APPEND_ONLY_ENTITY_TYPES = [
   'cost_entry',
   'knowledge_asset',
   'source_snapshot',
+  'revenue_entry',
 ] as const satisfies readonly EntityType[];
 
 export const VERSIONED_ENTITY_TYPES = ENTITY_TYPES.filter(

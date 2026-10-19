@@ -37,6 +37,7 @@ export const ENTITY_LABELS: Readonly<Record<EntityType, string>> = {
   system_control: 'Стоп-кран',
   principal: 'Доступ',
   source_snapshot: 'Загрузка источника',
+  revenue_entry: 'Выручка',
 };
 
 export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {
@@ -109,7 +110,7 @@ function subjectOf(type: EntityType, snapshot: Readonly<Record<string, unknown>>
   if (type === 'system_control') return '';
   const nameKey = NAME_FIELDS.find((key) => stringField(snapshot, key) !== undefined);
   const name = nameKey === undefined ? '' : `«${shorten(String(snapshot[nameKey]), 60)}»`;
-  if (type === 'cost_entry') {
+  if (type === 'cost_entry' || type === 'revenue_entry') {
     const reversal = stringField(snapshot, 'reversalOf') === undefined ? '' : 'сторно ';
     return [`${reversal}${money}`, name].filter((part) => part !== '').join(' ');
   }

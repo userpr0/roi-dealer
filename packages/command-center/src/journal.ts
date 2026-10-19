@@ -37,6 +37,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'decision':
     case 'approval_request':
     case 'cost_entry':
+    case 'revenue_entry':
     case 'system_control':
     case 'principal':
       return true;

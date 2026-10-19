@@ -71,6 +71,17 @@ export {
   type HypothesisCard,
 } from './hypotheses.js';
 export {
+  COST_LABELS,
+  COST_PREFIX,
+  COST_USAGE,
+  createCostFlow,
+  economicsReply,
+  economicsText,
+  MAX_RECORDED_COST_USD,
+  parseCostReport,
+  type CostReport,
+} from './economics.js';
+export {
   applyExperimentLaunchDecision,
   ARTIFACT_LABELS,
   CHECK_LABELS,
@@ -86,6 +97,7 @@ export {
   MAX_EXPERIMENT_CARDS,
   METHOD_LABELS,
   metricText,
+  moneyLine,
   parseFunnelReport,
   sendExperiments,
   STAGE_LABELS,

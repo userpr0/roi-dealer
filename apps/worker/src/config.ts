@@ -67,6 +67,12 @@ const workerConfigSchema = z.object({
     .default(3 * 3_600_000),
   /** How often the hypothesis agent looks for approved opportunities (PHASE 14). Default: 1 h. */
   HYPOTHESES_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
+  /** How often the spend guard checks automated spend (PHASE 16, D-014 п.10). Default: 15 min. */
+  SPEND_GUARD_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(15 * 60_000),
   /** How often models, evals and the daily cost are maintained. Default: one hour. */
   AI_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
 });

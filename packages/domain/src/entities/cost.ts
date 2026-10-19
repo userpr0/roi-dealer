@@ -153,6 +153,43 @@ export function recordExperimentCost(
   });
 }
 
+/**
+ * Money returned to a test's customers (PHASE 16): a `refund` cost of the experiment, at most
+ * what it received minus earlier refunds. It is the customers' money, not a spend of the
+ * company, so it needs no approval (D-006); it does not count towards the stop-loss.
+ */
+export function recordRefund(
+  data: { readonly amount: Money; readonly description: string; readonly incurredAt: Timestamp },
+  experiment: Experiment,
+  refundable: Money,
+  context: CreateContext<CostEntryId>,
+): CostEntry {
+  if (!['running', 'stopped', 'completed'].includes(experiment.status)) {
+    throw new DomainError('invariant_violation', 'Only a launched experiment has refunds', {
+      experiment_status: experiment.status,
+    });
+  }
+  if (compareMoney(data.amount, refundable) > 0) {
+    throw new DomainError('invariant_violation', 'A refund cannot exceed the money received', {
+      experiment_id: experiment.id,
+    });
+  }
+  return parseEntity(costEntrySchema, 'cost_entry', {
+    category: 'refund',
+    amount: data.amount,
+    description: data.description,
+    incurredAt: data.incurredAt,
+    recurring: false,
+    allocation: {
+      opportunityId: experiment.opportunityId,
+      hypothesisId: experiment.hypothesisId,
+      experimentId: experiment.id,
+    },
+    id: context.id,
+    ...immutableMeta(context),
+  });
+}
+
 export interface CostSummary {
   readonly total: Money;
   readonly byCategory: Readonly<Partial<Record<CostCategory, Money>>>;

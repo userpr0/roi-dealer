@@ -306,13 +306,23 @@ describe('/funnel reports (PHASE 15)', () => {
       number: 1,
       increments: { cta_click: 40, lead: 5 },
       spendCents: 1_250,
+      revenueCents: 0,
+      refundCents: 0,
     });
     expect(parseFunnelReport('№2 impressions 1200 leads 3 lead 2 spent 7,5')).toEqual({
       number: 2,
       increments: { impression: 1_200, lead: 5 },
       spendCents: 750,
+      revenueCents: 0,
+      refundCents: 0,
     });
-    expect(parseFunnelReport('3 $5')).toEqual({ number: 3, increments: {}, spendCents: 500 });
+    expect(parseFunnelReport('3 $5')).toEqual({
+      number: 3,
+      increments: {},
+      spendCents: 500,
+      revenueCents: 0,
+      refundCents: 0,
+    });
   });
 
   it('explains what is wrong', () => {

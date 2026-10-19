@@ -43,6 +43,7 @@ import {
   MODEL_LABELS,
   PART_LABELS,
 } from './opportunities.js';
+import { AUTO_PAUSE_PREFIX } from '@roi-dealer/economics';
 import { hypothesesReadyText } from './hypotheses.js';
 import { shorten } from './texts.js';
 
@@ -428,7 +429,8 @@ export interface DecisionCardNotifier {
  * Sends each version of an opportunity under review to the owner once (PHASE 12): the card is
  * delivered inside an idempotent command (`decision-card-<id>-v<version>`), so a failed delivery
  * is retried and a delivered one never repeats; likewise one notice per approved opportunity
- * when its hypotheses are ready (PHASE 14). The kill switch stops the sending.
+ * when its hypotheses are ready (PHASE 14). The kill switch stops the sending; an automatic pause
+ * by the spend guard is itself announced once (PHASE 16).
  */
 export function createDecisionCardNotifier(
   options: DecisionCardNotifierOptions,
@@ -444,6 +446,18 @@ export function createDecisionCardNotifier(
     const control = await database.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
     if (control === undefined)
       throw new Error('the automation kill switch is missing (migration 0003)');
+    if (control.status === 'paused' && control.reason?.startsWith(AUTO_PAUSE_PREFIX) === true) {
+      // The spend guard paused the system (PHASE 16): tell the owner once per pause, even now.
+      const key = `auto-pause-v${String(control.version)}`;
+      const { outcome } = await database.command(
+        { name: 'economics.auto_pause_notice', idempotencyKey: key, correlationId: key },
+        async () => {
+          await options.deliver(`⛔ ${control.reason ?? ''}`);
+          return { sentAt: toTimestamp(new Date(now())) };
+        },
+      );
+      return outcome === 'executed' ? 1 : 0;
+    }
     try {
       assertAutomationRunning(control);
     } catch (error) {

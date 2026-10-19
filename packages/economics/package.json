@@ -2,7 +2,7 @@
   "name": "@roi-dealer/economics",
   "version": "0.0.0",
   "private": true,
-  "description": "Cost / revenue ledgers and unit economics",
+  "description": "Economics: the month against the limits, unit economics and the spend guard (PHASE 16)",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,10 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*"
   }
 }

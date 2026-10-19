@@ -40,6 +40,7 @@ import {
   sendExperiments,
 } from './experiments.js';
 import { handleHypothesisButton, HYPOTHESIS_PREFIX, sendHypotheses } from './hypotheses.js';
+import { COST_PREFIX, createCostFlow, economicsReply } from './economics.js';
 import { aiStatusLine } from './ai-status.js';
 import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
@@ -71,7 +72,7 @@ export interface CommandCenterOptions {
 export interface CommandCenter {
   /**
    * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
-   * /search, /ask, /note, /hypotheses, /experiments, /funnel, /agents
+   * /search, /ask, /note, /hypotheses, /experiments, /funnel, /economics, /cost, /agents
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
@@ -113,7 +114,9 @@ const DESCRIPTIONS = {
   note: 'Записать знание',
   hypotheses: 'Гипотезы проверки одобренных возможностей',
   experiments: 'Тесты: чек-лист, запуск, итог',
-  funnel: 'Внести цифры теста: воронка и траты',
+  funnel: 'Внести цифры теста: воронка, траты, выручка',
+  economics: 'Экономика месяца: расходы, лимиты, выручка, ROI',
+  cost: 'Записать расход вне тестов',
   agents: 'Агенты: доступ, работа, AI за сутки',
 } as const;
 
@@ -137,6 +140,7 @@ function withoutDatabase(): Pick<
       HYPOTHESIS_PREFIX,
       EXPERIMENT_PREFIX,
       FUNNEL_PREFIX,
+      COST_PREFIX,
       KILL_SWITCH_PREFIX,
       ACCESS_PREFIX,
       NOTE_PREFIX,
@@ -175,6 +179,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const killSwitch = createKillSwitchFlow(deps);
   const notes = createNoteFlow(deps);
   const funnel = createFunnelFlow(deps);
+  const costs = createCostFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -304,6 +309,10 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         sendExperiments(deps, (text, keyboard) => context.reply(text, keyboard)),
       ),
       command('funnel', 'experiment.write', funnel.funnel),
+      command('economics', 'history.read', async (context) =>
+        context.reply(await economicsReply(database, nowMs())),
+      ),
+      command('cost', 'cost.record', costs.cost),
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
       ),
@@ -320,6 +329,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         handleExperimentButton(deps, context),
       ),
       button(FUNNEL_PREFIX, 'experiment.write', funnel.handleButton),
+      button(COST_PREFIX, 'cost.record', costs.handleButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
       button(NOTE_PREFIX, 'research.write', notes.handleButton),

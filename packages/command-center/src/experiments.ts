@@ -31,6 +31,10 @@ import {
   metricValue,
   readFunnelMeasure,
   recordExperimentCost,
+  recordRefund,
+  recordRevenueEntry,
+  revenueEntryIdSchema,
+  unitEconomics,
   requestExperimentApproval,
   returnExperimentToPlanning,
   startExperiment,
@@ -53,6 +57,7 @@ import {
   type Hypothesis,
   type Metric,
   type Money,
+  type MoneyFlow,
   type Opportunity,
   type Timestamp,
 } from '@roi-dealer/domain';
@@ -104,7 +109,7 @@ export const STAGE_LABELS: Readonly<Record<FunnelStage, string>> = {
   payment: 'оплаты',
   product_use: 'использование',
   outcome: 'результат',
-  retention: 'возвраты',
+  retention: 'повторные',
 };
 
 /** Words /funnel understands for each stage: the Russian label's first word and English keys. */
@@ -135,10 +140,14 @@ const STAGE_WORDS: Readonly<Record<string, FunnelStage>> = {
   результат: 'outcome',
   outcome: 'outcome',
   outcomes: 'outcome',
-  возвраты: 'retention',
+  повторные: 'retention',
   retention: 'retention',
 };
 const SPEND_WORDS = new Set(['потрачено', 'spent', 'spend']);
+/** Revenue of the report (PHASE 16): needs `оплаты N` beside it — N is the customers. */
+const REVENUE_WORDS = new Set(['выручка', 'revenue']);
+/** Money returned to customers (PHASE 16). */
+const REFUND_WORDS = new Set(['вернули', 'refund', 'refunds']);
 
 export const METHOD_LABELS: Readonly<Record<Hypothesis['validationMethod'], string>> = {
   landing_page: 'лендинг',
@@ -272,10 +281,20 @@ export interface ExperimentView {
   readonly opportunity: Opportunity;
   readonly totals: FunnelTotals;
   readonly spent: Money;
+  /** Spend, revenue, refunds and customers of the test (PHASE 16). */
+  readonly money: MoneyFlow;
   readonly request?: ApprovalRequest | undefined;
 }
 
-type Scope = Pick<TransactionScope, 'repositories' | 'funnel'>;
+type Scope = Pick<TransactionScope, 'repositories' | 'funnel' | 'economics'>;
+
+const NO_MONEY: MoneyFlow = {
+  spend: ZERO_USD,
+  payments: ZERO_USD,
+  preorders: ZERO_USD,
+  refunds: ZERO_USD,
+  customers: 0,
+};
 
 /** Experiments not completed or cancelled, oldest first: their numbers in /experiments. */
 async function activeExperiments(repositories: Repositories): Promise<Experiment[]> {
@@ -292,7 +311,7 @@ async function viewsOf(
   scope: Scope,
   experiments: readonly Experiment[],
 ): Promise<ExperimentView[]> {
-  const { repositories, funnel } = scope;
+  const { repositories, funnel, economics } = scope;
   const ids = experiments.map((item) => item.id);
   const hypotheses = new Map(
     (await repositories.hypotheses.getByIds(experiments.map((item) => item.hypothesisId))).map(
@@ -314,6 +333,7 @@ async function viewsOf(
   );
   const totals = await funnel.totals(ids);
   const spent = await funnel.spent(ids);
+  const money = await economics.moneyFlows(ids);
   const views: ExperimentView[] = [];
   for (const [index, experiment] of experiments.entries()) {
     const hypothesis = hypotheses.get(experiment.hypothesisId);
@@ -326,6 +346,7 @@ async function viewsOf(
       opportunity,
       totals: totals.get(experiment.id) ?? {},
       spent: spent.get(experiment.id) ?? ZERO_USD,
+      money: money.get(experiment.id) ?? NO_MONEY,
       request:
         experiment.approvalRequestId === undefined
           ? undefined
@@ -349,6 +370,24 @@ function requestLapsed(view: ExperimentView, at: Timestamp): boolean {
   return request === undefined || request.status !== 'pending' || isApprovalExpired(request, at);
 }
 
+/** Revenue and unit economics of a test (PHASE 16); nothing before the first money. */
+export function moneyLine(flow: MoneyFlow): string | undefined {
+  const received = flow.payments.amountCents + flow.preorders.amountCents;
+  if (received === 0 && flow.refunds.amountCents === 0 && flow.customers === 0) return undefined;
+  const unit = unitEconomics(flow);
+  const parts = [
+    `Выручка ${formatUsd(usd(received))}` +
+      (flow.preorders.amountCents > 0 ? ` (предзаказы ${formatUsd(flow.preorders)})` : '') +
+      ` · клиентов ${String(flow.customers)}`,
+  ];
+  if (flow.refunds.amountCents > 0) parts.push(`возвраты ${formatUsd(flow.refunds)}`);
+  if (unit.cac !== undefined) parts.push(`CAC ${formatUsd(unit.cac)}`);
+  if (unit.roiPercent !== undefined) {
+    parts.push(`ROI ${unit.roiPercent > 0 ? '+' : ''}${String(unit.roiPercent)} %`);
+  }
+  return parts.join(' · ');
+}
+
 export function experimentCardText(view: ExperimentView, at: Timestamp): string {
   const { experiment, hypothesis, opportunity } = view;
   const metric = experiment.successMetric;
@@ -367,6 +406,8 @@ export function experimentCardText(view: ExperimentView, at: Timestamp): string 
     `Воронка: ${funnelLine(view.totals)}`,
     `Потрачено ${formatUsd(view.spent)} из ${formatUsd(experiment.testBudget)} · stop-loss ${formatUsd(experiment.stopLoss)}`,
   ];
+  const money = moneyLine(view.money);
+  if (money !== undefined) lines.push(money);
   if (experiment.stopReason !== undefined) {
     lines.push(
       `Остановлен: ${STOP_LABELS[experiment.stopReason] ?? shorten(experiment.stopReason, 100)}`,
@@ -921,8 +962,8 @@ async function finish(
 // ---------------------------------------------------------------- /funnel
 
 export const FUNNEL_USAGE = [
-  '📊 Внести цифры теста: /funnel <№> <шаг> <число> … [$<траты>]',
-  'Например: /funnel 1 клики 40 заявки 5 $12.50',
+  '📊 Внести цифры теста: /funnel <№> <шаг> <число> … [$<траты>] [выручка <сумма>] [вернули <сумма>]',
+  'Например: /funnel 1 клики 40 заявки 5 $12.50 или /funnel 1 оплаты 3 выручка 36',
   `Шаги: ${FUNNEL_STAGES.map((stage) => STAGE_LABELS[stage]).join(', ')} (или ключи: ${FUNNEL_STAGES.join(', ')}).`,
   'Числа — прирост с прошлого раза; № — из /experiments.',
 ].join('\n');
@@ -931,6 +972,10 @@ export interface FunnelReport {
   readonly number: number;
   readonly increments: Readonly<Partial<Record<FunnelStage, number>>>;
   readonly spendCents: number;
+  /** Revenue of the new payments (PHASE 16). */
+  readonly revenueCents: number;
+  /** Money returned to customers (PHASE 16). */
+  readonly refundCents: number;
 }
 
 /** Parses `/funnel` arguments, or explains what is wrong (in Russian, for the owner). */
@@ -946,6 +991,8 @@ export function parseFunnelReport(args: string): FunnelReport | string {
     return `Сначала номер теста из /experiments.\n\n${FUNNEL_USAGE}`;
   const increments: Partial<Record<FunnelStage, number>> = {};
   let spendCents = 0;
+  let revenueCents = 0;
+  let refundCents = 0;
   const money = (raw: string | undefined): number | undefined => {
     const value = Number(raw?.replace(/^\$/, '').replace(',', '.'));
     return Number.isFinite(value) && value > 0 && value <= MAX_REPORTED_SPEND_USD
@@ -961,10 +1008,12 @@ export function parseFunnelReport(args: string): FunnelReport | string {
       spendCents += cents;
       continue;
     }
-    if (SPEND_WORDS.has(token)) {
+    if (SPEND_WORDS.has(token) || REVENUE_WORDS.has(token) || REFUND_WORDS.has(token)) {
       const cents = money(tokens[index + 1]);
       if (cents === undefined) return `После «${token}» — сумма в долларах, например 12.50.`;
-      spendCents += cents;
+      if (SPEND_WORDS.has(token)) spendCents += cents;
+      else if (REVENUE_WORDS.has(token)) revenueCents += cents;
+      else refundCents += cents;
       index += 1;
       continue;
     }
@@ -977,13 +1026,22 @@ export function parseFunnelReport(args: string): FunnelReport | string {
     increments[stage] = (increments[stage] ?? 0) + count;
     index += 1;
   }
-  if (Object.keys(increments).length === 0 && spendCents === 0) {
+  if (
+    Object.keys(increments).length === 0 &&
+    spendCents === 0 &&
+    revenueCents === 0 &&
+    refundCents === 0
+  ) {
     return `Нет ни цифр, ни трат.\n\n${FUNNEL_USAGE}`;
   }
-  if (spendCents > MAX_REPORTED_SPEND_USD * 100) {
-    return `За один раз — не больше $${String(MAX_REPORTED_SPEND_USD)} трат.`;
+  const limit = MAX_REPORTED_SPEND_USD * 100;
+  if (spendCents > limit || revenueCents > limit || refundCents > limit) {
+    return `За один раз — не больше $${String(MAX_REPORTED_SPEND_USD)} в каждой сумме.`;
   }
-  return { number, increments, spendCents };
+  if (revenueCents > 0 && (increments.payment ?? 0) === 0) {
+    return 'Выручку пишите вместе с числом оплат — это клиенты: /funnel 1 оплаты 3 выручка 36';
+  }
+  return { number, increments, spendCents, revenueCents, refundCents };
 }
 
 interface PendingReport {
@@ -1078,6 +1136,27 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
           `Потрачено: ${formatUsd(view.spent)} → ${formatUsd(spendAfter)} из ${formatUsd(experiment.testBudget)} · stop-loss ${formatUsd(experiment.stopLoss)}`,
         );
       }
+      const received = view.money.payments.amountCents + view.money.preorders.amountCents;
+      if (report.revenueCents > 0) {
+        lines.push(
+          `Выручка: ${formatUsd(usd(received))} → ${formatUsd(usd(received + report.revenueCents))}` +
+            ` · клиентов +${String(report.increments.payment ?? 0)}` +
+            (view.hypothesis.validationMethod === 'preorder' ? ' (предзаказы)' : ''),
+        );
+      }
+      if (report.refundCents > 0) {
+        const refundable = received + report.revenueCents - view.money.refunds.amountCents;
+        if (report.refundCents > refundable) {
+          await context.reply(
+            `⛔ Вернуть можно не больше полученного: ${formatUsd(usd(Math.max(refundable, 0)))}. ` +
+              'Ничего не записано.',
+          );
+          return;
+        }
+        lines.push(
+          `Возвраты: ${formatUsd(view.money.refunds)} → ${formatUsd(usd(view.money.refunds.amountCents + report.refundCents))}`,
+        );
+      }
       lines.push(`Успех: ${metricText(metric)} · станет ${valueText(metric, value)}`);
       const stopReason = automaticStopReason(experiment, spendAfter, reached);
       if (stopReason !== undefined) {
@@ -1121,7 +1200,10 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
         if (error instanceof FunnelRefusedError) {
           result = {
             outcome: 'closed',
-            text: '⛔ Траты превышают одобренный бюджет теста — ничего не записано.',
+            text:
+              error.reason === 'budget'
+                ? '⛔ Траты превышают одобренный бюджет теста — ничего не записано.'
+                : '⛔ Вернуть можно не больше полученного — ничего не записано.',
           };
         } else if (error instanceof ConcurrencyError) {
           result = {
@@ -1218,7 +1300,54 @@ async function recordReport(
     } catch (error) {
       if (error instanceof DomainError && error.code === 'approval_required') {
         // Thrown inside the command: nothing of this report is stored.
-        throw new FunnelRefusedError();
+        throw new FunnelRefusedError('budget');
+      }
+      throw error;
+    }
+  }
+  const allocation = {
+    opportunityId: experiment.opportunityId,
+    hypothesisId: experiment.hypothesisId,
+    experimentId: experiment.id,
+  };
+  if (report.revenueCents > 0) {
+    await repositories.revenueEntries.insert(
+      recordRevenueEntry(
+        {
+          kind: hypothesis.validationMethod === 'preorder' ? 'preorder' : 'payment',
+          amount: usd(report.revenueCents),
+          customers: report.increments.payment ?? 0,
+          description: shorten(`Revenue reported by the owner (${hypothesis.channel})`, 500),
+          receivedAt: at,
+          allocation,
+        },
+        { id: revenueEntryIdSchema.parse(uuidv7()), actor, at },
+      ),
+    );
+  }
+  if (report.refundCents > 0) {
+    const flow = (await scope.economics.moneyFlows([experiment.id])).get(experiment.id);
+    const refundable = usd(
+      (flow?.payments.amountCents ?? 0) +
+        (flow?.preorders.amountCents ?? 0) -
+        (flow?.refunds.amountCents ?? 0),
+    );
+    try {
+      await repositories.costEntries.insert(
+        recordRefund(
+          {
+            amount: usd(report.refundCents),
+            description: shorten(`Refund to customers reported by the owner`, 500),
+            incurredAt: at,
+          },
+          experiment,
+          refundable,
+          { id: costEntryIdSchema.parse(uuidv7()), actor, at },
+        ),
+      );
+    } catch (error) {
+      if (error instanceof DomainError && error.code === 'invariant_violation') {
+        throw new FunnelRefusedError('refund');
       }
       throw error;
     }
@@ -1238,11 +1367,20 @@ async function recordReport(
   return { outcome: 'recorded', stopped: stopReason };
 }
 
-/** Spend above the approved budget: the whole report is rolled back. */
+/**
+ * Spend above the approved budget, or a refund above the money received: the whole report is
+ * rolled back.
+ */
 export class FunnelRefusedError extends Error {
   override readonly name = 'FunnelRefusedError';
-  constructor() {
-    super('The reported spend is above the approved experiment budget');
+  readonly reason: 'budget' | 'refund';
+  constructor(reason: 'budget' | 'refund') {
+    super(
+      reason === 'budget'
+        ? 'The reported spend is above the approved experiment budget'
+        : 'The refund is above the money received',
+    );
+    this.reason = reason;
   }
 }
 

@@ -21,6 +21,7 @@
     "@roi-dealer/brain": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/economics": "workspace:*",
     "@roi-dealer/events": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
