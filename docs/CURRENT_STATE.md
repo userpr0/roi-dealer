@@ -3,8 +3,8 @@
 ```text
 Current Phase: 20b — Приём оплат
 Phase Status: PASS
-Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, PR awaiting merge), 09 — AI Runtime (PASS, PR awaiting merge), 06 — Signals & Pain (PASS, PR awaiting merge), 07 — Opportunity Engine (PASS, PR awaiting merge), 08 — Company Brain v0.1 (PASS, PR awaiting merge), 10 — Agents (PASS, PR awaiting merge), 11 — Judges (PASS, PR awaiting merge), 12 — Decision Engine (PASS, PR awaiting merge), 14 — Five Hypothesis Engine (PASS, PR awaiting merge), 15 — Experiment Engine (PASS, PR awaiting merge), 16 — Economics (PASS, PR awaiting merge), 13 — Owner Command Center (PASS, PR awaiting merge), 17 — Reward Engine (PASS, PR awaiting merge), 19a — Media Factory (PASS, PR awaiting merge), 21 — Solution Factory (PASS, PR awaiting merge), 20 — CRM / Outcomes (PASS, PR awaiting merge), 20b — Payments (PASS, PR awaiting merge)
-Level: 1 reached (2026-10-18: bot + cloud PostgreSQL in Railway); Level 2 built — all D-020 phases PASS, awaiting merge and owner setup; Level 3 minimum built (D-022: 19a, 21, 20, 20b) — awaiting merge and owner setup (deploy/START.md)
+Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, merged 2026-10-19, PR #4), 09 — AI Runtime (PASS, merged 2026-10-19, PR #4), 06 — Signals & Pain (PASS, merged 2026-10-19, PR #4), 07 — Opportunity Engine (PASS, merged 2026-10-19, PR #4), 08 — Company Brain v0.1 (PASS, merged 2026-10-19, PR #4), 10 — Agents (PASS, merged 2026-10-19, PR #4), 11 — Judges (PASS, merged 2026-10-19, PR #4), 12 — Decision Engine (PASS, merged 2026-10-19, PR #4), 14 — Five Hypothesis Engine (PASS, merged 2026-10-19, PR #4), 15 — Experiment Engine (PASS, merged 2026-10-19, PR #4), 16 — Economics (PASS, merged 2026-10-19, PR #4), 13 — Owner Command Center (PASS, merged 2026-10-19, PR #4), 17 — Reward Engine (PASS, merged 2026-10-19, PR #4), 19a — Media Factory (PASS, merged 2026-10-19, PR #4), 21 — Solution Factory (PASS, merged 2026-10-19, PR #4), 20 — CRM / Outcomes (PASS, merged 2026-10-19, PR #4), 20b — Payments (PASS, merged 2026-10-19, PR #4)
+Level: 1 reached (2026-10-18: bot + cloud PostgreSQL in Railway); Level 2 and the minimum Level 3 (D-022: 19a, 21, 20, 20b) merged to main 2026-10-19 (PR #4); awaiting owner setup (deploy/START.md)
 Approval mode: D-020 — all phases up to full Level 2 approved; order 05 → 09 → 06 → 07 → 08 → 10 → 11 → 12 → 14 → 15 → 16 → 13 → 17; D-021 — three AI providers, daily AI budget; D-022 — Level 3 approved, order 19a → 21 → 20 → 20b
 Playbook: v1.1
 Updated: 2026-10-19
@@ -256,11 +256,11 @@ Integration-тесты запускают реальные процессы api 
 
 ## Next Allowed Phase
 
-**Уровень 2 собран:** все фазы D-020 (05 → … → 13 → 17) — PASS и ждут вливания PR. **Уровень 3 одобрен (D-022):** 19a, 21, 20 и 20b — PASS: **минимальный Уровень 3 собран.** Дальше — запуск владельцем по [`deploy/START.md`](deploy/START.md) и первые тесты; этап F (18, 22, 23) и 19b — по их итогам, отдельным решением. Тестовый бот (A5) нужен для staging и запуска на ПК; разработку не блокирует.
+**Уровень 2 собран и влит в `main`** (PR #4, 2026-10-19): все фазы D-020 (05 → … → 13 → 17) — PASS. **Уровень 3 одобрен (D-022):** 19a, 21, 20 и 20b — PASS: **минимальный Уровень 3 собран и влит.** Дальше — запуск владельцем по [`deploy/START.md`](deploy/START.md) и первые тесты; этап F (18, 22, 23) и 19b — по их итогам, отдельным решением. Тестовый бот (A5) нужен для staging и запуска на ПК; разработку не блокирует.
 
 Действия владельца для PHASE 05–17 ([worker](deploy/worker.md), [api](deploy/api.md)):
 
-1. Влить PR.
+1. ✅ PR влит (#4, 2026-10-19).
 2. Создать сервис worker.
 3. Одобрить «Доступ: Hacker News» в `/decisions`.
 4. Включить копии БД.
