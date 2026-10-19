@@ -7,6 +7,7 @@
  * Agents: pain analyst (PHASE 06), opportunity analyst (PHASE 07), research and market context.
  */
 import type { AnyAiTask } from '@roi-dealer/ai-runtime';
+import { designHypothesesTask } from './hypotheses/design-hypotheses.js';
 import { marketContextTask } from './market/market-context.js';
 import { researchQueryTask } from './research/research-query.js';
 
@@ -19,6 +20,26 @@ export {
   type EnsureAccess,
 } from './agent.js';
 export { opportunityAnalystAgent, painAnalystAgent } from './builtin.js';
+export {
+  DEMO_METHODS,
+  designHypothesesTask,
+  MAX_HYPOTHESIS_BUDGET_USD,
+  MAX_PRICE_USD,
+  MAX_SET_BUDGET_USD,
+  MIN_METHODS,
+  MIN_PRICES,
+  scoreDesignHypotheses,
+  toHypothesisSet,
+  type DesignHypothesesExpected,
+  type DesignHypothesesInput,
+  type DesignHypothesesOutput,
+} from './hypotheses/design-hypotheses.js';
+export {
+  DESIGN_ATTEMPTS,
+  HYPOTHESIS_DESIGNER,
+  HYPOTHESIS_DESIGNER_ACCESS,
+  hypothesisDesignerAgent,
+} from './hypotheses/designer.js';
 export {
   MARKET_ANALYST,
   MARKET_ANALYST_ACCESS,
@@ -66,7 +87,11 @@ export {
   type AgentSchedulerOptions,
 } from './scheduler.js';
 
-/** The AI tasks of the PHASE 10 agents, for evals in the worker's maintenance. */
-export const AGENT_TASKS: readonly AnyAiTask[] = [researchQueryTask, marketContextTask];
+/** The AI tasks of the agents of PHASE 10 and 14, for evals in the worker's maintenance. */
+export const AGENT_TASKS: readonly AnyAiTask[] = [
+  researchQueryTask,
+  marketContextTask,
+  designHypothesesTask,
+];
 
 export const PACKAGE_NAME = '@roi-dealer/agents';

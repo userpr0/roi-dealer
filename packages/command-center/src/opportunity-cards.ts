@@ -43,6 +43,7 @@ import {
   MODEL_LABELS,
   PART_LABELS,
 } from './opportunities.js';
+import { hypothesesReadyText } from './hypotheses.js';
 import { shorten } from './texts.js';
 
 /*
@@ -410,8 +411,8 @@ function closedText(status: string): string {
 export interface DecisionCardNotifierOptions {
   readonly database: Database;
   readonly logger: Logger;
-  /** Sends a card to the owner; must throw when delivery fails. */
-  readonly deliver: (text: string, keyboard: InlineKeyboard) => Promise<void>;
+  /** Sends a card (or a notice, without buttons) to the owner; must throw when delivery fails. */
+  readonly deliver: (text: string, keyboard?: InlineKeyboard) => Promise<void>;
   readonly intervalMs?: number | undefined;
   readonly now?: () => number;
 }
@@ -426,7 +427,8 @@ export interface DecisionCardNotifier {
 /**
  * Sends each version of an opportunity under review to the owner once (PHASE 12): the card is
  * delivered inside an idempotent command (`decision-card-<id>-v<version>`), so a failed delivery
- * is retried and a delivered one never repeats. The kill switch stops the sending.
+ * is retried and a delivered one never repeats; likewise one notice per approved opportunity
+ * when its hypotheses are ready (PHASE 14). The kill switch stops the sending.
  */
 export function createDecisionCardNotifier(
   options: DecisionCardNotifierOptions,
@@ -460,6 +462,26 @@ export function createDecisionCardNotifier(
             return { skipped: true };
           }
           await options.deliver(cardText(await loadCard(scope, current)), cardKeyboard(current));
+          return { sentAt: toTimestamp(new Date(now())) };
+        },
+      );
+      if (outcome === 'executed') sent += 1;
+    }
+    // PHASE 14: one notice per approved opportunity whose hypotheses are ready.
+    const approved = await database.repositories.opportunities.listByStatus('approved', {
+      limit: QUEUE_LIMIT,
+    });
+    const hypotheses = await database.repositories.hypotheses.listByOpportunities(
+      approved.map((item) => item.id),
+    );
+    for (const opportunity of approved) {
+      const count = hypotheses.filter((item) => item.opportunityId === opportunity.id).length;
+      if (count === 0) continue;
+      const key = `hypotheses-ready-${opportunity.id}`;
+      const { outcome } = await database.command(
+        { name: 'hypotheses.notice', idempotencyKey: key, correlationId: key },
+        async () => {
+          await options.deliver(hypothesesReadyText(opportunity, count));
           return { sentAt: toTimestamp(new Date(now())) };
         },
       );

@@ -58,7 +58,7 @@ export interface Repositories {
   readonly opportunities: VersionedRepository<Opportunity>;
   readonly decisions: Repository<Decision>;
   readonly approvalRequests: VersionedRepository<ApprovalRequest>;
-  readonly hypotheses: VersionedRepository<Hypothesis>;
+  readonly hypotheses: HypothesisRepository;
   readonly experiments: VersionedRepository<Experiment>;
   readonly costEntries: Repository<CostEntry>;
   readonly contributions: VersionedRepository<Contribution>;
@@ -87,6 +87,11 @@ export interface KnowledgeAssetRepository extends Repository<KnowledgeAsset> {
       readonly opportunityIds?: readonly OpportunityId[];
     },
   ): Promise<KnowledgeAsset[]>;
+}
+
+export interface HypothesisRepository extends VersionedRepository<Hypothesis> {
+  /** The hypotheses of these opportunities, oldest first (PHASE 14). */
+  listByOpportunities(ids: readonly OpportunityId[]): Promise<Hypothesis[]>;
 }
 
 export interface EvidenceRepository extends Repository<Evidence> {
@@ -133,7 +138,18 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     opportunities: createVersionedRepository(executor, opportunitiesTable, context),
     decisions: createRepository(executor, decisionsTable, context),
     approvalRequests: createVersionedRepository(executor, approvalRequestsTable, context),
-    hypotheses: createVersionedRepository(executor, hypothesesTable, context),
+    hypotheses: {
+      ...createVersionedRepository(executor, hypothesesTable, context),
+      listByOpportunities: (ids) =>
+        translated(async () => {
+          if (ids.length === 0) return [];
+          const rows = await executor<Row[]>`
+            select * from hypotheses where opportunity_id = any(${[...ids]}::uuid[])
+            order by created_at, id
+          `;
+          return readRows(executor, hypothesesTable, rows);
+        }),
+    },
     experiments: createVersionedRepository(executor, experimentsTable, context),
     costEntries: createRepository(executor, costEntriesTable, context),
     contributions: createVersionedRepository(executor, contributionsTable, context),

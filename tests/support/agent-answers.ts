@@ -1,6 +1,9 @@
 import {
+  designHypothesesTask,
   marketContextTask,
   researchQueryTask,
+  type DesignHypothesesExpected,
+  type DesignHypothesesOutput,
   type MarketContextExpected,
   type MarketContextOutput,
   type ResearchQueryExpected,
@@ -43,12 +46,47 @@ export function perfectMarketAnswer(expected: MarketContextExpected): MarketCont
   };
 }
 
-/** The golden expectations of both tasks by their rendered prompt. */
+const METHODS = ['landing_page', 'demo', 'concierge', 'preorder', 'interviews'] as const;
+
+/** Five valid, different hypotheses about the expected customer (PHASE 14). */
+export function perfectHypothesesAnswer(
+  expected: Pick<DesignHypothesesExpected, 'markets'> & { readonly audience: string },
+): DesignHypothesesOutput {
+  return {
+    hypotheses: METHODS.map((method, index) => ({
+      statement: `If we offer it to ${expected.audience}, at least 20 will sign up.`,
+      audience: expected.audience,
+      geo: expected.markets[0] ?? 'US',
+      offer: `Early access, variant ${String(index + 1)}`,
+      priceUsd: index === 4 ? 0 : 10 + index * 10,
+      channel: index % 2 === 0 ? 'Reddit ads' : 'Cold email',
+      creative: 'Get paid on time without chasing — coming soon.',
+      cta: 'Join the waitlist',
+      validationMethod: method,
+      successMetric: { name: 'signups', target: 20, unit: 'people', direction: 'at_least' },
+      budgetUsd: 50,
+      stopLossUsd: 20,
+      minimumData: '300 unique visitors',
+    })),
+  };
+}
+
+/** The golden expectations of the agents' tasks by their rendered prompt. */
 export function agentGolden(): {
   readonly research: ReadonlyMap<string, ResearchQueryExpected>;
   readonly market: ReadonlyMap<string, MarketContextExpected>;
+  readonly hypotheses: ReadonlyMap<
+    string,
+    DesignHypothesesExpected & { readonly audience: string }
+  >;
 } {
   return {
+    hypotheses: new Map(
+      designHypothesesTask.evalCases.map((c) => [
+        designHypothesesTask.render(c.input),
+        { ...c.expected, audience: c.input.opportunity.icp },
+      ]),
+    ),
     research: new Map(
       researchQueryTask.evalCases.map((c) => [researchQueryTask.render(c.input), c.expected]),
     ),

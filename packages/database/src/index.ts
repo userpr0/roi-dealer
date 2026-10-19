@@ -105,6 +105,7 @@ export {
 export {
   createRepositories,
   type EvidenceRepository,
+  type HypothesisRepository,
   type KnowledgeAssetRepository,
   type PrincipalRepository,
   type Repositories,

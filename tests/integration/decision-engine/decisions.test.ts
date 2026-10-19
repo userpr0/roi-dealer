@@ -125,7 +125,7 @@ const scores = (score: number, overrides: Partial<Record<JudgeCriterion, number>
     ...overrides,
   }) as Record<JudgeCriterion, number>;
 
-function center(cards?: { text: string; keyboard: InlineKeyboard }[]): CommandCenter {
+function center(cards?: { text: string; keyboard?: InlineKeyboard | undefined }[]): CommandCenter {
   return createCommandCenter({
     database: db,
     logger,
@@ -353,7 +353,7 @@ describe('cards arrive by themselves (PHASE 12)', () => {
     const digest = await buildDigest(db, Date.now());
     expect(digest).toContain('⚖️ Возможностей на решение: 1 → /decisions');
     // Through the command center the bot starts and stops it.
-    const cards: { text: string; keyboard: InlineKeyboard }[] = [];
+    const cards: { text: string; keyboard?: InlineKeyboard | undefined }[] = [];
     const cc = center(cards);
     cc.startCards();
     await cc.stopCards();

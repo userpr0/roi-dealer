@@ -1,6 +1,7 @@
 import {
   AGENT_TASKS,
   createAgentScheduler,
+  hypothesisDesignerAgent,
   marketAnalystAgent,
   opportunityAnalystAgent,
   painAnalystAgent,
@@ -113,7 +114,7 @@ function main(): void {
     intervalMs: config.EVIDENCE_COLLECT_INTERVAL_MS,
     redactNames: namesPass,
   });
-  // The agents (PHASE 06, 07, 10, 11) need AI: without a provider they do not even ask for access.
+  // The agents (PHASE 06, 07, 10, 11, 14) need AI: without a provider they do not even ask for access.
   const agents = createAgentScheduler({
     database,
     logger,
@@ -136,6 +137,7 @@ function main(): void {
             },
             { agent: marketAnalystAgent(), intervalMs: config.MARKET_INTERVAL_MS },
             { agent: judgesAgent(), intervalMs: config.JUDGES_INTERVAL_MS },
+            { agent: hypothesisDesignerAgent(), intervalMs: config.HYPOTHESES_INTERVAL_MS },
           ],
   });
   maintenance.start();

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_TASKS,
   cleanQuery,
+  designHypothesesTask,
   failureCode,
   marketContextTask,
   marketSummary,
@@ -242,13 +243,14 @@ describe('AI budget of the agents (D-021)', () => {
   it('keeps the shares of all tasks with evals within 1', () => {
     const tasks = [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS, ...AGENT_TASKS];
     expect(new Set(tasks.map((task) => task.name)).size).toBe(tasks.length);
-    expect(tasks.reduce((sum, task) => sum + task.dailyShare, EVAL_DAILY_SHARE)).toBeCloseTo(0.7);
+    expect(tasks.reduce((sum, task) => sum + task.dailyShare, EVAL_DAILY_SHARE)).toBeCloseTo(0.75);
   });
 
   it('reserves at least the worst-case cost of one call on every bulk model', () => {
     const worst = {
       'research-query': researchQueryTask.instructions.length + 2_300,
       'market-context': marketContextTask.instructions.length + MAX_MARKET_EXCERPTS * 1_010 + 2_300,
+      'design-hypotheses': designHypothesesTask.instructions.length + 9_200,
     };
     for (const task of AGENT_TASKS) {
       for (const model of bulkModels) {

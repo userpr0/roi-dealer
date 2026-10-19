@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  designHypothesesTask,
+  HYPOTHESIS_DESIGNER,
   MARKET_ANALYST,
   marketContextTask,
   RESEARCHER,
@@ -9,10 +11,19 @@ import { redactNamesTask } from '@roi-dealer/ai-runtime';
 import { JUDGES, judgeOpportunityTask } from '@roi-dealer/judges';
 import { frameOpportunityTask, OPPORTUNITY_ANALYST } from '@roi-dealer/opportunities';
 import { extractSignalTask, matchPainTask, PAIN_ANALYST } from '@roi-dealer/signals';
-import { approvePrincipal, readMarketContext, toTimestamp } from '@roi-dealer/domain';
+import {
+  applyOpportunityDecision,
+  approvePrincipal,
+  createDecision,
+  decisionIdSchema,
+  readMarketContext,
+  toTimestamp,
+} from '@roi-dealer/domain';
+import { uuidv7 } from '@roi-dealer/shared';
 import {
   agentGolden,
   perfectMarketAnswer,
+  perfectHypothesesAnswer,
   perfectResearchAnswer,
 } from '../../support/agent-answers.js';
 import { judgeGolden, perfectJudgeAnswer } from '../../support/judge-answers.js';
@@ -232,6 +243,14 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
           ),
         };
       }
+      if (request.instructions === designHypothesesTask.instructions) {
+        const expected = agentsGolden.hypotheses.get(request.prompt);
+        return {
+          text: JSON.stringify(
+            perfectHypothesesAnswer(expected ?? { markets: ['US'], audience: 'Small agencies' }),
+          ),
+        };
+      }
       if (request.instructions === judgeOpportunityTask.instructions) {
         const expected = judgesGolden.get(request.prompt);
         return {
@@ -297,6 +316,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       SIGNALS_INTERVAL_MS: '200',
       OPPORTUNITIES_INTERVAL_MS: '200',
       JUDGES_INTERVAL_MS: '200',
+      HYPOTHESES_INTERVAL_MS: '200',
       RESEARCH_INTERVAL_MS: '200',
       MARKET_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
@@ -321,6 +341,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
         'frame-opportunity',
         'research-query',
         'market-context',
+        'design-hypotheses',
       ]) {
         for (const model of ['claude-haiku-5-5', 'gemini-3.1-flash-lite', 'gpt-5.4-mini']) {
           await service.waitForLog(
@@ -341,7 +362,14 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
         );
       }
       // Every agent asks for its access too; the owner grants them and the source.
-      for (const agent of [PAIN_ANALYST, OPPORTUNITY_ANALYST, RESEARCHER, MARKET_ANALYST, JUDGES]) {
+      for (const agent of [
+        PAIN_ANALYST,
+        OPPORTUNITY_ANALYST,
+        RESEARCHER,
+        MARKET_ANALYST,
+        JUDGES,
+        HYPOTHESIS_DESIGNER,
+      ]) {
         await service.waitForLog(
           (line) =>
             line['message'] === 'agent run' &&
@@ -413,6 +441,30 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
         ['risk', 4],
         ['reuse', 4],
       ]);
+      // The owner approves it on the card; the hypothesis agent proposes five tests.
+      if (judged === undefined) throw new Error('nothing to approve');
+      const decision = createDecision(
+        {
+          subject: { type: 'opportunity', id: judged.id },
+          outcome: 'approve',
+          rationale: 'Owner decision: approve.',
+          evidenceIds: [],
+        },
+        { id: decisionIdSchema.parse(uuidv7()), actor: OWNER, at: toTimestamp(new Date()) },
+      );
+      await test.database.repositories.decisions.insert(decision);
+      await test.database.repositories.opportunities.update(
+        applyOpportunityDecision(judged, decision),
+        OWNER,
+      );
+      await service.waitForLog(
+        (line) => line['message'] === 'hypotheses' && line['designed'] === 1,
+      );
+      const hypotheses = await test.database.repositories.hypotheses.listByOpportunities([
+        judged.id,
+      ]);
+      expect(hypotheses).toHaveLength(5);
+      expect(hypotheses.every((item) => item.status === 'proposed')).toBe(true);
       // The research agent searched HN for the pain while it had fewer than 3 signals.
       expect(hn.searches).toContain('chasing invoices');
       const tasks = await test.database.aiCalls.list({ limit: 1_000 });
@@ -427,6 +479,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
           'research-query',
           'market-context',
           'judge-opportunity',
+          'design-hypotheses',
         ]),
       );
 

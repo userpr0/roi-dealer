@@ -32,6 +32,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { agentsText } from './agents.js';
+import { hypothesesText } from './hypotheses.js';
 import { aiStatusLine } from './ai-status.js';
 import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
@@ -54,7 +55,7 @@ export interface CommandCenterOptions {
   /** Delivers the scheduled digest to the owner; must throw when delivery fails. */
   readonly deliverDigest: (text: string) => Promise<void>;
   /** Delivers a decision card with its buttons to the owner (PHASE 12); must throw on failure. */
-  readonly deliverCard?: ((text: string, keyboard: InlineKeyboard) => Promise<void>) | undefined;
+  readonly deliverCard?: ((text: string, keyboard?: InlineKeyboard) => Promise<void>) | undefined;
   /** How often new decision cards are looked for; default 5 minutes. */
   readonly cardIntervalMs?: number | undefined;
   readonly now?: () => number;
@@ -103,6 +104,7 @@ const DESCRIPTIONS = {
   search: 'Поиск по базе',
   ask: 'Спросить систему',
   note: 'Записать знание',
+  hypotheses: 'Гипотезы проверки одобренных возможностей',
   agents: 'Агенты: доступ, работа, AI за сутки',
 } as const;
 
@@ -282,6 +284,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         context.reply(await askReply(database, context.args, nowMs())),
       ),
       command('note', 'research.write', notes.note),
+      command('hypotheses', 'research.read', async (context) =>
+        context.reply(await hypothesesText(database.repositories)),
+      ),
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
       ),

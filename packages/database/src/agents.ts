@@ -87,11 +87,13 @@ export interface AgentWorkLog {
     readonly limit?: number | undefined;
   }): Promise<Pain[]>;
   /**
-   * Draft opportunities whose current version the agent has not worked on; least recently
-   * changed first. Default 3, at most 100. (Under review is the owner's turn: PHASE 11–12.)
+   * Opportunities in `status` (default `draft`) whose current version the agent has not worked
+   * on; least recently changed first. Default 3, at most 100. (Under review is the owner's turn:
+   * PHASE 11–12; `approved` ones get their hypotheses, PHASE 14.)
    */
   pendingOpportunities(options: {
     readonly agent: string;
+    readonly status?: 'draft' | 'approved' | undefined;
     readonly limit?: number | undefined;
   }): Promise<Opportunity[]>;
   /** Newest first; default 50, at most 1 000. */
@@ -231,7 +233,7 @@ export function createAgentWorkLog(executor: Executor): AgentWorkLog {
         const limit = bounded(options.limit, DEFAULT_PENDING, MAX_PENDING);
         const rows = await executor<Row[]>`
           select o.* from opportunities o
-          where o.status = 'draft'
+          where o.status = ${options.status ?? 'draft'}
             and not exists (
               select 1 from agent_work w
               where w.agent = ${options.agent} and w.subject_type = 'opportunity'

@@ -437,9 +437,9 @@ export const judgeOpportunityTask: AiTask<JudgeInput, JudgeOutput, JudgeExpected
   // Worst case: ~10 000 input tokens (every field full) and 3 000 output (reasoning included)
   // on the dearest strong model.
   maxCostMicroUsd: 150_000,
-  // Six calls per opportunity, a few opportunities a day: the rest of the day after the other
-  // processes (D-021).
-  dailyShare: 0.3,
+  // Six calls per opportunity, a few opportunities a day: most of what the other processes leave
+  // (D-021); 5 % went to the hypotheses in PHASE 14.
+  dailyShare: 0.25,
   evalCases: cases,
   score: scoreJudge,
 };

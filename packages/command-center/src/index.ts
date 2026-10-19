@@ -60,6 +60,12 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  HYPOTHESES_SHOWN,
+  hypothesesReadyText,
+  hypothesesText,
+  NO_HYPOTHESES_TEXT,
+} from './hypotheses.js';
+export {
   CARD_INTERVAL_MS,
   cardKeyboard as opportunityCardKeyboard,
   cardText as opportunityCardText,
