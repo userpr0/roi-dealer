@@ -189,6 +189,20 @@ rewards ─< reward_contributions >── contributions
 - Запросы `database.brain` повторяют эти выражения дословно — иначе PostgreSQL не использует индекс.
 - Знания с тегом `eval` (отчёты evals) в поиск и счёт не попадают; заметки владельца — `knowledge_assets` с тегом `owner-note`.
 
+## Agents (PHASE 10)
+
+- **`agent_runs`** — один запуск агента, только добавление (триггеры `agent_runs_append_only`, `agent_runs_no_truncate`):
+  - агент (id его актора), начало и конец (`agent_runs_finished_after_start`);
+  - итог `done` / `idle` / `no_access` / `stopped` / `failed`, число обработанных;
+  - причина остановки `budget` / `unavailable` / `failed` — ровно у `stopped` (`agent_runs_stopped_by_for_stopped`);
+  - короткий код сбоя — ровно у `failed` (`agent_runs_failure_for_failed`), без сообщений;
+  - индекс `(agent, started_at desc)` для `/agents`.
+- **`agent_work`** — работа агента над одной версией объекта, только добавление (триггеры `agent_work_append_only`, `agent_work_no_truncate`):
+  - агент, объект `pain` / `opportunity`, его id и версия — уникально (`agent_work_version_once`); ссылка полиморфная, без FK;
+  - задача и её версия, итог `done` / `empty` / `rejected` / `failed`;
+  - `result` — `jsonb`-объект: id, числа и проверенный поисковый запрос (до 60 символов латиницей), без текстов.
+- **Рыночный контекст** — `knowledge_assets` вида `market_data` с тегом `market-context` и `opportunity_id`; в `body` — JSON по `marketContextSchema` (`@roi-dealer/domain`): альтернативы, суммы и покупатели с цитатами и id Evidence.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.

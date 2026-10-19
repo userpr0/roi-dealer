@@ -13,6 +13,7 @@
 | [`0007_signals_pain.sql`](0007_signals_pain.sql)             | 06    | Журнал разбора Evidence `signal_extractions` (только добавление): итог, сигнал и боль, одна строка на Evidence                         |
 | [`0008_opportunity_engine.sql`](0008_opportunity_engine.sql) | 07    | Журнал оценок `opportunity_assessments` (только добавление): оценка и составляющие, итог, возможность, одна строка на версию боли      |
 | [`0009_company_brain.sql`](0009_company_brain.sql)           | 08    | Полнотекстовый поиск: GIN-индексы `to_tsvector('english', …)` на болях, возможностях, Evidence, знаниях и решениях; данные не меняются |
+| [`0010_agents.sql`](0010_agents.sql)                         | 10    | Журналы агентов (только добавление): запуски `agent_runs`, работа над версией объекта `agent_work` — одна строка на версию             |
 
 ## Правила
 
