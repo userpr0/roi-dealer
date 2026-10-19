@@ -1,17 +1,25 @@
 /**
  * @roi-dealer/site — public pages of experiments served by `apps/api`: the private preview of a
- * landing (PHASE 19a) and the released landing with its funnel counter (PHASE 21). The api maps
- * these handlers to routes and adds the security headers.
+ * landing (PHASE 19a), the released landing with its funnel counter (PHASE 21), the sign-up form
+ * and the privacy notice (PHASE 20). The api maps these handlers to routes and adds the
+ * security headers.
  */
+export {
+  createSubmissionLimiter,
+  type SubmissionLimiter,
+  type SubmissionLimits,
+} from './limits.js';
 export {
   ENDED,
   LANDING_STEPS,
   landingPage,
   landingPath,
   MEASUREMENT_NOTE,
+  NO_FORM_NOTE,
   NOT_FOUND,
   noticePage,
   previewPage,
+  privacyPage,
   type LandingRouteDeps,
   type LandingStep,
   type SitePage,
@@ -25,6 +33,7 @@ export {
   utmOf,
   type SiteTracker,
   type SiteTrackerOptions,
+  type PageStage,
   type SiteVisit,
   type TrackedStage,
   type TrackOutcome,

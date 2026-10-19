@@ -36,6 +36,7 @@ export * from './entities/principal.js';
 export * from './entities/source-snapshot.js';
 export * from './entities/revenue.js';
 export * from './entities/media-asset.js';
+export * from './entities/lead.js';
 export * from './ai-budget.js';
 export * from './markets.js';
 export * from './market-context.js';

@@ -15,6 +15,7 @@
     { "path": "./packages/ai-runtime" },
     { "path": "./packages/economics" },
     { "path": "./packages/rewards" },
+    { "path": "./packages/crm" },
     { "path": "./packages/media" },
     { "path": "./packages/site" },
     { "path": "./packages/telegram" },

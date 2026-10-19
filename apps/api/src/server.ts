@@ -34,6 +34,23 @@ export const PAGE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 };
 
 const MAX_QUERY_PARAMS = 20;
+/** The longest body read: a sign-up form (PHASE 20). */
+const MAX_BODY_BYTES = 4_096;
+const TOO_LARGE = Symbol('too large');
+
+/** The body of a form POST, or `TOO_LARGE` beyond `MAX_BODY_BYTES`; never logged. */
+async function readForm(req: IncomingMessage): Promise<string | typeof TOO_LARGE> {
+  const declared = Number(req.headers['content-length'] ?? '0');
+  if (declared > MAX_BODY_BYTES) return TOO_LARGE;
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req as AsyncIterable<Buffer>) {
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) return TOO_LARGE;
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
 const MAX_HEADER_LENGTH = 1_000;
 
 /** The first value of each query parameter, bounded. */
@@ -119,7 +136,15 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
 
     let response: ApiResponse;
     try {
+      const body = method === 'POST' ? await readForm(req) : undefined;
+      if (body === TOO_LARGE) {
+        send(res, method, { status: 413, body: { error: 'payload_too_large' } }, correlationId);
+        req.resume();
+        requestLogger.info('request completed', { method, path: loggedPath(path), status: 413 });
+        return;
+      }
       response = await router({
+        body,
         method,
         path,
         query: queryOf(url),

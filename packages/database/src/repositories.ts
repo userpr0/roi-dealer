@@ -8,6 +8,7 @@ import type {
   Experiment,
   Hypothesis,
   KnowledgeAsset,
+  Lead,
   MediaAsset,
   Opportunity,
   OpportunityId,
@@ -42,6 +43,7 @@ import {
   experimentsTable,
   hypothesesTable,
   knowledgeAssetsTable,
+  leadsTable,
   mediaAssetsTable,
   opportunitiesTable,
   painsTable,
@@ -78,6 +80,14 @@ export interface Repositories {
   readonly sourceSnapshots: Repository<SourceSnapshot>;
   /** Creatives of experiments: landing pages and ad texts (PHASE 19a). */
   readonly mediaAssets: MediaAssetRepository;
+  readonly leads: LeadRepository;
+}
+
+export interface LeadRepository extends VersionedRepository<Lead> {
+  /** Every lead of these experiments, oldest first (PHASE 20). */
+  listByExperiments(ids: readonly string[]): Promise<Lead[]>;
+  /** Leads the owner still works on — new, contacted, customers without an outcome — newest first. */
+  listOpen(options?: { readonly limit?: number }): Promise<Lead[]>;
 }
 
 export interface MediaAssetRepository extends VersionedRepository<MediaAsset> {
@@ -194,6 +204,28 @@ export function createRepositories(executor: Executor, context: WriteContext = {
       getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
     },
     sourceSnapshots: createRepository(executor, sourceSnapshotsTable, context),
+    leads: {
+      ...createVersionedRepository(executor, leadsTable, context),
+      listByExperiments: (ids) =>
+        translated(async () => {
+          if (ids.length === 0) return [];
+          const rows = await executor<Row[]>`
+            select * from leads where experiment_id = any(${[...ids]}::uuid[])
+            order by created_at, id
+          `;
+          return readRows(executor, leadsTable, rows);
+        }),
+      listOpen: (options = {}) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`
+            select * from leads
+            where status in ('new', 'contacted') or (status = 'customer' and outcome is null)
+            order by created_at desc, id desc
+            limit ${options.limit ?? 50}
+          `;
+          return readRows(executor, leadsTable, rows);
+        }),
+    },
     mediaAssets: {
       ...createVersionedRepository(executor, mediaAssetsTable, context),
       listByExperiments: (ids) =>

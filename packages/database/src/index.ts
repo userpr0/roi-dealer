@@ -110,6 +110,7 @@ export {
   type PrincipalRepository,
   type Repositories,
   type SourceRepository,
+  type LeadRepository,
   type MediaAssetRepository,
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
@@ -143,3 +144,4 @@ export {
 } from './signal-extractions.js';
 
 export const PACKAGE_NAME = '@roi-dealer/database';
+export type { LeadContact, LeadContacts } from './lead-contacts.js';

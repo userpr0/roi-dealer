@@ -46,6 +46,7 @@ import {
 import { AUTO_PAUSE_PREFIX } from '@roi-dealer/economics';
 import { activeExperimentViews } from './experiments.js';
 import { hypothesesReadyText } from './hypotheses.js';
+import { newLeadText } from './leads.js';
 import { landingCardContext, landingCardText, landingKeyboard } from './media.js';
 import { shorten } from './texts.js';
 
@@ -525,6 +526,24 @@ export function createDecisionCardNotifier(
           await options.deliver(
             landingCardText(current, { ...context, publicApiUrl: options.publicApiUrl }),
             landingKeyboard(current),
+          );
+          return { sentAt: toTimestamp(new Date(now())) };
+        },
+      );
+      if (outcome === 'executed') sent += 1;
+    }
+    // PHASE 20: one notice per new lead; the email stays in /leads.
+    const fresh = await database.repositories.leads.listByStatus('new', { limit: QUEUE_LIMIT });
+    const leadViews =
+      fresh.length === 0 ? [] : views.length > 0 ? views : await activeExperimentViews(database);
+    for (const lead of fresh) {
+      const key = `lead-notice-${lead.id}`;
+      const view = leadViews.find((item) => item.experiment.id === lead.experimentId);
+      const { outcome } = await database.command(
+        { name: 'lead.notice', idempotencyKey: key, correlationId: key },
+        async () => {
+          await options.deliver(
+            newLeadText(lead, { number: view?.number, title: view?.opportunity.title ?? 'тест' }),
           );
           return { sentAt: toTimestamp(new Date(now())) };
         },

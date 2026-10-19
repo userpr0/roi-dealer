@@ -39,6 +39,9 @@ export const PERMISSIONS = [
   'revenue.record',
   'contribution.write',
   'reward.write',
+  // CRM (PHASE 20): a sign-up from a page; reading, moving and erasing leads and contacts.
+  'lead.capture',
+  'lead.manage',
   // Controls.
   'system.control',
   'access.propose',
@@ -60,7 +63,7 @@ export const PANEL_READS = [
 /**
  * Least privilege: every role gets only what its work needs. An AI agent proposes and never
  * decides, approves, stops the system or grants access (§2.3); an integration only delivers
- * evidence, costs and the funnel events of own pages.
+ * evidence, costs, the funnel events of own pages and their sign-ups.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>> = {
   owner: PERMISSIONS,
@@ -75,11 +78,13 @@ export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>
     'cost.record',
     'contribution.write',
     'reward.write',
+    // The retention period erases contacts (PHASE 20).
+    'lead.manage',
     'system.control',
     'access.propose',
   ],
   agent: ['research.write', 'evidence.write', 'approval.request', 'experiment.write'],
-  integration: ['evidence.write', 'cost.record', 'funnel.track'],
+  integration: ['evidence.write', 'cost.record', 'funnel.track', 'lead.capture'],
   member: [
     'decisions.read',
     'journal.read',
@@ -115,6 +120,8 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   revenue_entry: { create: 'revenue.record' },
   // An agent's proposal like a hypothesis; only the owner approves it (domain, PHASE 19a).
   media_asset: { create: 'research.write', update: 'research.write' },
+  // A sign-up from a page; only the owner (and the retention period) changes it (PHASE 20).
+  lead: { create: 'lead.capture', update: 'lead.manage' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

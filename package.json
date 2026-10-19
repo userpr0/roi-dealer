@@ -2,7 +2,7 @@
   "name": "roi-dealer",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer — AI operating system (TypeScript monorepo)",
+  "description": "ROI Dealer \u2014 AI operating system (TypeScript monorepo)",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -32,6 +32,7 @@
     "@roi-dealer/ai-runtime": "workspace:*",
     "@roi-dealer/brain": "workspace:*",
     "@roi-dealer/command-center": "workspace:*",
+    "@roi-dealer/crm": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/economics": "workspace:*",

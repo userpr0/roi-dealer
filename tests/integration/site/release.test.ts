@@ -24,8 +24,10 @@ import { createHealthRegistry } from '@roi-dealer/observability';
 import { uuidv7 } from '@roi-dealer/shared';
 import {
   createSiteTracker,
+  createSubmissionLimiter,
   landingPage,
   previewPage,
+  privacyPage,
   SITE_ACCESS,
   SITE_TRACKER,
 } from '@roi-dealer/site';
@@ -212,7 +214,13 @@ beforeAll(async () => {
       site: {
         preview: (token) => previewPage(db, token),
         landing: (slug, step, request) =>
-          landingPage({ database: db, tracker }, slug, step, request),
+          landingPage(
+            { database: db, tracker, logger, limiter: createSubmissionLimiter() },
+            slug,
+            step,
+            request,
+          ),
+        privacy: () => privacyPage(undefined),
       },
     }),
     logger,
@@ -332,7 +340,9 @@ describe('the Release Gate (PHASE 21, §7.2)', () => {
 
   it('does not take the page’s stages in /funnel twice', async () => {
     const [refused] = await command('funnel', '1 клики 5 внимание 40');
-    expect(refused?.text).toContain('⛔ внимание и клики CTA теста №1 считает его страница');
+    expect(refused?.text).toContain(
+      '⛔ внимание, клики CTA — у теста №1 их считают страница и /leads',
+    );
     const [asked] = await command('funnel', '1 показы 1000 $5');
     expect(asked?.text).toContain('показы: 0 → 1000 (+1000)');
   });

@@ -228,6 +228,7 @@ beforeAll(async () => {
       site: {
         preview: (token) => previewPage(db, token),
         landing: () => Promise.resolve(NOT_FOUND),
+        privacy: () => NOT_FOUND,
       },
     }),
     logger,

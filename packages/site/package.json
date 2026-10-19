@@ -2,7 +2,7 @@
   "name": "@roi-dealer/site",
   "version": "0.0.0",
   "private": true,
-  "description": "Public pages of experiments served by the api: landing previews (PHASE 19a), released landings and their funnel counter (PHASE 21)",
+  "description": "Public pages of experiments served by the api: landing previews (PHASE 19a), released landings and their funnel counter (PHASE 21), the sign-up form and privacy notice (PHASE 20)",
   "type": "module",
   "exports": {
     ".": {
@@ -18,6 +18,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@roi-dealer/crm": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/media": "workspace:*",

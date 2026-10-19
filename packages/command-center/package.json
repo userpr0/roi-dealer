@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@roi-dealer/brain": "workspace:*",
+    "@roi-dealer/crm": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/economics": "workspace:*",

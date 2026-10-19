@@ -16,6 +16,9 @@
       "path": "../../packages/command-center"
     },
     {
+      "path": "../../packages/crm"
+    },
+    {
       "path": "../../packages/database"
     },
     {

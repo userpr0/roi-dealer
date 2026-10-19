@@ -44,6 +44,8 @@ rewards ─< reward_contributions >── contributions
 | `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
 | `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                      |
 | `media_assets`      | MediaAsset      | версии      | — (лендинги тестов, PHASE 19a)                                     |
+| `leads`             | Lead            | версии      | — (заявки без персональных данных, PHASE 20)                       |
+| `lead_contacts`     | —               | удаляемая   | почта заявок: без событий, удаляется физически (PHASE 20)          |
 | `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
 | `ai_calls`          | —               | append-only | вызовы AI: токены, стоимость, итог (PHASE 09)                      |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
@@ -258,6 +260,14 @@ rewards ─< reward_contributions >── contributions
   - `media_assets_release_complete`: время выпуска есть ⇔ есть подтверждения;
   - `media_assets_release_confirmed`: выпущенный лендинг имеет оба.
 - **События страниц** — `experiment_events` с источником `tracker` от интеграции `site`: запись требует права `funnel.track` и активной личности (`database.funnel.record`).
+
+## CRM (PHASE 20)
+
+- **`leads`** (миграция `0017`) — заявки со страниц тестов, версии с событием `lead.*`, без удаления и **без персональных данных**: тест (FK вместе с гипотезой), страница, возможность, канал, `utm_source`, время согласия, статус, итог клиента, `contact_erased_at`.
+  - `leads_outcome_complete`, `leads_outcome_customer`: итог — только у клиента и со временем;
+  - `leads_consent_before_created`.
+- **`lead_contacts`** — почта (нижний регистр, формат, 6–254 символа): без событий и версий, **удаляется физически** (`/forget`, срок хранения). `lead_contacts_one_per_experiment` — одна почта на тест; триггер `lead_contacts_not_erased` не вернёт почту заявке с `contact_erased_at`.
+- Доступ — только `database.leadContacts`: запись `lead.capture`, чтение и удаление `lead.manage` (с проверкой активной личности).
 
 ## Ошибки
 

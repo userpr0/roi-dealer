@@ -31,9 +31,11 @@ export const SITE_ACCESS: NewPrincipal = {
     'данные; повтор того же посетителя за 30 минут не считается. Ничего не тратит.',
 };
 
-/** Funnel stages the pages count themselves. */
-export const TRACKED_STAGES = ['attention', 'cta_click'] as const;
+/** Funnel stages the pages count themselves: views, presses (PHASE 21) and sign-ups (PHASE 20). */
+export const TRACKED_STAGES = ['attention', 'cta_click', 'lead'] as const;
 export type TrackedStage = (typeof TRACKED_STAGES)[number];
+/** Stages counted per visit; a sign-up is recorded with its lead. */
+export type PageStage = Exclude<TrackedStage, 'lead'>;
 
 /** What the request tells the counter; nothing of it is stored. */
 export interface SiteVisit {
@@ -59,7 +61,9 @@ export type TrackOutcome =
 
 export interface SiteTracker {
   /** Records one stage of a running experiment for this visit when it counts; never throws. */
-  track(target: TrackTarget, stage: TrackedStage, visit: SiteVisit): Promise<TrackOutcome>;
+  track(target: TrackTarget, stage: PageStage, visit: SiteVisit): Promise<TrackOutcome>;
+  /** Whether the page counter may write now: the kill switch is off and its access is active. */
+  writable(): Promise<'ok' | 'paused' | 'no_access'>;
 }
 
 export interface SiteTrackerOptions {
@@ -116,7 +120,7 @@ export function createSiteTracker(options: SiteTrackerOptions): SiteTracker {
   let minute = { startMs: 0, count: 0, warned: false };
   let state: { readonly atMs: number; readonly outcome?: 'paused' | 'no_access' } | undefined;
 
-  const visitorKey = (target: TrackTarget, stage: TrackedStage, visit: SiteVisit): string =>
+  const visitorKey = (target: TrackTarget, stage: PageStage, visit: SiteVisit): string =>
     createHash('sha256')
       .update(salt)
       .update(`${target.experimentId}|${stage}|${visit.address ?? ''}|${visit.userAgent ?? ''}`)
@@ -156,6 +160,10 @@ export function createSiteTracker(options: SiteTrackerOptions): SiteTracker {
   };
 
   return {
+    async writable() {
+      return (await blocked(now())) ?? 'ok';
+    },
+
     async track(target, stage, visit) {
       try {
         if (!isVisit(visit)) return 'not_a_visit';

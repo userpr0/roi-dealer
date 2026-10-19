@@ -54,6 +54,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'hypothesis':
     case 'contribution':
     case 'media_asset':
+    case 'lead':
     case 'knowledge_asset':
     case 'source_snapshot':
       return false;

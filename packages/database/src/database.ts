@@ -11,6 +11,7 @@ import {
 import { createAiCallLog, type AiCallLog } from './ai-calls.js';
 import { createBrainQueries, type BrainQueries } from './brain.js';
 import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
+import { createLeadContacts, type LeadContacts } from './lead-contacts.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
 import { createJudgementLog, type JudgementLog } from './judgements.js';
@@ -54,6 +55,8 @@ export interface TransactionScope {
   readonly funnel: FunnelLog;
   /** Sums over the ledgers, read in the same transaction as the money they limit (PHASE 16). */
   readonly economics: EconomicsQueries;
+  /** Emails of leads, written and deleted with the lead's change (PHASE 20). */
+  readonly leadContacts: LeadContacts;
 }
 
 export interface TransactionOptions {
@@ -103,6 +106,8 @@ export interface Database {
   readonly economics: EconomicsQueries;
   /** Counts of the cycle and the system's metrics (PHASE 13). */
   readonly stats: StatsQueries;
+  /** Emails of leads, apart from the history (PHASE 20). */
+  readonly leadContacts: LeadContacts;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -148,6 +153,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     judgements: createJudgementLog(tx),
     funnel: createFunnelLog(tx),
     economics: createEconomicsQueries(tx),
+    leadContacts: createLeadContacts(tx),
   };
 }
 
@@ -211,6 +217,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     funnel: createFunnelLog(sql),
     economics: createEconomicsQueries(sql),
     stats: createStatsQueries(sql),
+    leadContacts: createLeadContacts(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

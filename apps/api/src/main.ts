@@ -3,7 +3,14 @@ import { createDatabase, createDatabaseHealthCheck, type Database } from '@roi-d
 import { toTimestamp } from '@roi-dealer/domain';
 import { createHealthRegistry, createLogger, type Logger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
-import { createSiteTracker, landingPage, previewPage, SITE_ACCESS } from '@roi-dealer/site';
+import {
+  createSiteTracker,
+  createSubmissionLimiter,
+  landingPage,
+  previewPage,
+  privacyPage,
+  SITE_ACCESS,
+} from '@roi-dealer/site';
 import { loadApiConfig } from './config.js';
 import { createPanelRoute } from './panel.js';
 import { createRouter, type PanelRoute, type SiteRoutes } from './router.js';
@@ -54,12 +61,22 @@ async function main(): Promise<void> {
     });
     health.register(createDatabaseHealthCheck(database));
     shutdown.register('database', () => database.close());
-    // Pages of experiments: landing previews (PHASE 19a), released landings (PHASE 21).
+    // Pages of experiments: previews (PHASE 19a), released landings (PHASE 21), sign-ups (PHASE 20).
     const tracker = createSiteTracker({ database, logger });
-    site = {
-      preview: (token) => previewPage(database, token),
-      landing: (slug, step, visit) => landingPage({ database, tracker }, slug, step, visit),
+    const contactEmail = config.PUBLIC_CONTACT_EMAIL;
+    const pages = {
+      database,
+      tracker,
+      logger,
+      contactEmail,
+      limiter: createSubmissionLimiter(),
     };
+    site = {
+      preview: (token) => previewPage(database, token, { contactEmail }),
+      landing: (slug, step, visit, form) => landingPage(pages, slug, step, visit, form),
+      privacy: () => privacyPage(contactEmail),
+    };
+    logger.info('sign-up form', { enabled: contactEmail !== undefined });
     // In the background: the api serves pages even while the database is slow to answer.
     void requestSiteAccess(database, logger);
     const renewal = setInterval(

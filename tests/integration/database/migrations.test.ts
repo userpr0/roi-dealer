@@ -52,6 +52,7 @@ const PROJECT_MIGRATIONS = [
   '0014_rewards',
   '0015_media',
   '0016_release',
+  '0017_leads',
 ];
 
 describe('runMigrations with the project migrations', () => {

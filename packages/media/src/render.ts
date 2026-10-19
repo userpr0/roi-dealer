@@ -19,6 +19,8 @@ export interface LandingPageOptions {
   readonly afterOffer?: string | undefined;
   /** A line of the footer, e.g. what the page measures (PHASE 21). */
   readonly footerNote?: string | undefined;
+  /** A second line of the preview banner for the owner (PHASE 20). */
+  readonly previewNote?: string | undefined;
 }
 
 const ESCAPES: Readonly<Record<string, string>> = {
@@ -83,6 +85,9 @@ export function renderLanding(content: LandingContent, options: LandingPageOptio
     '</head>',
     '<body>',
     preview ? '<div class="banner">Preview — this page is not public yet.</div>' : '',
+    preview && options.previewNote !== undefined
+      ? `<div class="banner">${e(options.previewNote)}</div>`
+      : '',
     '<main>',
     `<h1>${e(content.headline)}</h1>`,
     `<p class="sub">${e(content.subheadline)}</p>`,

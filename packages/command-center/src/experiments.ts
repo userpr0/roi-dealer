@@ -312,6 +312,15 @@ async function activeExperiments(repositories: Repositories): Promise<Experiment
   );
 }
 
+/** The number of each active test as /experiments shows it (PHASE 20). */
+export async function experimentNumbers(
+  repositories: Repositories,
+): Promise<ReadonlyMap<Experiment['id'], number>> {
+  return new Map(
+    (await activeExperiments(repositories)).map((experiment, index) => [experiment.id, index + 1]),
+  );
+}
+
 async function viewsOf(
   scope: Scope,
   experiments: readonly Experiment[],
@@ -1186,12 +1195,14 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
         await context.reply('Тест не найден.');
         return;
       }
-      // A released page counts these stages itself (PHASE 21): no double counting.
-      const tracked = TRACKED_STAGES.filter((stage) => report.increments[stage] !== undefined);
+      // A released page counts these stages itself (PHASE 21, 20); customer outcomes come
+      // from /leads: no double counting.
+      const counted = [...TRACKED_STAGES, 'outcome'] as const;
+      const tracked = counted.filter((stage) => report.increments[stage] !== undefined);
       if (view.landing?.status === 'released' && tracked.length > 0) {
         await context.reply(
-          `⛔ ${tracked.map((stage) => STAGE_LABELS[stage]).join(' и ')} теста №${String(report.number)} ` +
-            'считает его страница — вносить их не нужно. Показы, заявки, оплаты и траты — вносите. ' +
+          `⛔ ${tracked.map((stage) => STAGE_LABELS[stage]).join(', ')} — у теста №${String(report.number)} ` +
+            'их считают страница и /leads, вносить не нужно. Показы, оплаты и траты — вносите. ' +
             'Ничего не записано.',
         );
         return;

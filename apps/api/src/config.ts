@@ -42,6 +42,11 @@ const apiConfigSchema = z.object({
   TELEGRAM_BOT_TOKEN: telegramBotTokenSchema.optional(),
   TELEGRAM_OWNER_USER_ID: telegramUserIdSchema.optional(),
   MINIAPP_ORIGINS: originsSchema.default([DEFAULT_MINIAPP_ORIGINS]),
+  /**
+   * Where people ask to delete their data (PHASE 20): shown on `/privacy` and after a sign-up.
+   * Without it test pages have no sign-up form.
+   */
+  PUBLIC_CONTACT_EMAIL: z.email().max(254).optional(),
 });
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;

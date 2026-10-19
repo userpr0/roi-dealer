@@ -54,6 +54,13 @@ import {
 } from './opportunity-cards.js';
 import { handlePainButton, PAIN_PREFIX, painsReply } from './pains.js';
 import { handlePortfolioButton, PORTFOLIO_PREFIX, sendPortfolio } from './portfolio.js';
+import {
+  createForgetFlow,
+  FORGET_PREFIX,
+  handleLeadButton,
+  LEADS_PREFIX,
+  sendLeads,
+} from './leads.js';
 import { handleMediaButton, MEDIA_PREFIX } from './media.js';
 import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.js';
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
@@ -132,6 +139,8 @@ const DESCRIPTIONS = {
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
   paid: 'Отметить выплату вознаграждения',
+  leads: 'Заявки со страниц тестов: связаться, клиент, итог',
+  forget: 'Удалить почту человека по его просьбе',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -158,6 +167,8 @@ function withoutDatabase(): Pick<
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
+      LEADS_PREFIX,
+      FORGET_PREFIX,
       CONTRIBUTION_PREFIX,
       REWARD_PREFIX,
       KILL_SWITCH_PREFIX,
@@ -200,6 +211,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const funnel = createFunnelFlow(deps);
   const costs = createCostFlow(deps);
   const rewards = createRewardFlow(deps);
+  const forget = createForgetFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -360,6 +372,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('contribution', 'contribution.write', rewards.contribution),
       command('reward', 'reward.write', rewards.reward),
       command('paid', 'reward.write', rewards.paid),
+      command('leads', 'lead.manage', (context) => sendLeads(deps, context)),
+      command('forget', 'lead.manage', forget.forget),
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),
@@ -381,6 +395,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(MEDIA_PREFIX, 'research.write', (context) =>
         handleMediaButton({ ...deps, publicApiUrl: options.publicApiUrl }, context),
       ),
+      button(LEADS_PREFIX, 'lead.manage', (context) => handleLeadButton(deps, context)),
+      button(FORGET_PREFIX, 'lead.manage', forget.handleButton),
       button(CONTRIBUTION_PREFIX, 'contribution.write', rewards.handleContributionButton),
       button(REWARD_PREFIX, 'reward.write', rewards.handleRewardButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),

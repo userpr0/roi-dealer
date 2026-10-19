@@ -20,6 +20,8 @@ export interface ApiRequest {
   }>;
   /** The socket's peer address, when no proxy forwarded the client's. */
   readonly remoteAddress?: string | undefined;
+  /** The body of a form POST, at most `MAX_FORM_BYTES` (PHASE 20). */
+  readonly body?: string | undefined;
   readonly correlationId?: string | undefined;
 }
 
@@ -51,8 +53,10 @@ export interface SiteResponse {
 export interface SiteRoutes {
   /** The private preview of a landing by its token. */
   preview(token: string): Promise<SiteResponse>;
-  /** A released landing, its button and the next step (PHASE 21). */
-  landing(slug: string, step: LandingStep, visit: SiteVisit): Promise<SiteResponse>;
+  /** A released landing, its button and the next steps; `form` is a sign-up (PHASE 21, 20). */
+  landing(slug: string, step: LandingStep, visit: SiteVisit, form?: string): Promise<SiteResponse>;
+  /** The privacy notice (PHASE 20). */
+  privacy(): SiteResponse;
 }
 
 export interface RouterDeps {
@@ -66,12 +70,17 @@ export type Router = (request: ApiRequest) => Promise<ApiResponse>;
 
 export const PANEL_PATH = '/api/panel';
 const PREVIEW_PATH = /^\/p\/([^/]{1,100})$/;
-const LANDING_PATH = /^\/l\/([^/]{1,100})(?:\/(go|thanks))?$/;
+const LANDING_PATH = /^\/l\/([^/]{1,100})(?:\/(go|join|joined|thanks))?$/;
 
 const PAGE_METHOD_NOT_ALLOWED: ApiResponse = {
   status: 405,
   body: { error: 'method_not_allowed' },
   headers: { allow: 'GET, HEAD' },
+};
+const JOIN_METHOD_NOT_ALLOWED: ApiResponse = {
+  status: 405,
+  body: { error: 'method_not_allowed' },
+  headers: { allow: 'GET, HEAD, POST' },
 };
 
 /** The path as logged: a private preview's token stays out of the logs. */
@@ -122,10 +131,24 @@ export function createRouter(deps: RouterDeps): Router {
     }
     const landing = LANDING_PATH.exec(request.path);
     if (landing !== null && deps.site !== undefined) {
-      if (request.method !== 'GET' && request.method !== 'HEAD') return PAGE_METHOD_NOT_ALLOWED;
       const step = (landing[2] ?? 'page') as LandingStep;
-      const page = await deps.site.landing(landing[1] ?? '', step, visitOf(request));
+      // Only the sign-up form is posted (PHASE 20).
+      const posted = step === 'join' && request.method === 'POST';
+      if (request.method !== 'GET' && request.method !== 'HEAD' && !posted) {
+        return step === 'join' ? JOIN_METHOD_NOT_ALLOWED : PAGE_METHOD_NOT_ALLOWED;
+      }
+      const page = await deps.site.landing(
+        landing[1] ?? '',
+        step,
+        visitOf(request),
+        posted ? (request.body ?? '') : undefined,
+      );
       return { status: page.status, body: undefined, html: page.html, redirect: page.redirect };
+    }
+    if (request.path === '/privacy' && deps.site !== undefined) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') return PAGE_METHOD_NOT_ALLOWED;
+      const page = deps.site.privacy();
+      return { status: page.status, body: undefined, html: page.html };
     }
     return { status: 404, body: { error: 'not_found' } };
   };

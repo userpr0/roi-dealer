@@ -79,6 +79,12 @@ const workerConfigSchema = z.object({
     .int()
     .min(100)
     .default(15 * 60_000),
+  /** How often emails past the retention period are deleted (PHASE 20). Default: 6 hours. */
+  LEAD_RETENTION_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(6 * 3_600_000),
   /** How often models, evals and the daily cost are maintained. Default: one hour. */
   AI_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
 });

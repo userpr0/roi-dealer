@@ -1,3 +1,4 @@
+import { createLeadRetention } from '@roi-dealer/crm';
 import {
   AGENT_TASKS,
   createAgentScheduler,
@@ -157,15 +158,23 @@ function main(): void {
     logger,
     intervalMs: config.SPEND_GUARD_INTERVAL_MS,
   });
+  // The retention period (PHASE 20): emails of leads that did not become customers.
+  const retention = createLeadRetention({
+    database,
+    logger,
+    intervalMs: config.LEAD_RETENTION_INTERVAL_MS,
+  });
   maintenance.start();
   evidence.start();
   agents.start();
   spendGuard.start();
+  retention.start();
   // Registered last, so they stop first: work finishes before the database closes.
   shutdown.register('ai-maintenance', () => maintenance.stop());
   shutdown.register('evidence-collection', () => evidence.stop());
   shutdown.register('agents', () => agents.stop());
   shutdown.register('spend-guard', () => spendGuard.stop());
+  shutdown.register('lead-retention', () => retention.stop());
 }
 
 try {

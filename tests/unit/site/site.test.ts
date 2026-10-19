@@ -271,6 +271,7 @@ describe('the landing routes of the api (PHASE 21)', () => {
     health: createHealthRegistry({ service: 'api' }),
     site: {
       preview: () => Promise.resolve({ status: 404 }),
+      privacy: () => ({ status: 404 }),
       landing: (slug, step, visit) => {
         calls.push({ slug, step, address: visit.address, query: visit.query });
         return Promise.resolve(
