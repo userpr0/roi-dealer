@@ -8,6 +8,7 @@ import {
   changeHypothesisStatus,
   changeSignalStatus,
   completeExperiment,
+  confirmHonestChecks,
   contributionIdSchema,
   costEntryIdSchema,
   createApprovalRequest,
@@ -195,9 +196,11 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       },
       createCtx(approvalRequestIdSchema, SYSTEM, 13),
     );
-    const awaiting = requestExperimentApproval(planned, launch.id, ctx(SYSTEM, 13));
+    const checked = confirmHonestChecks(planned, chosen, ctx(OWNER, 12));
+    const awaiting = requestExperimentApproval(checked, launch.id, ctx(SYSTEM, 13));
     await db.transaction(async ({ repositories }) => {
       await repositories.experiments.insert(planned);
+      await repositories.experiments.update(checked, OWNER);
       await repositories.approvalRequests.insert(launch);
       await repositories.experiments.update(awaiting, SYSTEM);
     });
@@ -376,6 +379,8 @@ describe('ROI CORE v0.1 loop persisted in PostgreSQL', () => {
       ]),
     ).toEqual([
       [undefined, 'planned'],
+      // The owner confirmed the honest-test checklist (PHASE 15).
+      ['planned', 'planned'],
       ['planned', 'awaiting_approval'],
       ['awaiting_approval', 'approved'],
       ['approved', 'running'],

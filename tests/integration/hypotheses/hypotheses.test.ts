@@ -215,7 +215,8 @@ describe('the hypothesis agent (PHASE 14)', () => {
     const text = await hypothesesText(db.repositories);
     expect(text).toContain('«Invoices that get paid» — гипотез 5');
     expect(text).toContain('1. лендинг · Freelancers (US) · $10.00 · канал: Reddit ads');
-    expect(text).toContain('Бюджет $50.00, stop-loss $20.00 · успех: signups ≥ 20 people');
+    expect(text).toContain('Бюджет $50.00, stop-loss $20.00 · успех: заявки ≥ 20');
+    expect(text).toContain('успех: заявки / клики CTA ≥ 10 %');
   });
 
   it('asks once for a fix with the issues, then gives up', async () => {

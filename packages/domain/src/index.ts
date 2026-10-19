@@ -39,5 +39,6 @@ export * from './markets.js';
 export * from './market-context.js';
 export * from './judgement.js';
 export * from './decision-engine.js';
+export * from './funnel.js';
 
 export const PACKAGE_NAME = '@roi-dealer/domain';

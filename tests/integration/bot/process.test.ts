@@ -82,6 +82,8 @@ describe('owner bot process', () => {
           'ask',
           'note',
           'hypotheses',
+          'experiments',
+          'funnel',
           'agents',
           'status',
           'help',

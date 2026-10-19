@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { immutableMeta, immutableMetaShape, parseEntity, type CreateContext } from '../entity.js';
 import { DomainError } from '../errors.js';
-import { addMoney, positiveMoneySchema, subtractMoney, ZERO_USD, type Money } from '../money.js';
+import {
+  addMoney,
+  compareMoney,
+  positiveMoneySchema,
+  subtractMoney,
+  ZERO_USD,
+  type Money,
+} from '../money.js';
 import {
   approvalRequestIdSchema,
   costEntryIdSchema,
@@ -11,6 +18,7 @@ import {
   text,
   timestampSchema,
   type CostEntryId,
+  type Timestamp,
 } from '../primitives.js';
 import {
   assertApprovalCovers,
@@ -19,6 +27,7 @@ import {
   type ApprovalPolicy,
   type ApprovalRequest,
 } from './approval.js';
+import { experimentTotalBudget, type Experiment } from './experiment.js';
 
 /** Cost accounting from day one (§2.8). */
 export const COST_CATEGORIES = [
@@ -86,6 +95,59 @@ export function recordCostEntry(
   }
   return parseEntity(costEntrySchema, 'cost_entry', {
     ...data,
+    id: context.id,
+    ...immutableMeta(context),
+  });
+}
+
+/**
+ * Spend of a launched experiment (PHASE 15, D-006, D-007): covered by the experiment's approved
+ * launch request, and never above its approved budget together with what was spent before —
+ * more needs a new approval.
+ */
+export function recordExperimentCost(
+  data: {
+    readonly amount: Money;
+    readonly description: string;
+    readonly incurredAt: Timestamp;
+    readonly category?: CostCategory | undefined;
+  },
+  experiment: Experiment,
+  approval: ApprovalRequest | undefined,
+  spent: Money,
+  context: CreateContext<CostEntryId>,
+): CostEntry {
+  if (experiment.status !== 'running' && experiment.status !== 'stopped') {
+    throw new DomainError('invariant_violation', 'Only a launched experiment records spend', {
+      experiment_status: experiment.status,
+    });
+  }
+  const budget = experimentTotalBudget(experiment);
+  assertApprovalCovers(approval, {
+    ...(experiment.approvalRequestId === undefined ? {} : { id: experiment.approvalRequestId }),
+    kind: 'experiment_launch',
+    amount: budget,
+    subject: { type: 'experiment', id: experiment.id },
+  });
+  if (compareMoney(addMoney(spent, data.amount), budget) > 0) {
+    throw new DomainError(
+      'approval_required',
+      'Spend above the approved experiment budget needs a new approval',
+      { experiment_id: experiment.id },
+    );
+  }
+  return parseEntity(costEntrySchema, 'cost_entry', {
+    category: data.category ?? 'ads',
+    amount: data.amount,
+    description: data.description,
+    incurredAt: data.incurredAt,
+    recurring: false,
+    allocation: {
+      opportunityId: experiment.opportunityId,
+      hypothesisId: experiment.hypothesisId,
+      experimentId: experiment.id,
+    },
+    approvalRequestId: approval?.id,
     id: context.id,
     ...immutableMeta(context),
   });

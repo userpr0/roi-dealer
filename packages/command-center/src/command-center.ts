@@ -32,7 +32,14 @@ import {
   type JournalKind,
 } from './journal.js';
 import { agentsText } from './agents.js';
-import { hypothesesText } from './hypotheses.js';
+import {
+  createFunnelFlow,
+  EXPERIMENT_PREFIX,
+  FUNNEL_PREFIX,
+  handleExperimentButton,
+  sendExperiments,
+} from './experiments.js';
+import { handleHypothesisButton, HYPOTHESIS_PREFIX, sendHypotheses } from './hypotheses.js';
 import { aiStatusLine } from './ai-status.js';
 import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
@@ -64,7 +71,7 @@ export interface CommandCenterOptions {
 export interface CommandCenter {
   /**
    * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
-   * /search, /ask, /note, /agents
+   * /search, /ask, /note, /hypotheses, /experiments, /funnel, /agents
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
@@ -105,6 +112,8 @@ const DESCRIPTIONS = {
   ask: 'Спросить систему',
   note: 'Записать знание',
   hypotheses: 'Гипотезы проверки одобренных возможностей',
+  experiments: 'Тесты: чек-лист, запуск, итог',
+  funnel: 'Внести цифры теста: воронка и траты',
   agents: 'Агенты: доступ, работа, AI за сутки',
 } as const;
 
@@ -125,6 +134,9 @@ function withoutDatabase(): Pick<
     callbacks: [
       APPROVAL_PREFIX,
       OPPORTUNITY_PREFIX,
+      HYPOTHESIS_PREFIX,
+      EXPERIMENT_PREFIX,
+      FUNNEL_PREFIX,
       KILL_SWITCH_PREFIX,
       ACCESS_PREFIX,
       NOTE_PREFIX,
@@ -162,6 +174,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const deps = { database, now, owner: ownerActor };
   const killSwitch = createKillSwitchFlow(deps);
   const notes = createNoteFlow(deps);
+  const funnel = createFunnelFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -284,9 +297,13 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         context.reply(await askReply(database, context.args, nowMs())),
       ),
       command('note', 'research.write', notes.note),
-      command('hypotheses', 'research.read', async (context) =>
-        context.reply(await hypothesesText(database.repositories)),
+      command('hypotheses', 'research.read', (context) =>
+        sendHypotheses(database.repositories, (text, keyboard) => context.reply(text, keyboard)),
       ),
+      command('experiments', 'research.read', (context) =>
+        sendExperiments(deps, (text, keyboard) => context.reply(text, keyboard)),
+      ),
+      command('funnel', 'experiment.write', funnel.funnel),
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
       ),
@@ -296,6 +313,13 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(OPPORTUNITY_PREFIX, 'decision.record', (context) =>
         handleOpportunityButton(deps, context),
       ),
+      button(HYPOTHESIS_PREFIX, 'experiment.write', (context) =>
+        handleHypothesisButton(deps, context),
+      ),
+      button(EXPERIMENT_PREFIX, 'experiment.write', (context) =>
+        handleExperimentButton(deps, context),
+      ),
+      button(FUNNEL_PREFIX, 'experiment.write', funnel.handleButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
       button(NOTE_PREFIX, 'research.write', notes.handleButton),

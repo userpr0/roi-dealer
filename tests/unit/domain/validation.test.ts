@@ -6,6 +6,7 @@ import {
   cancelExperiment,
   changeHypothesisStatus,
   completeExperiment,
+  confirmHonestChecks,
   createApprovalRequest,
   createExperiment,
   createHypothesis,
@@ -48,11 +49,13 @@ function selectedHypothesis(): Hypothesis {
 
 function plannedExperiment(): Experiment {
   const hypothesis = selectedHypothesis();
-  return createExperiment(
+  const planned = createExperiment(
     experimentData(opportunityId, hypothesis.id),
     hypothesis,
     createCtx(experimentIdSchema, AGENT, 2),
   );
+  // PHASE 15: the owner confirms the honest-test checklist while planning.
+  return confirmHonestChecks(planned, hypothesis, ctx(OWNER, 2));
 }
 
 function launchApproval(

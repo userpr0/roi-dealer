@@ -63,7 +63,10 @@ export function perfectHypothesesAnswer(
       creative: 'Get paid on time without chasing — coming soon.',
       cta: 'Join the waitlist',
       validationMethod: method,
-      successMetric: { name: 'signups', target: 20, unit: 'people', direction: 'at_least' },
+      successMetric:
+        index === 1
+          ? { stage: 'lead' as const, per: 'cta_click' as const, target: 10 }
+          : { stage: 'lead' as const, per: 'none' as const, target: 20 },
       budgetUsd: 50,
       stopLossUsd: 20,
       minimumData: '300 unique visitors',

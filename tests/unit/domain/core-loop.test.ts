@@ -9,6 +9,7 @@ import {
   changeHypothesisStatus,
   changeSignalStatus,
   completeExperiment,
+  confirmHonestChecks,
   contributionIdSchema,
   costEntryIdSchema,
   createApprovalRequest,
@@ -170,7 +171,11 @@ describe('ROI CORE v0.1 loop (playbook §11) through the public domain API', () 
     const launchApproved = resolveApprovalRequest(launch, ownerAnswer, ctx(OWNER, 14));
     const running = startExperiment(
       approveExperiment(
-        requestExperimentApproval(planned, launch.id, ctx(SYSTEM, 13)),
+        requestExperimentApproval(
+          confirmHonestChecks(planned, chosen, ctx(OWNER, 12)),
+          launch.id,
+          ctx(SYSTEM, 13),
+        ),
         launchApproved,
         ctx(OWNER, 15),
       ),

@@ -3,7 +3,10 @@ import type { AiTask, EvalScore } from '@roi-dealer/ai-runtime';
 import {
   assertDistinctHypothesisSet,
   DomainError,
+  FUNNEL_STAGES,
+  funnelMetric,
   HYPOTHESES_PER_OPPORTUNITY,
+  isEarlierStage,
   newHypothesisSchema,
   usd,
   VALIDATION_METHODS,
@@ -15,8 +18,9 @@ import {
  * PHASE 14: five different ways to test an approved opportunity (§7.1 Step B). The model
  * proposes complete hypotheses; code checks every field and the set — distinct tests, several
  * methods, more than one price, a demo or concierge test, budgets within limits — and asks once
- * for a fix with the list of issues (§2.3). Nothing is spent here: experiments start only with
- * the owner's approval (PHASE 15, D-006).
+ * for a fix with the list of issues (§2.3). The success metric is a funnel stage, so every test
+ * is measured from the same events (PHASE 15, D-014 п.9). Nothing is spent here: experiments
+ * start only with the owner's approval (PHASE 15, D-006).
  */
 
 export const MAX_HYPOTHESIS_BUDGET_USD = 100;
@@ -59,11 +63,11 @@ const hypothesisOutput = z.strictObject({
   creative: z.string(),
   cta: z.string(),
   validationMethod: z.enum(VALIDATION_METHODS),
+  /** A count of `stage`, or (`per` an earlier stage) `stage` as a percentage of `per`. */
   successMetric: z.strictObject({
-    name: z.string(),
+    stage: z.enum(FUNNEL_STAGES),
+    per: z.enum(['none', ...FUNNEL_STAGES]),
     target: z.number(),
-    unit: z.string(),
-    direction: z.enum(['at_least', 'at_most']),
   }),
   budgetUsd: z.number(),
   stopLossUsd: z.number(),
@@ -115,8 +119,6 @@ export function toHypothesisSet(
       creative: clip(item.creative, 1_000),
       cta: clip(item.cta, 200),
       minimumData: clip(item.minimumData, 300),
-      metricName: clip(item.successMetric.name, 100),
-      metricUnit: clip(item.successMetric.unit, 32),
     };
     for (const [field, value] of Object.entries(texts)) {
       if (value === '') issues.push(`${at}: ${field} is empty`);
@@ -142,8 +144,14 @@ export function toHypothesisSet(
     ) {
       issues.push(`${at}: stop-loss must be between 1 USD and the budget`);
     }
-    if (!Number.isFinite(item.successMetric.target) || item.successMetric.target <= 0) {
+    const { stage, per, target } = item.successMetric;
+    if (!Number.isFinite(target) || target <= 0) {
       issues.push(`${at}: success metric target must be above 0`);
+    }
+    if (per !== 'none' && !isEarlierStage(per, stage)) {
+      issues.push(`${at}: success metric base ${per} must come before ${stage} in the funnel`);
+    } else if (per !== 'none' && target > 100) {
+      issues.push(`${at}: a rate target is a percentage, at most 100`);
     }
     const parsed = newHypothesisSchema.safeParse({
       opportunityId,
@@ -156,12 +164,10 @@ export function toHypothesisSet(
       creative: texts.creative,
       cta: texts.cta,
       validationMethod: item.validationMethod,
-      successMetric: {
-        name: texts.metricName,
-        target: item.successMetric.target,
-        unit: texts.metricUnit,
-        direction: item.successMetric.direction,
-      },
+      successMetric: funnelMetric(
+        { stage, per: per === 'none' ? undefined : per },
+        Number.isFinite(target) ? target : 0,
+      ),
       budget: usd(Number.isFinite(item.budgetUsd) ? Math.max(cents(item.budgetUsd), 1) : 1),
       stopLoss: usd(Number.isFinite(item.stopLossUsd) ? Math.max(cents(item.stopLossUsd), 1) : 1),
       minimumData: texts.minimumData,
@@ -454,7 +460,7 @@ export const designHypothesesTask: AiTask<
   DesignHypothesesExpected
 > = {
   name: 'design-hypotheses',
-  version: 1,
+  version: 2,
   tier: 'bulk',
   instructions: [
     'You design five cheap, honest market tests for a business opportunity the owner approved.',
@@ -468,7 +474,10 @@ export const designHypothesesTask: AiTask<
     '- offer, priceUsd (0 for a free waitlist), channel (where people see it), creative (what',
     '  they see: the headline and the promised measurable result, no invented reviews or numbers),',
     '  cta (the action asked).',
-    '- validationMethod; successMetric: name, target above 0, unit, direction.',
+    '- validationMethod; successMetric: the funnel stage that shows success (impression,',
+    '  attention, cta_click, activation, lead = sign-up or trial, payment, product_use, outcome,',
+    '  retention); per: "none" for a count of that stage, or an earlier stage to measure a',
+    '  percentage of it; target above 0 (a percentage at most 100).',
     '- budgetUsd between 1 and 100 (money for ads and tools), stopLossUsd between 1 and the',
     '  budget, all five together at most 300; minimumData: the data needed before judging.',
     'Be honest: a fake-door page says "coming soon"; a preorder states the delivery date and',

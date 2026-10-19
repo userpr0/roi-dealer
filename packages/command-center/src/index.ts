@@ -60,11 +60,38 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  handleHypothesisButton,
   HYPOTHESES_SHOWN,
   hypothesesReadyText,
   hypothesesText,
+  hypothesisCards,
+  HYPOTHESIS_PREFIX,
   NO_HYPOTHESES_TEXT,
+  sendHypotheses,
+  type HypothesisCard,
 } from './hypotheses.js';
+export {
+  applyExperimentLaunchDecision,
+  ARTIFACT_LABELS,
+  CHECK_LABELS,
+  createFunnelFlow,
+  EXPERIMENT_PREFIX,
+  experimentCardText,
+  experimentKeyboard,
+  FUNNEL_PREFIX,
+  FUNNEL_USAGE,
+  FunnelRefusedError,
+  handleExperimentButton,
+  LAUNCH_REQUEST_DAYS,
+  MAX_EXPERIMENT_CARDS,
+  METHOD_LABELS,
+  metricText,
+  parseFunnelReport,
+  sendExperiments,
+  STAGE_LABELS,
+  type ExperimentView,
+  type FunnelReport,
+} from './experiments.js';
 export {
   CARD_INTERVAL_MS,
   cardKeyboard as opportunityCardKeyboard,

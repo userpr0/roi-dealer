@@ -112,6 +112,7 @@ export {
   type SourceRepository,
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
+export { createFunnelLog, type FunnelLog } from './experiments.js';
 export {
   createJudgementLog,
   JUDGEMENT_OUTCOMES,

@@ -41,7 +41,14 @@ describe('five hypotheses are checked by code (PHASE 14, §7.1 B)', () => {
       budget: { amountCents: 5_000, currency: 'USD' },
       stopLoss: { amountCents: 2_000, currency: 'USD' },
       validationMethod: 'landing_page',
-      successMetric: { name: 'signups', target: 20, unit: 'people', direction: 'at_least' },
+      successMetric: { name: 'lead', target: 20, unit: 'count', direction: 'at_least' },
+    });
+    // A rate: leads as a percentage of CTA clicks (PHASE 15 funnel).
+    expect(checked.hypotheses[1]?.successMetric).toEqual({
+      name: 'lead/cta_click',
+      target: 10,
+      unit: '%',
+      direction: 'at_least',
     });
     expect(checked.hypotheses[4]?.price.amountCents).toBe(0);
   });
@@ -63,12 +70,16 @@ describe('five hypotheses are checked by code (PHASE 14, §7.1 B)', () => {
       'hypothesis 4: stop-loss must be between 1 USD and the budget',
     ]);
     expect(
-      issuesOf(
-        withHypothesis(4, {
-          successMetric: { name: 'signups', target: 0, unit: 'people', direction: 'at_least' },
-        }),
-      ),
+      issuesOf(withHypothesis(4, { successMetric: { stage: 'lead', per: 'none', target: 0 } })),
     ).toEqual(['hypothesis 5: success metric target must be above 0']);
+    expect(
+      issuesOf(withHypothesis(4, { successMetric: { stage: 'lead', per: 'payment', target: 5 } })),
+    ).toEqual(['hypothesis 5: success metric base payment must come before lead in the funnel']);
+    expect(
+      issuesOf(
+        withHypothesis(4, { successMetric: { stage: 'lead', per: 'cta_click', target: 120 } }),
+      ),
+    ).toEqual(['hypothesis 5: a rate target is a percentage, at most 100']);
     expect(issuesOf(withHypothesis(0, { cta: '  ' }))).toEqual(['hypothesis 1: cta is empty']);
   });
 

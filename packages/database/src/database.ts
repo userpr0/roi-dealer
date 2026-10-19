@@ -10,6 +10,7 @@ import {
 } from './agents.js';
 import { createAiCallLog, type AiCallLog } from './ai-calls.js';
 import { createBrainQueries, type BrainQueries } from './brain.js';
+import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createJudgementLog, type JudgementLog } from './judgements.js';
 import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
@@ -47,6 +48,8 @@ export interface TransactionScope {
   readonly agentWork: AgentWorkLog;
   /** Recorded in the same transaction as the opportunity it completes (PHASE 11). */
   readonly judgements: JudgementLog;
+  /** Recorded in the same transaction as the spend and stop it may cause (PHASE 15). */
+  readonly funnel: FunnelLog;
 }
 
 export interface TransactionOptions {
@@ -90,6 +93,8 @@ export interface Database {
   readonly agentWork: AgentWorkLog;
   /** Journal of the judges' assessments of opportunities (PHASE 11). */
   readonly judgements: JudgementLog;
+  /** The funnel of experiments and their spend (PHASE 15). */
+  readonly funnel: FunnelLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -133,6 +138,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     opportunityAssessments: createOpportunityAssessmentLog(tx),
     agentWork: createAgentWorkLog(tx),
     judgements: createJudgementLog(tx),
+    funnel: createFunnelLog(tx),
   };
 }
 
@@ -193,6 +199,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     agentRuns: createAgentRunLog(sql),
     agentWork: createAgentWorkLog(sql),
     judgements: createJudgementLog(sql),
+    funnel: createFunnelLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>
