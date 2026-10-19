@@ -196,7 +196,7 @@ Worker почти всё время ждёт: обычно $1–3 в месяц.
 
 Сильные модели — Claude Opus 5.5, GPT-5.5, Gemini 3.1 Pro. Судьи работают с ключом любого из трёх провайдеров.
 
-Интервалы меняются переменными `HYPOTHESES_INTERVAL_MS` (1 час), `JUDGES_INTERVAL_MS` (3 часа), `RESEARCH_INTERVAL_MS` и `MARKET_INTERVAL_MS` (по умолчанию 6 часов); `SIGNALS_INTERVAL_MS` — 15 минут, `OPPORTUNITIES_INTERVAL_MS` — час.
+Интервалы меняются переменными `SPEND_GUARD_INTERVAL_MS` (проверка трат, 15 минут, PHASE 16), `HYPOTHESES_INTERVAL_MS` (1 час), `JUDGES_INTERVAL_MS` (3 часа), `RESEARCH_INTERVAL_MS` и `MARKET_INTERVAL_MS` (по умолчанию 6 часов); `SIGNALS_INTERVAL_MS` — 15 минут, `OPPORTUNITIES_INTERVAL_MS` — час.
 
 ### Если что-то не так
 

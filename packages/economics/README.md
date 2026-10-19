@@ -1,18 +1,27 @@
 # @roi-dealer/economics
 
-**Статус:** placeholder (PHASE 00). Реализация — PHASE 16 — Economics.
+**Статус:** реализован в PHASE 16 — Economics ([спецификация](../../docs/phases/16_economics.md)).
 
 ## Назначение
 
-Economic System: Cost Ledger, Revenue Ledger, Unit Economics, budgets, refunds.
+Economic System:
+
+- месяц против лимитов D-007;
+- тесты против одобренного;
+- выручка, ROI системы и стоимость проверенной гипотезы (D-014 п.11);
+- spend guard — автопауза при аномальных тратах (D-014 п.10).
+
+## Что внутри
+
+| Export                           | Что делает                                                                                                                                                                  |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `monthReport(database, nowMs)`   | Месяц UTC из журналов: расходы по категориям (AI — по `ai_calls`, с сегодняшним днём), лимиты и их состояние, тесты, выручка, возвраты, ROI, стоимость проверенной гипотезы |
+| `runSpendGuard(database, nowMs)` | Автоматические траты дня против 2× среднего за 7 дней (не меньше $5); аномалия → `pauseSystem` от `system:spend-guard`. На паузе ничего не делает                           |
+| `createSpendGuard(options)`      | Запуск проверки по интервалу в worker (`SPEND_GUARD_INTERVAL_MS`, 15 минут) без наложений                                                                                   |
+| `AUTO_PAUSE_PREFIX`              | Начало причины автопаузы; бот по нему сообщает владельцу один раз                                                                                                           |
 
 ## Правила
 
-- Учитываются AI, API, infrastructure, storage, media, ads, human work, refunds, vendors.
-- Ledger — append-only; исправления — новыми записями.
-
-## Текущий export surface
-
-- `PACKAGE_NAME` — идентификатор пакета (используется в import-тестах).
-
-Не добавлять логику до одобрения соответствующей Phase владельцем.
+- **Правила — в `@roi-dealer/domain`:** `MONTHLY_LIMITS`, `budgetState`, `unitEconomics`, `spendAnomaly`, `RevenueEntry`, `recordRefund`. Суммы — фиксированные запросы `database.economics`.
+- **Журналы только дополняются**, исправления — сторно.
+- **Автоматика только останавливает** систему; возобновляет владелец.

@@ -224,6 +224,14 @@ rewards ─< reward_contributions >── contributions
   - FK `(experiment_id, hypothesis_id)` → `experiments`: событие относится к гипотезе своего эксперимента.
 - Траты эксперимента — `cost_entries` с `experiment_id` и ссылкой на одобренный запуск; сумма и метрика считаются SQL и доменом (`metricValue`).
 
+## Economics (PHASE 16)
+
+- **`revenue_entries`** (миграция `0013`) — журнал выручки, только добавление (триггеры `revenue_entries_append_only`, `revenue_entries_no_truncate`), с событием `revenue_entry.created`:
+  - вид `payment` (подтверждённая выручка) или `preorder` (обязательство до поставки), сумма > 0, число клиентов 0–100 000 без персональных данных;
+  - привязка к возможности, гипотезе, эксперименту; `reversal_of` — сторно.
+- **Возвраты клиентам** — `cost_entries` категории `refund` с `experiment_id`; траты теста и stop-loss считаются без них.
+- Суммы по журналам, деньги тестов и автоматические траты по дням — фиксированные запросы `database.economics`.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
