@@ -7,6 +7,7 @@ import type {
   Evidence,
   Experiment,
   Hypothesis,
+  Checkout,
   KnowledgeAsset,
   Lead,
   MediaAsset,
@@ -43,6 +44,7 @@ import {
   experimentsTable,
   hypothesesTable,
   knowledgeAssetsTable,
+  checkoutsTable,
   leadsTable,
   mediaAssetsTable,
   opportunitiesTable,
@@ -81,6 +83,12 @@ export interface Repositories {
   /** Creatives of experiments: landing pages and ad texts (PHASE 19a). */
   readonly mediaAssets: MediaAssetRepository;
   readonly leads: LeadRepository;
+  readonly checkouts: CheckoutRepository;
+}
+
+export interface CheckoutRepository extends VersionedRepository<Checkout> {
+  /** The active payment links of these experiments (PHASE 20b). */
+  listActiveByExperiments(ids: readonly string[]): Promise<Checkout[]>;
 }
 
 export interface LeadRepository extends VersionedRepository<Lead> {
@@ -204,6 +212,19 @@ export function createRepositories(executor: Executor, context: WriteContext = {
       getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
     },
     sourceSnapshots: createRepository(executor, sourceSnapshotsTable, context),
+    checkouts: {
+      ...createVersionedRepository(executor, checkoutsTable, context),
+      listActiveByExperiments: (ids) =>
+        translated(async () => {
+          if (ids.length === 0) return [];
+          const rows = await executor<Row[]>`
+            select * from checkouts
+            where status = 'active' and experiment_id = any(${[...ids]}::uuid[])
+            order by created_at, id
+          `;
+          return readRows(executor, checkoutsTable, rows);
+        }),
+    },
     leads: {
       ...createVersionedRepository(executor, leadsTable, context),
       listByExperiments: (ids) =>

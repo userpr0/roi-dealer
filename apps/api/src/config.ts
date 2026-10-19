@@ -47,6 +47,11 @@ const apiConfigSchema = z.object({
    * Without it test pages have no sign-up form.
    */
   PUBLIC_CONTACT_EMAIL: z.email().max(254).optional(),
+  /**
+   * The signing secret of the Lemon Squeezy webhook (PHASE 20b, ADR-0009). A secret: only in
+   * the service's variables. Without it `POST /webhooks/lemonsqueezy` does not exist.
+   */
+  LEMONSQUEEZY_WEBHOOK_SECRET: z.string().min(16).max(256).optional(),
 });
 
 export type ApiConfig = z.infer<typeof apiConfigSchema>;

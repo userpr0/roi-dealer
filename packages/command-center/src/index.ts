@@ -262,3 +262,13 @@ export {
   type ForgetFlow,
   type LeadFlowDeps,
 } from './leads.js';
+export {
+  CHECKOUT_PREFIX,
+  CHECKOUT_USAGE,
+  createCheckoutFlow,
+  paymentLine,
+  paymentNoticeText,
+  sendPaymentNotices,
+  type CheckoutFlow,
+  type PaymentFlowDeps,
+} from './payments.js';

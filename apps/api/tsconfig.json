@@ -19,6 +19,9 @@
       "path": "../../packages/observability"
     },
     {
+      "path": "../../packages/payments"
+    },
+    {
       "path": "../../packages/shared"
     },
     {

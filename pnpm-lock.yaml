@@ -53,6 +53,9 @@ importers:
       '@roi-dealer/opportunities':
         specifier: workspace:*
         version: link:packages/opportunities
+      '@roi-dealer/payments':
+        specifier: workspace:*
+        version: link:packages/payments
       '@roi-dealer/policies':
         specifier: workspace:*
         version: link:packages/policies
@@ -125,6 +128,9 @@ importers:
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@roi-dealer/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -483,6 +489,24 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
+  packages/payments:
+    dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@roi-dealer/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
   packages/policies:
     dependencies:
       '@roi-dealer/domain':
@@ -548,6 +572,9 @@ importers:
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../observability
+      '@roi-dealer/payments':
+        specifier: workspace:*
+        version: link:../payments
 
   packages/skills: {}
 

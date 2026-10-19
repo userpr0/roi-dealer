@@ -42,6 +42,7 @@
     "@roi-dealer/media": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/opportunities": "workspace:*",
+    "@roi-dealer/payments": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
     "@roi-dealer/rewards": "workspace:*",
     "@roi-dealer/schemas": "workspace:*",

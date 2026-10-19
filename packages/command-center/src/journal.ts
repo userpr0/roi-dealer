@@ -41,6 +41,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'reward':
     case 'system_control':
     case 'principal':
+    case 'checkout':
       return true;
     case 'experiment': {
       const status = event.payload.snapshot['status'];

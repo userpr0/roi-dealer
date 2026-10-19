@@ -38,7 +38,7 @@ export interface EconomicsQueries {
   /**
    * Automated spend per UTC day, micro-USD, oldest first, ending with the day of `until`: AI
    * calls plus costs recorded by the system or integrations (category `ai` excluded — those
-   * repeat the AI calls).
+   * repeat the AI calls; refunds a payment provider reports are money returned, not spend).
    */
   automatedSpendByDay(options: {
     readonly days: number;
@@ -187,7 +187,7 @@ export function createEconomicsQueries(executor: Executor): EconomicsQueries {
               as total
           from cost_entries
           where incurred_at >= ${from} and incurred_at < ${to}
-            and created_by_type in ('system', 'integration') and category <> 'ai'
+            and created_by_type in ('system', 'integration') and category not in ('ai', 'refund')
           group by 1
         `;
         const totals = Array.from({ length: count }, () => 0);

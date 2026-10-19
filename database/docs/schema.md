@@ -25,32 +25,34 @@ cost_entries → opportunities / hypotheses / experiments / approval_requests / 
 rewards ─< reward_contributions >── contributions
 ```
 
-| Таблица             | Сущность        | Вид         | Связи списков                                                      |
-| ------------------- | --------------- | ----------- | ------------------------------------------------------------------ |
-| `sources`           | Source          | версии      | —                                                                  |
-| `evidence`          | Evidence        | append-only | —                                                                  |
-| `signals`           | Signal          | версии      | `signal_evidence` (evidenceIds)                                    |
-| `pains`             | Pain            | версии      | `pain_signals`, `pain_evidence`                                    |
-| `opportunities`     | Opportunity     | версии      | `opportunity_pains` (painIds)                                      |
-| `decisions`         | Decision        | append-only | `decision_evidence`                                                |
-| `approval_requests` | ApprovalRequest | версии      | —                                                                  |
-| `hypotheses`        | Hypothesis      | версии      | —                                                                  |
-| `experiments`       | Experiment      | версии      | `experiment_result_assets` (result.assetIds)                       |
-| `cost_entries`      | CostEntry       | append-only | —                                                                  |
-| `contributions`     | Contribution    | версии      | —                                                                  |
-| `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)                           |
-| `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                     |
-| `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                       |
-| `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
-| `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                      |
-| `media_assets`      | MediaAsset      | версии      | — (лендинги тестов, PHASE 19a)                                     |
-| `leads`             | Lead            | версии      | — (заявки без персональных данных, PHASE 20)                       |
-| `lead_contacts`     | —               | удаляемая   | почта заявок: без событий, удаляется физически (PHASE 20)          |
-| `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
-| `ai_calls`          | —               | append-only | вызовы AI: токены, стоимость, итог (PHASE 09)                      |
-| `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
-| `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
-| `schema_migrations` | —               | служебная   | журнал раннера миграций                                            |
+| Таблица             | Сущность        | Вид         | Связи списков                                                            |
+| ------------------- | --------------- | ----------- | ------------------------------------------------------------------------ |
+| `sources`           | Source          | версии      | —                                                                        |
+| `evidence`          | Evidence        | append-only | —                                                                        |
+| `signals`           | Signal          | версии      | `signal_evidence` (evidenceIds)                                          |
+| `pains`             | Pain            | версии      | `pain_signals`, `pain_evidence`                                          |
+| `opportunities`     | Opportunity     | версии      | `opportunity_pains` (painIds)                                            |
+| `decisions`         | Decision        | append-only | `decision_evidence`                                                      |
+| `approval_requests` | ApprovalRequest | версии      | —                                                                        |
+| `hypotheses`        | Hypothesis      | версии      | —                                                                        |
+| `experiments`       | Experiment      | версии      | `experiment_result_assets` (result.assetIds)                             |
+| `cost_entries`      | CostEntry       | append-only | —                                                                        |
+| `contributions`     | Contribution    | версии      | —                                                                        |
+| `rewards`           | Reward          | версии      | `reward_contributions` (contributionIds)                                 |
+| `knowledge_assets`  | KnowledgeAsset  | append-only | `knowledge_asset_evidence` (links.evidenceIds)                           |
+| `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                             |
+| `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)                  |
+| `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                            |
+| `media_assets`      | MediaAsset      | версии      | — (лендинги тестов, PHASE 19a)                                           |
+| `leads`             | Lead            | версии      | — (заявки без персональных данных, PHASE 20)                             |
+| `lead_contacts`     | —               | удаляемая   | почта заявок: без событий, удаляется физически (PHASE 20)                |
+| `checkouts`         | Checkout        | версии      | — (ссылки на оплату, PHASE 20b)                                          |
+| `payment_events`    | —               | append-only | события провайдера оплат: заказы, возвраты, тестовые платежи (PHASE 20b) |
+| `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                           |
+| `ai_calls`          | —               | append-only | вызовы AI: токены, стоимость, итог (PHASE 09)                            |
+| `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03)       |
+| `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)           |
+| `schema_migrations` | —               | служебная   | журнал раннера миграций                                                  |
 
 ## Соглашения
 
@@ -268,6 +270,12 @@ rewards ─< reward_contributions >── contributions
   - `leads_consent_before_created`.
 - **`lead_contacts`** — почта (нижний регистр, формат, 6–254 символа): без событий и версий, **удаляется физически** (`/forget`, срок хранения). `lead_contacts_one_per_experiment` — одна почта на тест; триггер `lead_contacts_not_erased` не вернёт почту заявке с `contact_erased_at`.
 - Доступ — только `database.leadContacts`: запись `lead.capture`, чтение и удаление `lead.manage` (с проверкой активной личности).
+
+## Оплаты (PHASE 20b)
+
+- **`checkouts`** (миграция `0018`) — ссылка на оплату платного предзаказа: версии с событием `checkout.*`, без удаления; ссылка Lemon Squeezy по CHECK; `checkouts_created_by_owner`; `checkouts_one_active` — одна активная на тест; `tested_at` — тестовый платёж дошёл.
+- **`payment_events`** — журнал, только добавление: вид (`order`, `test_order`, `refund`), номер заказа, тест, сумма без налога, созданная строка выручки или возврата; `payment_events_once` — провайдер + ключ события, повтор доставки не проходит. Данных покупателя нет.
+- **`revenue_entries_integration_provider`** — выручка от интеграции только от `integration:lemonsqueezy`.
 
 ## Ошибки
 

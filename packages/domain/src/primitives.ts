@@ -20,6 +20,7 @@ export const ENTITY_TYPES = [
   'revenue_entry',
   'media_asset',
   'lead',
+  'checkout',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -63,6 +64,8 @@ export const mediaAssetIdSchema = z.uuid().brand<'MediaAssetId'>();
 export type MediaAssetId = z.infer<typeof mediaAssetIdSchema>;
 export const leadIdSchema = z.uuid().brand<'LeadId'>();
 export type LeadId = z.infer<typeof leadIdSchema>;
+export const checkoutIdSchema = z.uuid().brand<'CheckoutId'>();
+export type CheckoutId = z.infer<typeof checkoutIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();

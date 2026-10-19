@@ -17,6 +17,8 @@ export interface ApiRequest {
     userAgent?: string | undefined;
     purpose?: string | undefined;
     forwardedFor?: string | undefined;
+    /** `X-Signature` of a payment webhook (PHASE 20b). */
+    signature?: string | undefined;
   }>;
   /** The socket's peer address, when no proxy forwarded the client's. */
   readonly remoteAddress?: string | undefined;
@@ -59,8 +61,18 @@ export interface SiteRoutes {
   privacy(): SiteResponse;
 }
 
+/** The payment provider's webhook (PHASE 20b): present when its secret is configured. */
+export interface PaymentRoutes {
+  lemonsqueezy(
+    body: string,
+    signature: string | undefined,
+    correlationId: string | undefined,
+  ): Promise<{ readonly status: number }>;
+}
+
 export interface RouterDeps {
   readonly health: HealthRegistry;
+  readonly payments?: PaymentRoutes | undefined;
   /** Absent until the database and the bot token are configured: `/api/panel` answers 503. */
   readonly panel?: PanelRoute | undefined;
   readonly site?: SiteRoutes | undefined;
@@ -69,6 +81,7 @@ export interface RouterDeps {
 export type Router = (request: ApiRequest) => Promise<ApiResponse>;
 
 export const PANEL_PATH = '/api/panel';
+export const LEMONSQUEEZY_WEBHOOK_PATH = '/webhooks/lemonsqueezy';
 const PREVIEW_PATH = /^\/p\/([^/]{1,100})$/;
 const LANDING_PATH = /^\/l\/([^/]{1,100})(?:\/(go|join|joined|thanks))?$/;
 
@@ -144,6 +157,20 @@ export function createRouter(deps: RouterDeps): Router {
         posted ? (request.body ?? '') : undefined,
       );
       return { status: page.status, body: undefined, html: page.html, redirect: page.redirect };
+    }
+    if (request.path === LEMONSQUEEZY_WEBHOOK_PATH && deps.payments !== undefined) {
+      if (request.method !== 'POST') {
+        return { status: 405, body: { error: 'method_not_allowed' }, headers: { allow: 'POST' } };
+      }
+      const result = await deps.payments.lemonsqueezy(
+        request.body ?? '',
+        request.headers?.signature,
+        request.correlationId,
+      );
+      return {
+        status: result.status,
+        body: result.status === 200 ? { received: true } : { error: 'not_recorded' },
+      };
     }
     if (request.path === '/privacy' && deps.site !== undefined) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return PAGE_METHOD_NOT_ALLOWED;

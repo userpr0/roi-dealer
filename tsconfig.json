@@ -16,6 +16,7 @@
     { "path": "./packages/economics" },
     { "path": "./packages/rewards" },
     { "path": "./packages/crm" },
+    { "path": "./packages/payments" },
     { "path": "./packages/media" },
     { "path": "./packages/site" },
     { "path": "./packages/telegram" },

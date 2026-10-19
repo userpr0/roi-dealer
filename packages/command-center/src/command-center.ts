@@ -62,6 +62,7 @@ import {
   sendLeads,
 } from './leads.js';
 import { handleMediaButton, MEDIA_PREFIX } from './media.js';
+import { CHECKOUT_PREFIX, createCheckoutFlow } from './payments.js';
 import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.js';
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
@@ -141,6 +142,7 @@ const DESCRIPTIONS = {
   paid: 'Отметить выплату вознаграждения',
   leads: 'Заявки со страниц тестов: связаться, клиент, итог',
   forget: 'Удалить почту человека по его просьбе',
+  checkout: 'Ссылка на оплату предзаказа (Lemon Squeezy)',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -169,6 +171,7 @@ function withoutDatabase(): Pick<
       MEDIA_PREFIX,
       LEADS_PREFIX,
       FORGET_PREFIX,
+      CHECKOUT_PREFIX,
       CONTRIBUTION_PREFIX,
       REWARD_PREFIX,
       KILL_SWITCH_PREFIX,
@@ -212,6 +215,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const costs = createCostFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
+  const checkouts = createCheckoutFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -374,6 +378,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('paid', 'reward.write', rewards.paid),
       command('leads', 'lead.manage', (context) => sendLeads(deps, context)),
       command('forget', 'lead.manage', forget.forget),
+      command('checkout', 'experiment.write', checkouts.checkout),
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),
@@ -397,6 +402,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       button(LEADS_PREFIX, 'lead.manage', (context) => handleLeadButton(deps, context)),
       button(FORGET_PREFIX, 'lead.manage', forget.handleButton),
+      button(CHECKOUT_PREFIX, 'experiment.write', checkouts.handleButton),
       button(CONTRIBUTION_PREFIX, 'contribution.write', rewards.handleContributionButton),
       button(REWARD_PREFIX, 'reward.write', rewards.handleRewardButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),

@@ -110,6 +110,7 @@ export {
   type PrincipalRepository,
   type Repositories,
   type SourceRepository,
+  type CheckoutRepository,
   type LeadRepository,
   type MediaAssetRepository,
 } from './repositories.js';
@@ -145,3 +146,10 @@ export {
 
 export const PACKAGE_NAME = '@roi-dealer/database';
 export type { LeadContact, LeadContacts } from './lead-contacts.js';
+export {
+  PAYMENT_EVENT_KINDS,
+  type PaymentEventEntry,
+  type PaymentEventKind,
+  type PaymentEventLog,
+  type RecordedPaymentEvent,
+} from './payments.js';

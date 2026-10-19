@@ -23,13 +23,14 @@ ADR фиксирует значимое архитектурное решени�
 
 ## Реестр
 
-| №                                                         | Название                                                                    | Статус   | Дата       |
-| --------------------------------------------------------- | --------------------------------------------------------------------------- | -------- | ---------- |
-| [0001](0001-phase-00-engineering-baseline.md)             | Инженерный baseline PHASE 00                                                | Accepted | 2026-09-24 |
-| [0002](0002-miniapp-hosting-github-pages.md)              | Хостинг miniapp на GitHub Pages                                             | Accepted | 2026-09-24 |
-| [0003](0003-early-telegram-owner-bot.md)                  | Ранний Telegram-модуль — бот-пульт владельца                                | Accepted | 2026-09-24 |
-| [0004](0004-constitution-pattern-and-permitted-access.md) | Поправки к конституции: «паттерн, а не копия» и «только разрешённый доступ» | Accepted | 2026-09-24 |
-| [0005](0005-postgresql-driver-and-migrations.md)          | Драйвер PostgreSQL и миграции                                               | Accepted | 2026-09-25 |
-| [0006](0006-ai-providers-and-runtime.md)                  | AI-провайдеры (Anthropic, OpenAI, Google) и AI Runtime                      | Accepted | 2026-10-18 |
-| [0007](0007-experiment-funnel-in-postgresql.md)           | Воронка экспериментов — в собственной PostgreSQL                            | Accepted | 2026-10-19 |
-| [0008](0008-miniapp-data-through-api.md)                  | Данные Mini App — через `api` с проверкой подписи Telegram                  | Accepted | 2026-10-19 |
+| №                                                         | Название                                                                               | Статус   | Дата       |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------- | ---------- |
+| [0001](0001-phase-00-engineering-baseline.md)             | Инженерный baseline PHASE 00                                                           | Accepted | 2026-09-24 |
+| [0002](0002-miniapp-hosting-github-pages.md)              | Хостинг miniapp на GitHub Pages                                                        | Accepted | 2026-09-24 |
+| [0003](0003-early-telegram-owner-bot.md)                  | Ранний Telegram-модуль — бот-пульт владельца                                           | Accepted | 2026-09-24 |
+| [0004](0004-constitution-pattern-and-permitted-access.md) | Поправки к конституции: «паттерн, а не копия» и «только разрешённый доступ»            | Accepted | 2026-09-24 |
+| [0005](0005-postgresql-driver-and-migrations.md)          | Драйвер PostgreSQL и миграции                                                          | Accepted | 2026-09-25 |
+| [0006](0006-ai-providers-and-runtime.md)                  | AI-провайдеры (Anthropic, OpenAI, Google) и AI Runtime                                 | Accepted | 2026-10-18 |
+| [0007](0007-experiment-funnel-in-postgresql.md)           | Воронка экспериментов — в собственной PostgreSQL                                       | Accepted | 2026-10-19 |
+| [0008](0008-miniapp-data-through-api.md)                  | Данные Mini App — через `api` с проверкой подписи Telegram                             | Accepted | 2026-10-19 |
+| [0009](0009-payments-merchant-of-record.md)               | Приём оплат — merchant of record Lemon Squeezy, ссылка на оплату и подписанный webhook | Accepted | 2026-10-19 |

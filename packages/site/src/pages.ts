@@ -16,6 +16,7 @@ import {
   type MediaAsset,
 } from '@roi-dealer/domain';
 import { escapeHtml, renderLanding } from '@roi-dealer/media';
+import { checkoutLink } from '@roi-dealer/payments';
 import type { Logger } from '@roi-dealer/observability';
 import type { SubmissionLimiter } from './limits.js';
 import {
@@ -271,14 +272,28 @@ export async function landingPage(
         }),
       };
     }
-    case 'go':
+    case 'go': {
       await track('cta_click');
+      // A preorder pays at the merchant of record (PHASE 20b, ADR-0009).
+      if (asset.content.disclosure === 'preorder') {
+        const [checkout] = await repositories.checkouts.listActiveByExperiments([experiment.id]);
+        if (checkout !== undefined) {
+          return {
+            status: 303,
+            redirect: checkoutLink(checkout.url, {
+              experimentId: experiment.id,
+              utmSource: utmOf(visit.query)['source'],
+            }),
+          };
+        }
+      }
       return {
         status: 303,
         redirect: formEnabled
           ? `${landingPath(asset, 'join')}${utmQuery(visit)}`
           : landingPath(asset, 'thanks'),
       };
+    }
     case 'join': {
       if (!formEnabled) return { status: 303, redirect: landingPath(asset, 'thanks') };
       if (form === undefined) return joinPage(asset, visit, 200);

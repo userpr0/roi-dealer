@@ -79,11 +79,13 @@ describe('the revenue ledger (PHASE 16)', () => {
     expect(() => revenue(0, 1)).toThrow(/Invalid revenue_entry/);
   });
 
-  it('is recorded only by the owner', () => {
+  it('is recorded by the owner or the payment provider, never by the system or an agent', () => {
     expect(isPermitted(OWNER, 'revenue.record')).toBe(true);
-    for (const actor of [SYSTEM, AGENT, INTEGRATION]) {
+    for (const actor of [SYSTEM, AGENT]) {
       expect(isPermitted(actor, 'revenue.record')).toBe(false);
     }
+    // PHASE 20b (ADR-0009): the role allows it; the database lets only `integration:lemonsqueezy`.
+    expect(isPermitted(INTEGRATION, 'revenue.record')).toBe(true);
   });
 });
 

@@ -35,8 +35,13 @@ export const PERMISSIONS = [
   /** Funnel events of own pages (PHASE 21): the page tracker writes only these. */
   'funnel.track',
   'cost.record',
-  /** The revenue ledger (PHASE 16): money that came in, recorded by the owner. */
+  /**
+   * The revenue ledger (PHASE 16): money that came in — recorded by the owner, or by the payment
+   * provider's signed webhook (PHASE 20b, ADR-0009).
+   */
   'revenue.record',
+  /** Orders, refunds and test payments the payment provider reports (PHASE 20b). */
+  'payment.record',
   'contribution.write',
   'reward.write',
   // CRM (PHASE 20): a sign-up from a page; reading, moving and erasing leads and contacts.
@@ -63,7 +68,8 @@ export const PANEL_READS = [
 /**
  * Least privilege: every role gets only what its work needs. An AI agent proposes and never
  * decides, approves, stops the system or grants access (§2.3); an integration only delivers
- * evidence, costs, the funnel events of own pages and their sign-ups.
+ * evidence, costs, the funnel events of own pages and their sign-ups, and the payments the provider
+ * reports (the database lets only `integration:lemonsqueezy` write revenue).
  */
 export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>> = {
   owner: PERMISSIONS,
@@ -84,7 +90,14 @@ export const ROLE_PERMISSIONS: Readonly<Record<ActorType, readonly Permission[]>
     'access.propose',
   ],
   agent: ['research.write', 'evidence.write', 'approval.request', 'experiment.write'],
-  integration: ['evidence.write', 'cost.record', 'funnel.track', 'lead.capture'],
+  integration: [
+    'evidence.write',
+    'cost.record',
+    'funnel.track',
+    'lead.capture',
+    'revenue.record',
+    'payment.record',
+  ],
   member: [
     'decisions.read',
     'journal.read',
@@ -122,6 +135,8 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   media_asset: { create: 'research.write', update: 'research.write' },
   // A sign-up from a page; only the owner (and the retention period) changes it (PHASE 20).
   lead: { create: 'lead.capture', update: 'lead.manage' },
+  // The owner sets the payment link; the provider's test payment marks it tested (PHASE 20b).
+  checkout: { create: 'experiment.write', update: 'payment.record' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

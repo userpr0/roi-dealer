@@ -61,6 +61,7 @@ import {
   type MoneyFlow,
   type Opportunity,
   type Timestamp,
+  type Checkout,
 } from '@roi-dealer/domain';
 import {
   ConcurrencyError,
@@ -77,6 +78,7 @@ import {
   type InlineKeyboard,
 } from '@roi-dealer/telegram';
 import { landingLine, MEDIA_PREFIX } from './media.js';
+import { paymentLine } from './payments.js';
 import { formatTime, shorten } from './texts.js';
 
 /*
@@ -289,6 +291,8 @@ export interface ExperimentView {
   readonly request?: ApprovalRequest | undefined;
   /** The latest landing of a test with the `landing` artifact (PHASE 19a). */
   readonly landing?: MediaAsset | undefined;
+  /** The active payment link of a preorder test (PHASE 20b). */
+  readonly checkout?: Checkout | undefined;
 }
 
 type Scope = Pick<TransactionScope, 'repositories' | 'funnel' | 'economics'>;
@@ -355,6 +359,12 @@ async function viewsOf(
       item,
     ]),
   );
+  const checkouts = new Map(
+    (await repositories.checkouts.listActiveByExperiments(ids)).map((item) => [
+      item.experimentId,
+      item,
+    ]),
+  );
   const views: ExperimentView[] = [];
   for (const [index, experiment] of experiments.entries()) {
     const hypothesis = hypotheses.get(experiment.hypothesisId);
@@ -373,6 +383,7 @@ async function viewsOf(
           ? undefined
           : requests.get(experiment.approvalRequestId),
       landing: landings.get(experiment.id),
+      checkout: checkouts.get(experiment.id),
     });
   }
   return views;
@@ -438,6 +449,10 @@ export function experimentCardText(view: ExperimentView, at: Timestamp): string 
     !['completed', 'cancelled'].includes(experiment.status)
   ) {
     lines.push(landingLine(view.landing));
+  }
+  if (!['completed', 'cancelled'].includes(experiment.status)) {
+    const payment = paymentLine(view.hypothesis, view.checkout, view.number);
+    if (payment !== undefined) lines.push(payment);
   }
   const money = moneyLine(view.money);
   if (money !== undefined) lines.push(money);

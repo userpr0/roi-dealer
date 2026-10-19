@@ -47,6 +47,7 @@ import { AUTO_PAUSE_PREFIX } from '@roi-dealer/economics';
 import { activeExperimentViews } from './experiments.js';
 import { hypothesesReadyText } from './hypotheses.js';
 import { newLeadText } from './leads.js';
+import { sendPaymentNotices } from './payments.js';
 import { landingCardContext, landingCardText, landingKeyboard } from './media.js';
 import { shorten } from './texts.js';
 
@@ -550,6 +551,8 @@ export function createDecisionCardNotifier(
       );
       if (outcome === 'executed') sent += 1;
     }
+    // PHASE 20b: one notice per payment event the provider reported.
+    sent += await sendPaymentNotices(database, (text) => options.deliver(text), now());
     if (sent > 0) logger.info('decision cards sent', { sent });
     return sent;
   }

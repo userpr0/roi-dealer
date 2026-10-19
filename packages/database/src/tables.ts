@@ -8,6 +8,7 @@ import {
   experimentSchema,
   hypothesisSchema,
   knowledgeAssetSchema,
+  checkoutSchema,
   leadSchema,
   mediaAssetSchema,
   opportunitySchema,
@@ -27,6 +28,7 @@ import {
   type Experiment,
   type Hypothesis,
   type KnowledgeAsset,
+  type Checkout,
   type Lead,
   type MediaAsset,
   type Metric,
@@ -829,6 +831,36 @@ export const leadsTable: TableSpec<Lead> = {
       outcome: row['outcome'],
       outcomeAt: instant(row['outcome_at']),
       contactErasedAt: instant(row['contact_erased_at']),
+      ...readMutableMeta(row),
+    }),
+};
+
+export const checkoutsTable: TableSpec<Checkout> = {
+  entity: 'checkout',
+  table: 'checkouts',
+  schema: checkoutSchema,
+  links: {},
+  toColumns: (checkout) => ({
+    id: checkout.id,
+    experiment_id: checkout.experimentId,
+    hypothesis_id: checkout.hypothesisId,
+    opportunity_id: checkout.opportunityId,
+    provider: checkout.provider,
+    url: checkout.url,
+    status: checkout.status,
+    tested_at: checkout.testedAt ?? null,
+    ...mutableMetaColumns(checkout),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      experimentId: row['experiment_id'],
+      hypothesisId: row['hypothesis_id'],
+      opportunityId: row['opportunity_id'],
+      provider: row['provider'],
+      url: row['url'],
+      status: row['status'],
+      testedAt: instant(row['tested_at']),
       ...readMutableMeta(row),
     }),
 };

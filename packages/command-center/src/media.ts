@@ -87,7 +87,7 @@ export const RELEASE_CHECK_LABELS: Readonly<
   },
   payment_flow: {
     label: 'Оплата проверена тестовым платежом',
-    fix: 'подключите приём оплат и проведите тестовый платёж (PHASE 20b)',
+    fix: 'задайте ссылку Lemon Squeezy (/checkout <№ теста> <ссылка>) и сделайте тестовую покупку в Test mode',
   },
   refund_terms: {
     label: 'На странице — условия полного возврата',
@@ -183,6 +183,7 @@ export async function releaseFacts(
   const hypothesis = await repositories.hypotheses.getById(asset.hypothesisId);
   if (experiment === undefined || hypothesis === undefined) return undefined;
   const tracker = await repositories.principals.getByActor(SITE_TRACKER);
+  const [checkout] = await repositories.checkouts.listActiveByExperiments([experiment.id]);
   const html = renderLanding(asset.content, {
     mode: 'public',
     ctaHref: landingPath(asset, 'go'),
@@ -194,8 +195,8 @@ export async function releaseFacts(
     hypothesis,
     trackerActive: tracker?.status === 'active',
     pageStatic: isStaticPage(html),
-    // Payments arrive with PHASE 20b; until then a paid preorder is not released.
-    checkoutReady: false,
+    // A signed test-mode order of the test arrived (PHASE 20b, ADR-0009).
+    checkoutReady: checkout?.testedAt !== undefined,
   };
 }
 
