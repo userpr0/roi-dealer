@@ -1,5 +1,5 @@
 /**
- * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–05, 09, 13b, ADR-0005).
+ * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–06, 09, 13b, ADR-0005).
  *
  * Connection pool in UTC, SQL migrations with checksums and a lock, repositories that store
  * domain entities (validating every row they read) and append an event for every
@@ -78,5 +78,13 @@ export {
   type SourceRepository,
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
+export {
+  createSignalExtractionLog,
+  SIGNAL_EXTRACTION_OUTCOMES,
+  type SignalExtractionCounts,
+  type SignalExtractionEntry,
+  type SignalExtractionLog,
+  type SignalExtractionOutcome,
+} from './signal-extractions.js';
 
 export const PACKAGE_NAME = '@roi-dealer/database';

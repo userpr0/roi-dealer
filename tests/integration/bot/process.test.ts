@@ -62,6 +62,7 @@ describe('owner bot process', () => {
           'history',
           'digest',
           'access',
+          'pains',
           'status',
           'help',
         ].map((command) => ({ command, description: expect.any(String) as unknown })),

@@ -42,6 +42,7 @@ const PROJECT_MIGRATIONS = [
   '0004_identity_access',
   '0005_evidence_engine',
   '0006_ai_runtime',
+  '0007_signals_pain',
 ];
 
 describe('runMigrations with the project migrations', () => {

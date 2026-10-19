@@ -26,6 +26,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { aiStatusLine } from './ai-status.js';
+import { painsText } from './pains.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
 
@@ -39,7 +40,7 @@ export interface CommandCenterOptions {
 }
 
 export interface CommandCenter {
-  /** /decisions, /stop, /resume, /journal, /history, /digest, /access */
+  /** /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
   /**
@@ -70,6 +71,7 @@ const DESCRIPTIONS = {
   history: 'История решений и денег',
   digest: 'Дайджест сейчас',
   access: 'Доступы агентов и интеграций',
+  pains: 'Боли, которые нашла система',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -96,8 +98,8 @@ function withoutDatabase(): Pick<
 }
 
 /**
- * The owner command center (13b, PHASE 04): approvals, kill switch, journal, history, digest
- * and access. Every command and button is checked against the owner's permissions and
+ * The owner command center (13b, PHASE 04, 06): approvals, kill switch, journal, history,
+ * digest, access and the pains the system found. Every command and button is checked against the owner's permissions and
  * recorded in the access log.
  */
 export function createCommandCenter(options: CommandCenterOptions): CommandCenter {
@@ -189,6 +191,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('access', 'access.read', (context) =>
         sendAccessOverview(deps, (text, keyboard) => context.reply(text, keyboard)),
+      ),
+      command('pains', 'research.read', async (context) =>
+        context.reply(await painsText(database.repositories)),
       ),
     ],
     callbacks: [

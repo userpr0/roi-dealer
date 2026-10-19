@@ -3,6 +3,7 @@ import {
   CONFIRMATION_TTL_MS,
   createCommandCenter,
   NO_DATABASE_TEXT,
+  NO_PAINS_TEXT,
   ownerActor,
   sendDailyDigest,
   type CommandCenter,
@@ -383,6 +384,15 @@ describe('📚 evidence in the journal and the digest (PHASE 05)', () => {
     expect(journal).toContain('01.10 13:04 · Интеграция source:test-forum · ➕ Доказательство ×3');
     const [digest] = await command('digest');
     expect(digest?.text).toMatch(/📚 Новых доказательств за сутки: \d+ → \/journal/);
+  });
+});
+
+describe('🧩 /pains (PHASE 06)', () => {
+  it('explains when nothing was found yet and records the view in the access log', async () => {
+    const [reply] = await command('pains');
+    expect(reply?.text).toBe(NO_PAINS_TEXT);
+    const [view] = await db.access.list({ decision: 'allowed', limit: 1 });
+    expect(view).toMatchObject({ permission: 'research.read', actorType: 'owner' });
   });
 });
 

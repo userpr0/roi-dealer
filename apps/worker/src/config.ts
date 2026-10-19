@@ -37,6 +37,12 @@ const workerConfigSchema = z.object({
    */
   AI_MONTHLY_LIMIT_USD: z.coerce.number().positive().max(50).default(50),
   AI_DAILY_LIMIT_USD: z.coerce.number().positive().max(20).default(20),
+  /** How often the pain analyst looks for new evidence (PHASE 06). Default: 15 minutes. */
+  SIGNALS_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(15 * 60_000),
   /** How often models, evals and the daily cost are maintained. Default: one hour. */
   AI_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
 });

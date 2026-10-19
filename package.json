@@ -42,6 +42,7 @@
     "@roi-dealer/rewards": "workspace:*",
     "@roi-dealer/schemas": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/signals": "workspace:*",
     "@roi-dealer/skills": "workspace:*",
     "@roi-dealer/telegram": "workspace:*",
     "@types/node": "^22.19.0",

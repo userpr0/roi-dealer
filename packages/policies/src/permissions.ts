@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   'digest.read',
   'access.read',
   // Research: sources, signals, pains, opportunities, hypotheses, knowledge.
+  'research.read',
   'research.write',
   'evidence.write',
   // Human gates.
@@ -49,6 +50,7 @@ export const PANEL_READS = [
   'history.read',
   'digest.read',
   'access.read',
+  'research.read',
 ] as const satisfies readonly Permission[];
 
 /**

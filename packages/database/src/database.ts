@@ -9,6 +9,7 @@ import { createEventStore, type EventStore } from './event-store.js';
 import { atomic, type Sql, type TransactionSql } from './executor.js';
 import { createRepositories, type Repositories } from './repositories.js';
 import type { WriteContext } from './repository.js';
+import { createSignalExtractionLog, type SignalExtractionLog } from './signal-extractions.js';
 
 export interface DatabaseOptions {
   /** `postgres://` URL with credentials. Never logged. */
@@ -26,6 +27,8 @@ export interface TransactionScope {
   readonly sql: TransactionSql;
   readonly repositories: Repositories;
   readonly events: EventStore;
+  /** Recorded in the same transaction as the signal and pain it describes (PHASE 06). */
+  readonly signalExtractions: SignalExtractionLog;
 }
 
 export interface TransactionOptions {
@@ -57,6 +60,8 @@ export interface Database {
   readonly access: AccessLog;
   /** Journal of AI calls: tokens, cost and failures (PHASE 09). */
   readonly aiCalls: AiCallLog;
+  /** Journal of evidence analysis for pains (PHASE 06). */
+  readonly signalExtractions: SignalExtractionLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -92,7 +97,12 @@ function writeContext(
 }
 
 function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
-  return { sql: tx, repositories: createRepositories(tx, context), events: createEventStore(tx) };
+  return {
+    sql: tx,
+    repositories: createRepositories(tx, context),
+    events: createEventStore(tx),
+    signalExtractions: createSignalExtractionLog(tx),
+  };
 }
 
 /**
@@ -146,6 +156,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     events: createEventStore(sql),
     access,
     aiCalls: createAiCallLog(sql),
+    signalExtractions: createSignalExtractionLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

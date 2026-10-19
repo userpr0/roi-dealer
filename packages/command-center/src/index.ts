@@ -38,6 +38,7 @@ export {
   type CommandCenter,
   type CommandCenterOptions,
 } from './command-center.js';
+export { NO_PAINS_TEXT, painsText, PAINS_SHOWN } from './pains.js';
 export {
   buildDigest,
   createDigestScheduler,

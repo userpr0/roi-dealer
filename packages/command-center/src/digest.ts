@@ -41,6 +41,8 @@ export async function buildDigest(
   });
   const byOwner = events.filter((event) => event.actor.type === 'owner').length;
   const evidence = events.filter((event) => event.type === 'evidence.created').length;
+  const signals = events.filter((event) => event.type === 'signal.created').length;
+  const newPains = events.filter((event) => event.type === 'pain.created').length;
   const costs = events.flatMap((event): CostEntry[] => {
     if (event.type !== 'cost_entry.created') return [];
     const parsed = costEntrySchema.safeParse(event.payload.snapshot);
@@ -62,6 +64,11 @@ export async function buildDigest(
     ...(evidence === 0
       ? []
       : [`📚 Новых доказательств за сутки: ${evidence}${partial ? '+' : ''} → /journal`]),
+    ...(signals === 0
+      ? []
+      : [
+          `🧩 За сутки: сигналов ${String(signals)}${partial ? '+' : ''}, новых болей ${String(newPains)} → /pains`,
+        ]),
     ...(ai === undefined ? [] : [ai]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
     await killSwitchStatus(database.repositories, database.events),

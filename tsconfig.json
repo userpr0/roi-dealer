@@ -18,6 +18,7 @@
     { "path": "./packages/telegram" },
     { "path": "./packages/command-center" },
     { "path": "./packages/evidence" },
+    { "path": "./packages/signals" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/bot" },

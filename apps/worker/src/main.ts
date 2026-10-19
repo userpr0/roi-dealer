@@ -17,6 +17,7 @@ import {
 } from '@roi-dealer/evidence';
 import { createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
+import { createSignalsScheduler, SIGNAL_TASKS } from '@roi-dealer/signals';
 import { loadWorkerConfig } from './config.js';
 import { createWorker } from './worker.js';
 
@@ -85,7 +86,7 @@ function main(): void {
     runtime: ai,
     database,
     logger,
-    tasks: AI_TASKS,
+    tasks: [...AI_TASKS, ...SIGNAL_TASKS],
     intervalMs: config.AI_MAINTENANCE_INTERVAL_MS,
   });
 
@@ -100,11 +101,24 @@ function main(): void {
         ? undefined
         : (text) => redactNames(ai, text, { actor: EVIDENCE_ENGINE_ACTOR }),
   });
+  // Pain analysis (PHASE 06) needs AI: without a provider it does not even ask for access.
+  const signals =
+    providers.length === 0
+      ? undefined
+      : createSignalsScheduler({
+          database,
+          logger,
+          runtime: ai,
+          ensureAccess: ensureAccessRequest,
+          intervalMs: config.SIGNALS_INTERVAL_MS,
+        });
   maintenance.start();
   evidence.start();
+  signals?.start();
   // Registered last, so they stop first: work finishes before the database closes.
   shutdown.register('ai-maintenance', () => maintenance.stop());
   shutdown.register('evidence-collection', () => evidence.stop());
+  if (signals !== undefined) shutdown.register('pain-analysis', () => signals.stop());
 }
 
 try {

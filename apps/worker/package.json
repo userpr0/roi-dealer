@@ -2,7 +2,7 @@
   "name": "@roi-dealer/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer background worker: evidence collection (PHASE 05) and AI maintenance (PHASE 09)",
+  "description": "ROI Dealer background worker: evidence collection (PHASE 05), pain analysis (PHASE 06) and AI maintenance (PHASE 09)",
   "type": "module",
   "files": [
     "dist"
@@ -19,6 +19,7 @@
     "@roi-dealer/evidence": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/signals": "workspace:*",
     "zod": "^4.6.5"
   }
 }

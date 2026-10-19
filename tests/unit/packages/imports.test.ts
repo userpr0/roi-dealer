@@ -12,6 +12,7 @@ import * as policies from '@roi-dealer/policies';
 import * as rewards from '@roi-dealer/rewards';
 import * as schemas from '@roi-dealer/schemas';
 import * as shared from '@roi-dealer/shared';
+import * as signals from '@roi-dealer/signals';
 import * as skills from '@roi-dealer/skills';
 import * as telegram from '@roi-dealer/telegram';
 
@@ -30,6 +31,7 @@ describe('workspace packages', () => {
     ['@roi-dealer/rewards', rewards],
     ['@roi-dealer/schemas', schemas],
     ['@roi-dealer/shared', shared],
+    ['@roi-dealer/signals', signals],
     ['@roi-dealer/skills', skills],
     ['@roi-dealer/telegram', telegram],
   ])('%s is importable and identifies itself', (name, module) => {
