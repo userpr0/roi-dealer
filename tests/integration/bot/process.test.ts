@@ -103,6 +103,8 @@ describe('owner bot process', () => {
         scope: { type: 'chat', chat_id: OWNER_ID },
       },
     });
+    // Without the api's address the menu button stays as it is.
+    expect(telegram.calls.map((call) => call.method)).not.toContain('setChatMenuButton');
   });
 
   it('answers /status to the owner', async () => {
@@ -171,7 +173,11 @@ describe('owner bot process with a database (13b)', () => {
     database = await createTestDatabase();
     service = startService(
       'apps/bot/src/main.ts',
-      botEnv(telegram, { DATABASE_URL: database.url, DECISION_CARDS_INTERVAL_MS: '200' }),
+      botEnv(telegram, {
+        DATABASE_URL: database.url,
+        DECISION_CARDS_INTERVAL_MS: '200',
+        PUBLIC_API_URL: 'https://api.example.test',
+      }),
     );
     await telegram.waitForSent((message) => message.text.includes('запущен'));
   });
@@ -180,6 +186,22 @@ describe('owner bot process with a database (13b)', () => {
     service.kill();
     await telegram.close();
     await database.drop();
+  });
+
+  it('sets the owner menu button to the Mini App connected to the api', () => {
+    expect(telegram.calls).toContainEqual({
+      method: 'setChatMenuButton',
+      params: {
+        chat_id: OWNER_ID,
+        menu_button: {
+          type: 'web_app',
+          text: 'Пульт',
+          web_app: {
+            url: 'https://userpr0.github.io/roi-dealer/?api=https%3A%2F%2Fapi.example.test',
+          },
+        },
+      },
+    });
   });
 
   it('shows the database check and the kill switch in /status', async () => {

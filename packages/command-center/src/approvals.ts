@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   approvalRequestIdSchema,
   formatUsd,
@@ -33,6 +34,14 @@ const ACTIONS = {
   c: { step: 'cancel', decision: undefined },
 } as const;
 type ActionCode = keyof typeof ACTIONS;
+
+/**
+ * «Одобрить все доступы»: `all` lists the pending access requests and asks, `yall:<set>` approves
+ * exactly the listed set (`accessSetKey`), `xall` cancels. Other requests stay one card each.
+ */
+const ALL_ACCESS = { ask: 'all', confirm: 'yall', cancel: 'xall' } as const;
+/** Access requests one press approves at most; all of them are listed in the question. */
+const MAX_BULK_ACCESS = 20;
 
 /** Pending requests that can still be decided, nearest deadline first. */
 export async function decidableRequests(
@@ -160,7 +169,118 @@ export async function sendDecisionCards(
     `📥 Ждут решения: ${requests.length}. Ближайший срок — первым.` +
       (more > 0 ? `\nПоказаны ${shown.length}; остальные — после решения этих.` : ''),
   );
+  const access = accessRequests(requests);
+  if (access.length >= 2) {
+    await reply(
+      `🔐 Доступов ждут: ${access.length}. Их можно одобрить одним решением: бот сначала покажет весь список.`,
+      [
+        [
+          callbackButton(
+            `✅ Одобрить все доступы (${access.length})`,
+            `${APPROVAL_PREFIX}:${ALL_ACCESS.ask}`,
+          ),
+        ],
+      ],
+    );
+  }
   for (const request of shown) await reply(cardText(request), cardKeyboard(request));
+}
+
+function accessRequests(requests: readonly ApprovalRequest[]): ApprovalRequest[] {
+  return requests.filter((request) => request.kind === 'access_grant').slice(0, MAX_BULK_ACCESS);
+}
+
+/** A short fingerprint of requests and their versions: a stale question approves nothing. */
+function accessSetKey(requests: readonly ApprovalRequest[]): string {
+  const versions = requests.map((request) => `${request.id}@${request.version}`).sort();
+  return createHash('sha256').update(versions.join(',')).digest('hex').slice(0, 16);
+}
+
+async function allAccessQuestion(
+  deps: ApprovalFlowDeps,
+): Promise<{ text: string; keyboard?: InlineKeyboard }> {
+  const requests = accessRequests(await decidableRequests(deps.database.repositories, deps.now()));
+  if (requests.length === 0) return { text: '🔐 Доступов, которые ждут решения, нет.' };
+  const list = requests.map((request) => `• «${request.title}» — ${shorten(request.summary, 120)}`);
+  return {
+    text: [
+      `🔐 Одобрить все доступы (${requests.length})?`,
+      ...list,
+      'Каждый можно приостановить или отозвать позже в /access.',
+    ].join('\n'),
+    keyboard: [
+      [
+        callbackButton(
+          '✅ Да, одобрить все',
+          `${APPROVAL_PREFIX}:${ALL_ACCESS.confirm}:${accessSetKey(requests)}`,
+        ),
+        callbackButton('Отмена', `${APPROVAL_PREFIX}:${ALL_ACCESS.cancel}`),
+      ],
+    ],
+  };
+}
+
+type AllAccessOutcome =
+  | { readonly outcome: 'approved'; readonly titles: readonly string[] }
+  | { readonly outcome: 'changed' };
+
+/** The buttons of «Одобрить все доступы»: ask with the list → approve exactly it in one command. */
+async function handleAllAccessButton(
+  deps: ApprovalFlowDeps,
+  context: CallbackContext,
+  code: string,
+  key: string | undefined,
+): Promise<void> {
+  if (code === ALL_ACCESS.cancel) {
+    await context.edit('Ничего не изменено. Доступы по одному — в /decisions.');
+    return;
+  }
+  if (code === ALL_ACCESS.ask) {
+    const question = await allAccessQuestion(deps);
+    await context.edit(question.text, question.keyboard);
+    return;
+  }
+
+  const actor = deps.owner(context.userId);
+  let result: AllAccessOutcome;
+  try {
+    ({ result } = await deps.database.command(
+      {
+        name: 'approval.resolve_all_access',
+        idempotencyKey: `tg-callback-${context.callbackQueryId}`,
+        correlationId: `tg-update-${context.updateId}`,
+      },
+      async ({ repositories }): Promise<AllAccessOutcome> => {
+        const at = deps.now();
+        const requests = accessRequests(await decidableRequests(repositories, at));
+        if (requests.length === 0 || accessSetKey(requests) !== key) return { outcome: 'changed' };
+        for (const request of requests) {
+          const resolved = resolveApprovalRequest(request, { decision: 'approve' }, { actor, at });
+          await repositories.approvalRequests.update(resolved, actor);
+          await applyAccessDecision(repositories, resolved, actor, at);
+        }
+        return { outcome: 'approved', titles: requests.map((request) => request.title) };
+      },
+    ));
+  } catch (error) {
+    if (!(error instanceof ConcurrencyError)) throw error;
+    result = { outcome: 'changed' };
+  }
+
+  if (result.outcome === 'changed') {
+    const question = await allAccessQuestion(deps);
+    await context.edit(`⚠️ Список доступов изменился.\n\n${question.text}`, question.keyboard);
+    return;
+  }
+  context.logger.info('access requests approved by the owner', { count: result.titles.length });
+  await context.edit(
+    [
+      `✅ Одобрены доступы (${result.titles.length}):`,
+      ...result.titles.map((title) => `• «${title}»`),
+      '🔐 Доступы выданы — /access',
+    ].join('\n'),
+  );
+  await context.answer('Одобрено');
 }
 
 /** Button handler of the cards: ask → confirm → decide, or cancel back to the card. */
@@ -169,6 +289,10 @@ export async function handleApprovalButton(
   context: CallbackContext,
 ): Promise<void> {
   const [code, rawId] = context.data.split(':');
+  if (code === ALL_ACCESS.ask || code === ALL_ACCESS.confirm || code === ALL_ACCESS.cancel) {
+    await handleAllAccessButton(deps, context, code, rawId);
+    return;
+  }
   const id = approvalRequestIdSchema.safeParse(rawId);
   if (code === undefined || !Object.hasOwn(ACTIONS, code) || !id.success) {
     await context.answer('Кнопка устарела');

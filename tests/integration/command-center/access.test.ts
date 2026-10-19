@@ -99,6 +99,62 @@ describe('access is granted by the owner in 📥 decisions', () => {
     expect((await db.repositories.principals.getById(principal.id))?.status).toBe('revoked');
     await expect(writeEvidence(scraper)).rejects.toMatchObject({ code: 'permission_denied' });
   });
+
+  it('approves exactly the listed access requests with one confirmation', async () => {
+    const ask = (id: string) =>
+      requestAccess(
+        db,
+        { actor: { type: 'integration', id }, displayName: id, purpose: `Purpose of ${id}` },
+        { at: now() },
+      );
+    const first = await ask('bulk-one');
+    const second = await ask('bulk-two');
+
+    const offer = (await panel.command('decisions')).find((reply) =>
+      reply.text.startsWith('🔐 Доступов ждут: 2'),
+    );
+    expect(buttons(offer)).toEqual(['ap:all']);
+
+    // The question lists every request; nothing changes before the confirmation.
+    const question = (await panel.press('ap:all')).edit;
+    expect(question.text).toContain('🔐 Одобрить все доступы (2)?');
+    expect(question.text).toContain('• «Доступ: bulk-one» — 🔌 Интеграция bulk-one. Purpose');
+    expect(question.text).toContain('• «Доступ: bulk-two»');
+    const [confirm, cancel] = buttons(question);
+    expect(confirm).toMatch(/^ap:yall:[0-9a-f]{16}$/);
+    expect((await panel.press(cancel ?? '')).edit.text).toContain('Ничего не изменено');
+    expect((await db.repositories.principals.getById(first.principal.id))?.status).toBe('pending');
+
+    // A request that arrived after the question makes the confirmation stale.
+    const third = await ask('bulk-three');
+    const stale = await panel.press(confirm ?? '');
+    expect(stale.edit.text).toContain('⚠️ Список доступов изменился');
+    expect(stale.edit.text).toContain('🔐 Одобрить все доступы (3)?');
+    expect((await db.repositories.principals.getById(first.principal.id))?.status).toBe('pending');
+
+    const fresh = buttons(stale.edit)[0] ?? '';
+    const approved = await panel.press(fresh, 'bulk-press');
+    expect(approved.edit.text).toContain('✅ Одобрены доступы (3):');
+    expect(approved.edit.text).toContain('🔐 Доступы выданы — /access');
+    expect(approved.answers).toEqual(['Одобрено']);
+    // The same press delivered again changes nothing.
+    await panel.press(fresh, 'bulk-press');
+
+    for (const { principal, request } of [first, second, third]) {
+      expect(await db.repositories.principals.getById(principal.id)).toMatchObject({
+        status: 'active',
+        version: 2,
+      });
+      expect(await db.repositories.approvalRequests.getById(request.id)).toMatchObject({
+        status: 'approved',
+        version: 2,
+        resolution: { decidedBy: OWNER },
+      });
+      const [, granted] = await db.events.history({ type: 'principal', id: principal.id });
+      expect(granted).toMatchObject({ actor: OWNER, correlationId: approved.correlationId });
+    }
+    expect((await panel.press('ap:all')).edit.text).toBe('🔐 Доступов, которые ждут решения, нет.');
+  });
 });
 
 describe('🔐 /access', () => {

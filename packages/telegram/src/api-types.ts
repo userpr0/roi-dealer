@@ -81,6 +81,11 @@ export type BotCommandScope =
   | { readonly type: 'all_private_chats' }
   | { readonly type: 'chat'; readonly chat_id: number };
 
+/** The button left of a chat's input field: the command list or a Mini App. */
+export type MenuButton =
+  | { readonly type: 'commands' }
+  | { readonly type: 'web_app'; readonly text: string; readonly web_app: { readonly url: string } };
+
 export const apiResponseSchema = z.object({
   ok: z.boolean(),
   result: z.unknown().optional(),

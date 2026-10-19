@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { apiAddress } from './api-address';
 import {
   loadPanel,
   microUsd,
@@ -12,6 +13,8 @@ import {
 } from './panel';
 import { telegramApp } from './telegram';
 
+const API_URL = apiAddress(import.meta.env.VITE_API_URL, window.location.search);
+
 /**
  * Owner Command Center (PHASE 13): a read-only view of the panel — decisions waiting, money of
  * the month, running tests and the cycle — from `GET /api/panel`. Decisions stay buttons in the
@@ -23,11 +26,9 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadPanel(import.meta.env.VITE_API_URL, telegramApp()?.initData, controller.signal).then(
-      (loaded) => {
-        if (!controller.signal.aborted) setResult(loaded);
-      },
-    );
+    void loadPanel(API_URL, telegramApp()?.initData, controller.signal).then((loaded) => {
+      if (!controller.signal.aborted) setResult(loaded);
+    });
     return () => {
       controller.abort();
     };
@@ -61,8 +62,8 @@ function Body({ result }: { readonly result: PanelResult }) {
     case 'not_configured':
       return (
         <Notice title="Адрес API не задан">
-          Сборка Mini App не знает адрес сервиса api. Владелец задаёт переменную GitHub{' '}
-          <code>MINIAPP_API_URL</code> (docs/deploy/api.md), после чего пульт пересобирается.
+          Откройте пульт кнопкой «Пульт» слева от поля ввода в чате с ботом. Бот ставит её сам,
+          когда у него задан <code>PUBLIC_API_URL</code> — адрес сервиса api (docs/deploy/START.md).
         </Notice>
       );
     case 'outside_telegram':

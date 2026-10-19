@@ -16,7 +16,10 @@ declare global {
   }
 
   interface ImportMetaEnv {
-    /** The api service's public address, set at build time (GitHub variable MINIAPP_API_URL). */
+    /**
+     * The api service's public address at build time (GitHub variable MINIAPP_API_URL). Optional:
+     * without it the address comes from the bot's menu button (`apiAddress`).
+     */
     readonly VITE_API_URL?: string;
   }
 }

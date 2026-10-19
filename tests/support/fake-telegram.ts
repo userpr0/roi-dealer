@@ -80,7 +80,8 @@ interface Waiter {
 
 /**
  * Minimal in-memory Telegram Bot API: getMe, getUpdates (long polling), sendMessage,
- * editMessageText, answerCallbackQuery, setMyCommands. Requests with another token get 401.
+ * editMessageText, answerCallbackQuery, setMyCommands, setChatMenuButton. Requests with another
+ * token get 401.
  */
 export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTelegram> {
   const calls: RecordedCall[] = [];
@@ -166,6 +167,7 @@ export async function startFakeTelegram(token = FAKE_BOT_TOKEN): Promise<FakeTel
       }
       case 'answerCallbackQuery':
       case 'setMyCommands':
+      case 'setChatMenuButton':
         json(res, 200, { ok: true, result: true });
         return;
       default:
