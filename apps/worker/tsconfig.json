@@ -5,5 +5,45 @@
     "outDir": "dist"
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/observability" }]
+  "references": [
+    {
+      "path": "../../packages/agents"
+    },
+    {
+      "path": "../../packages/ai-runtime"
+    },
+    {
+      "path": "../../packages/command-center"
+    },
+    {
+      "path": "../../packages/crm"
+    },
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/economics"
+    },
+    {
+      "path": "../../packages/evidence"
+    },
+    {
+      "path": "../../packages/judges"
+    },
+    {
+      "path": "../../packages/media"
+    },
+    {
+      "path": "../../packages/observability"
+    },
+    {
+      "path": "../../packages/opportunities"
+    },
+    {
+      "path": "../../packages/shared"
+    },
+    {
+      "path": "../../packages/signals"
+    }
+  ]
 }

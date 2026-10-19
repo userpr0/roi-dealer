@@ -104,7 +104,7 @@ Real Pain / Opportunity
 
 ---
 
-## Архитектура реализации (as built — PHASE 03)
+## Архитектура реализации (as built — PHASE 05)
 
 ### Стиль
 
@@ -131,15 +131,15 @@ TypeScript **modular monolith** в pnpm monorepo:
                      └─► ai-runtime ─► AI providers (заменяемые)   └─► S3-compatible storage
 ```
 
-| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                       | Появится                                                                                              |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                                                                       | Бизнес-API — по Phase                                                                                 |
-| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown                                                                                                                                                                                                                                                          | Temporal workers — после выбора интеграции Temporal                                                   |
-| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                                                                  | PHASE 13 — Owner Command Center                                                                       |
-| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`); Docker-образ с миграциями | Alerts, Input Router, Mini App с данными — PHASE 13+                                                  |
-| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 15 сущностей (миграции `0001`–`0004`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                                    | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота |
-| Temporal              | Не запущен                                                                                                                                                                                                                                                                                              | Отдельный шаг с ADR                                                                                   |
-| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                              | При первой потребности (Evidence snapshots, media)                                                    |
+| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Появится                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown; `GET /api/panel` — снимок пульта для Mini App только владельцу по подписи Telegram `initData`, CORS только для Mini App, журнал доступа (PHASE 13, [ADR-0008](ADR/0008-miniapp-data-through-api.md)); `GET /p/<token>` — закрытый предпросмотр лендинга теста (PHASE 19a, `@roi-dealer/site`); `GET /l/<slug>` — выпущенный лендинг со счётчиком воронки (PHASE 21); форма заявки `/l/<slug>/join` и `/privacy` (PHASE 20, `@roi-dealer/crm`); webhook оплат `POST /webhooks/lemonsqueezy` (PHASE 20b, `@roi-dealer/payments`, [ADR-0009](ADR/0009-payments-merchant-of-record.md)); Docker-образ                                                                                                                                                                                                                                                                                                                       | Своя доменная страница — когда понадобится                                                                     |
+| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown; с `DATABASE_URL` — сбор Evidence из источников каталога по расписанию (PHASE 05, `@roi-dealer/evidence`); с ключами AI — проверка моделей, evals, вычистка имён и учёт расходов AI (PHASE 09, `@roi-dealer/ai-runtime`), четыре агента по общему расписанию (`@roi-dealer/agents`, PHASE 10): поиск болей (PHASE 06, `@roi-dealer/signals`), оценка возможностей (PHASE 07, `@roi-dealer/opportunities`), исследования и рыночный контекст (PHASE 10), судьи (PHASE 11, `@roi-dealer/judges`), гипотезы (PHASE 14), проверка трат (PHASE 16, `@roi-dealer/economics`), автор лендингов (PHASE 19a, `@roi-dealer/media`), срок хранения почты заявок (PHASE 20, `@roi-dealer/crm`); Docker-образ с миграциями                                                                                                                                                                                                                               | Агенты и судьи (PHASE 10+); Temporal — ADR при первом долгом workflow                                          |
+| `apps/miniapp`        | Telegram Mini App на GitHub Pages (ADR-0002): одна страница — стоп-кран, решения, деньги с полосками лимитов, тесты, поток цикла; данные из `api` с подписью Telegram, только просмотр (PHASE 13)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | —                                                                                                              |
+| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`), `/pains`, `/opportunities`, поиск `/search`, вопросы `/ask` и заметки `/note` (PHASE 08, `@roi-dealer/brain`), `/agents` (PHASE 10), карточки возможностей на решение — приходят сами (PHASE 12), `/hypotheses` (PHASE 14), `/experiments` и `/funnel` (PHASE 15), `/economics` и `/cost` (PHASE 16), `/stats`, недельный разбор, `/review`, `/portfolio`, отклонение болей, алерты в дайджесте (PHASE 13), `/rewards`, `/contribution`, `/reward`, `/paid` (PHASE 17, `@roi-dealer/rewards`), карточки лендингов ✅ / ❌ (PHASE 19a), Release Gate и выпуск (PHASE 21), `/leads`, `/forget` и уведомления о заявках (PHASE 20), `/checkout` и уведомления об оплатах (PHASE 20b); Docker-образ с миграциями | Input Router — когда понадобится                                                                               |
+| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 19 сущностей и журналов (миграции `0001`–`0018`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота и worker |
+| Temporal              | Не запущен                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Отдельный шаг с ADR                                                                                            |
+| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | При первой потребности (Evidence snapshots, media)                                                             |
 
 ### Направления зависимостей
 
@@ -151,6 +151,16 @@ apps/bot ──► packages/telegram     (Telegram Bot API только чере
 apps/bot ──► packages/command-center ──► packages/database, packages/telegram, packages/domain   (логика пульта, 13b)
 apps/* ──► packages/database ──► packages/events ──► packages/domain   (PostgreSQL только через database)
 packages/database, packages/command-center ──► packages/policies ──► packages/domain   (права, PHASE 04)
+apps/worker ──► packages/evidence ──► packages/database, packages/domain   (сбор данных, PHASE 05)
+apps/worker ──► packages/signals ──► packages/ai-runtime, packages/database, packages/domain   (боли, PHASE 06)
+apps/worker ──► packages/opportunities ──► packages/signals, packages/ai-runtime, packages/database   (возможности, PHASE 07)
+apps/worker ──► packages/agents ──► packages/signals, packages/opportunities, packages/evidence, packages/ai-runtime   (агенты, PHASE 10)
+apps/worker ──► packages/judges ──► packages/agents, packages/brain, packages/ai-runtime   (судьи, PHASE 11)
+packages/command-center ──► packages/brain ──► packages/database   (поиск и вопросы, PHASE 08)
+packages/agents, packages/command-center ──► packages/media ──► packages/ai-runtime, packages/domain   (лендинги, PHASE 19a)
+apps/api ──► packages/site ──► packages/media, packages/database   (страницы сайта, PHASE 19a)
+apps/api, packages/site ──► packages/payments ──► packages/database, packages/domain   (оплаты, PHASE 20b)
+apps/worker ──► packages/command-center   (ensureAccessRequest передаётся в evidence и signals как зависимость)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -162,15 +172,15 @@ packages/*  ──►  packages/shared, packages/observability
 
 | Система                             | Где будет жить                                                                                                                                                                            |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `workflows/discovery`                                                                                                                       |
-| 2. Company Brain                    | `packages/domain` + PostgreSQL (PHASE 08)                                                                                                                                                 |
+| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `packages/evidence` (PHASE 05), `packages/signals` (PHASE 06), `workflows/discovery` — с Temporal                                           |
+| 2. Company Brain                    | `packages/brain`, `database.brain` — полнотекстовый поиск PostgreSQL (PHASE 08)                                                                                                           |
 | 3. Opportunity & Decision           | `packages/domain`, `packages/judges`, `workflows/opportunity`                                                                                                                             |
 | 4. Validation System                | `workflows/validation` (PHASE 14–15)                                                                                                                                                      |
-| 5–6. Distribution, Creative & Media | Отдельные модули в поздних Phase (PHASE 19)                                                                                                                                               |
-| 7. Solution & Product Factory       | `workflows/solution` (PHASE 21–22)                                                                                                                                                        |
-| 8. Customer & Outcome               | PHASE 20                                                                                                                                                                                  |
+| 5–6. Distribution, Creative & Media | `packages/media` — лендинг и рекламные тексты теста, проверка и шаблон (PHASE 19a); `packages/site` — страницы на `api`; картинки и видео — 19b                                           |
+| 7. Solution & Product Factory       | Release Gate — `@roi-dealer/domain`, выпуск и счётчик — `@roi-dealer/site` на `apps/api` (PHASE 21); сборка продуктов и портфель — PHASE 22                                               |
+| 8. Customer & Outcome               | `packages/crm` + `Lead` в домене + `database.leadContacts` (PHASE 20)                                                                                                                     |
 | 9. Economic System                  | `packages/economics` (PHASE 16)                                                                                                                                                           |
-| 10. Reward Engine                   | `packages/rewards`, `workflows/reward` (PHASE 17)                                                                                                                                         |
+| 10. Reward Engine                   | `packages/rewards` (PHASE 17); выплаты — запрос `payout` и расход `human`                                                                                                                 |
 | 11. Skills & Improvement            | `packages/skills`, `workflows/improvement` (PHASE 18, 23)                                                                                                                                 |
 | 12. Reliability System              | `packages/observability` (реализован базовый слой), `infra/`                                                                                                                              |
 | 13. Portfolio System                | PHASE 22                                                                                                                                                                                  |
@@ -245,6 +255,242 @@ events (INSERT) ──► триггер: у member / agent / integration ест
 - **Личность (`Principal`)** выдаёт, приостанавливает, возвращает и отзывает только владелец (`/access`); отзыв окончателен, идентификатор актора не переиспользуется.
 - **Журнал доступа** (`access_log`, append-only): просмотры и действия пульта, отказы репозиториев, попытки посторонних (не чаще раза в 10 минут на отправителя, без текста сообщений).
 
+### Сбор данных (PHASE 05)
+
+```text
+worker (по расписанию) ──► стоп-кран ──► каталог (@roi-dealer/evidence, вердикт allowed)
+  ├─ нет источника / доступа ──► Source (system) + ensureAccessRequest ──► карточка access_grant в /decisions
+  └─ доступ активен ──► коннектор (официальный API, лимиты каталога) ──► redactPersonalData
+        ──► одна транзакция: SourceSnapshot + Evidence (актор integration source:<ключ>, correlation evidence-collect-<id>)
+```
+
+- **Каталог источников** — в коде (`packages/evidence/src/catalog.ts`): условия, стоимость, лимиты, поля данных, риск ПД, вердикт и дата проверки. Источник без записи или без `allowed` не подключается.
+- **Provenance:** Evidence → `SourceSnapshot` (время, запрос, SHA-256 ответа; сам ответ не хранится) → `Source.catalogKey` → запись каталога.
+- **Приватность:**
+  - контакты, профили, ники, SSN, карты и IP заменяются до записи;
+  - автор не запрашивается;
+  - домен и БД не пропускают email (домен — и телефоны).
+- **Worker без Temporal:** планировщик внутри процесса, без наложения запусков; Temporal — ADR при первом долгом workflow.
+
+### Signals & Pain (PHASE 06)
+
+```text
+worker (раз в 15 минут, есть ключи AI) ──► стоп-кран ──► доступ агента pain-analyst (/decisions)
+  └─ до 20 Evidence без строки в signal_extractions
+       ──► runTask(extract-signal): боль? утверждение, аудитория, результат, сила, цитата
+       ──► код: цитата есть в тексте? (иначе rejected)
+       ──► closestPains (слова, бесплатно) ──► runTask(match-pain) по ≤ 10 ближайшим
+       ──► одна транзакция: Signal (new → triaged) + Pain (createPain | addSignalToPain [| validatePain])
+           + строка signal_extractions (correlation signals-<evidenceId>)
+```
+
+- **AI предлагает, код применяет (§2.3):** цитата проверяется кодом, ключ совпадения сверяется со списком, сущности меняют функции домена.
+- **Бюджет:** доли дня `extract-signal` 15 %, `match-pain` 5 % (D-021); нет квоты или модели — запуск останавливается, Evidence ждут.
+- **Боль подтверждается** правилом PHASE 01: доказательства из ≥ 2 источников.
+
+### Opportunity Engine (PHASE 07)
+
+```text
+worker (раз в час, есть ключи AI) ──► стоп-кран ──► доступ агента opportunity-analyst (/decisions)
+  └─ до 5 открытых болей с ≥ 2 сигналами, версия которых ещё не оценена
+       ──► runTask(frame-opportunity): возможность по §2.17 + признаки (покупатель, повторяемость,
+           срочность, ручная работа, цитаты о деньгах)
+       ──► код: цитаты о деньгах есть в Evidence? ──► scoreOpportunity (0–100) ──► routeBusinessModel
+       ──► ≥ 55: одна транзакция Opportunity (draft) + строка opportunity_assessments
+           < 55: строка below_threshold с оценкой
+```
+
+- **Числа считает код** по данным БД (§2.13): частота, тяжесть, источники, подтверждённые цитаты, рынки D-008, покупатель.
+- **Бизнес-модель** — первая гипотеза (§2.18) по таблице в коде; альтернативы — PHASE 14.
+- **Черновики** ждут судей (PHASE 11) и карточки решения владельца (PHASE 12).
+
+### Company Brain (PHASE 08)
+
+```text
+/search <слова> ──► searchBrain ──► database.brain.search: все слова (websearch_to_tsquery)
+                                     └─ нет таких записей ──► любое слово или его длинная форма (префиксы)
+/ask <вопрос>   ──► planQuestion (правила, без AI) ──► cost_entries / ai_calls / таблицы сущностей ──► ответ + источник
+/note <текст>   ──► подтверждение ──► database.command ──► KnowledgeAsset (owner-note) + событие
+similarCases    ──► похожие возможности, знания, решения — для судей и карточки решения (PHASE 11–12)
+```
+
+- **Только готовые запросы:** текст пользователя — параметр или только буквы и цифры, SQL от пользователя нет.
+- **Цифры — из БД** (§2.13, §7.3); AI в боте нет, ключи AI — только в worker.
+- **Индексы** — GIN по выражениям миграции `0009`; запросы используют те же выражения.
+
+### Agents (PHASE 10)
+
+```text
+worker ──► createAgentScheduler (по очереди, у каждого свой интервал)
+  └─ runAgent: стоп-кран ──► запрос доступа (/decisions) ──► работа агента ──► agent_runs
+       pain-analyst        (15 мин)  Evidence ──► сигналы ──► боли                       PHASE 06
+       opportunity-analyst (1 ч)     боли от 2 сигналов ──► черновики возможностей      PHASE 07
+       researcher          (6 ч)     боль < 3 сигналов ──► research-query ──► cleanQuery
+                                     ──► collectEvidence(HN Search, query) ──► Evidence   PHASE 10
+       market-analyst      (6 ч)     черновик ──► Evidence болей + похожие (brain.search)
+                                     ──► market-context ──► toMarketContext
+                                     ──► KnowledgeAsset market_data + agent_work          PHASE 10
+/agents ──► principals (agent) + agent_runs + ai_calls по актору агента
+```
+
+- **Агенты только предлагают** (§2.3): Evidence, кандидаты, черновики и знания — через домен; решения, деньги и доступы — у владельца.
+- **Поиск — тот же источник:** HN Search — адрес поиска записи `hacker-news` каталога, та же личность интеграции и тот же путь сбора, поэтому один пост не станет вторым источником.
+- **Рынок — только из Evidence** (§2.5): пункт без цитаты из названного Evidence отбрасывается; суммы читает код (§2.13). Формат — `marketContextSchema` в домене; его читают судьи и пульт.
+
+### Judges (PHASE 11)
+
+```text
+judges (3 ч) ──► черновик + рыночный контекст версии (или сутки) + < 6 оценок
+  └─ для каждого критерия отдельно: runTask(judge-opportunity, strong)
+       вход: карточка, факты из БД, ≤ 6 цитат Evidence, рынок, ≤ 3 похожих случая (Company Brain)
+       ──► toJudgement: балл 1–5, обоснование, существующие ссылки; без ссылок рынок / боль / экономика ≤ 2
+       ──► opportunity_judgements
+  └─ 6 оценок ──► submitOpportunityForReview ──► under_review (очередь владельца, PHASE 12)
+judgePanel (домен) ──► итог 0–100 и слабые места ──► /opportunities, карточка решения
+```
+
+- **Независимость:** каждый критерий — отдельный вызов, оценки не подстраиваются друг под друга.
+- **Модели:** уровень `strong` у трёх провайдеров; первой идёт самая точная по эталону, запасная — у другого провайдера.
+
+### Decision Engine (PHASE 12)
+
+```text
+бот (раз в 5 минут, стоп-кран) ──► opportunities under_review
+  └─ database.command(decision-card-<id>-v<n>) ──► loadCard (из БД) ──► recommendOpportunity ──► карточка + кнопки
+владелец: ✅ / ❌ / 🔍 ──► подтверждение ──► database.command(tg-callback-<id>)
+  └─ createDecision (owner, обоснование-урок) + applyOpportunityDecision ──► approved / rejected / draft
+🔍 → draft ──► судьи ждут новых сигналов у болей возможности ──► новая карточка
+```
+
+- **Решает владелец:** рекомендация считается правилами и только показывается.
+- **Ровно один раз:** карточка — один раз на версию, решение — один раз на нажатие (ключи идемпотентности PHASE 03).
+
+### Five Hypothesis Engine (PHASE 14)
+
+```text
+✅ владельца ──► opportunities (approved)
+hypothesis-designer (1 ч) ──► runTask(design-hypotheses, bulk) ──► toHypothesisSet
+  ├─ поля: GEO из рынков возможности, цена, бюджет ≤ $100, stop-loss ≤ бюджета, метрика
+  ├─ набор: 5 разных тестов, ≥ 3 способов, ≥ 2 цен, демо / concierge, сумма ≤ $300
+  └─ нарушения ──► одна попытка исправить ──► иначе rejected
+  ──► одна транзакция: 5 × Hypothesis (proposed) + agent_work ──► /hypotheses, уведомление
+```
+
+- **Бюджет гипотезы — предложение:** тратить можно только после запуска эксперимента владельцем (PHASE 15, D-006).
+
+### Experiment Engine (PHASE 15)
+
+```text
+/hypotheses 🧪 N ──► planExperiment (код) ──► Experiment planned
+☑️ чек-лист (владелец) ──► confirmHonestChecks + ApprovalRequest experiment_launch ──► /decisions ✅
+▶️ ──► startExperiment (только с чек-листом: домен + CHECK) ──► running, гипотеза testing
+/funnel ──► experiment_events (единая воронка, ADR-0007) + CostEntry в пределах запуска
+        ──► automaticStopReason: бюджет / stop-loss без метрики ──► stopped
+🏁 ──► KnowledgeAsset + Decision + completed + hypothesisVerdict (+ scaling / killed возможности)
+```
+
+- **Метрика — шаг воронки** или доля шага; значение считает код из сумм по шагам (§7.3).
+- **Деньги:** система ничего не тратит сама, траты владельца — только в пределах одобренного запуска.
+
+### Economics (PHASE 16)
+
+```text
+/funnel выручка, вернули ──► revenue_entries / cost_entries refund (≤ полученного)
+/cost ──► cost_entries (выше $20 — ApprovalRequest spend, одобренный владельцем)
+/economics ──► monthReport: расходы против MONTHLY_LIMITS (D-007), тесты, выручка, ROI, стоимость гипотезы
+worker spend guard (15 мин) ──► ai_calls + системные расходы по дням ──► spendAnomaly (2× среднего, ≥ $5)
+  └─ аномалия ──► pauseSystem (system:spend-guard) ──► бот: «⛔ Автопауза…» один раз ──► /resume владельца
+```
+
+- **Числа — из журналов** (§7.3): unit economics и лимиты считает домен.
+- **Автоматика может только остановить** систему; возобновляет владелец.
+
+### Owner Command Center (PHASE 13)
+
+```text
+/stats ──► database.stats (поток цикла, медиана от сигнала до решения, новые знания) + monthReport
+понедельник 10:00 Киева ──► недельный разбор [digest-<дата>] ──► proposeExperimentOutcome (домен) ──► карточки с кнопками итога PHASE 15
+/portfolio ⏸ / ▶️ / ⛔ ──► [подтверждение] ──► database.command: Decision владельца + applyOpportunityDecision
+Mini App ──► GET /api/panel (Authorization: tma <initData>) ──► verifyInitData (HMAC токеном бота, ≤ 24 ч)
+  └─ владелец ──► access_log ──► panelSnapshot (те же функции, что в боте) ──► JSON, только чтение
+```
+
+- **Предложения недельного разбора** считает домен; решает владелец кнопками с подтверждением.
+- **Mini App не хранит секретов:** данные отдаёт `api` после проверки подписи Telegram; изменения — только в боте.
+
+### Rewards (PHASE 17)
+
+```text
+/contribution ──► [подтверждение] ──► Contribution (recorded, участник member:<имя>, тест по желанию)
+/rewards ✅ ──► [подтверждение] ──► reviewContribution владельца ──► verified
+/reward N $X | N% ──► planReward (@roi-dealer/rewards: правило, проверки §2.10) ──► [подтверждение]
+  └─ Reward calculated + ApprovalRequest payout ──► /decisions ✅ → Да ──► approved → payable
+                                                              ❌ → Да ──► cancelled
+владелец переводит сам ──► /paid N <ссылка> ──► recordRewardPayout: paid + cost_entries human
+```
+
+- **Сумму считает код** по правилу; условия задаёт и каждую выплату одобряет владелец (D-006).
+- **База** не даст начислить неподтверждённый, чужой или уже начисленный вклад (триггер `reward_contributions_check`).
+
+### Media Factory (PHASE 19a)
+
+```text
+worker ──► landing-writer (стоп-кран → доступ → тесты с артефактом landing без живого лендинга)
+  └─ runTask(write-landing) ──► checkLanding: без выдумок, чужих цифр, ссылок; цена и пометка — код
+     └─ ≤ 2 попытки ──► transaction: MediaAsset (draft) + agent_work
+бот ──► карточка «🎨 Лендинг» (один раз на версию) ──► ✅ / ❌ ──► [подтверждение] ──► владелец
+  └─ ❌ ──► агент переписывает (≤ 2 раз, видит отклонённый заголовок)
+api GET /p/<token> ──► previewPage ──► renderLanding: статичный HTML, строгий CSP, noindex
+```
+
+- **Числа на странице — код:** цена из гипотезы, пометка «в разработке» или «предзаказ с возвратом» по способу проверки (§2.13, §2.17).
+- **Один живой лендинг на тест** — в домене и в базе (`media_assets_one_live`).
+
+### Solution Factory: Release Gate и публикация (PHASE 21)
+
+```text
+карточка лендинга 🚦 ──► releaseGate (домен, §7.2): одобрен, запуск одобрен, метрика и stop-loss,
+  чек-лист, счётчик активен, страница статична, оплата для предзаказа
+  └─ всё ✅ ──► [crash test, нет блокеров — подтверждает владелец] ──► releaseMediaAsset (owner)
+api GET /l/<slug> ──► released + тест approved | running ──► renderLanding (public)
+  └─ тест идёт ──► tracker (integration:site): повтор / роботы / предел / стоп-кран
+       ──► funnel.record: attention, cta_click (source tracker, право funnel.track)
+api GET /l/<slug>/go ──► cta_click ──► 303 /l/<slug>/thanks
+/experiments ▶️ ──► тест с лендингом в системе стартует только после выпуска
+```
+
+- **Нет публичного трафика без Gate** (§7.2): выпуск — решение владельца; тест не стартует раньше.
+- **Посетители не хранятся:** повтор проверяется солёным хешем в памяти; IP и браузер не пишутся и не логируются.
+
+### CRM / Outcomes (PHASE 20)
+
+```text
+/l/<slug>/go ──► /join: почта + согласие + ловушка ──► POST (тест идёт, лимиты, стоп-кран, доступ)
+  └─ captureLead (одна транзакция): Lead (без персональных данных) + lead_contacts (почта)
+       + funnel lead (tracker)
+бот: уведомление ──► /leads ──► ✉️ / 💰 / ✖️ ──► итог клиента ✅ ◐ ❌ (✅ → funnel outcome)
+/forget <почта> | 🗑 ──► eraseContacts: delete lead_contacts + Lead.contactErasedAt
+worker ──► purgeExpiredContacts: не-клиенты, 180 дней после теста (system:lead-retention)
+```
+
+- **Почта — не история:** `lead_contacts` без событий и версий, удаляется физически; события `lead.*` и логи её не содержат.
+- **Права:** записать — `lead.capture` (интеграция «Сайт тестов»); читать и удалять — `lead.manage` (владелец, срок хранения).
+
+### Приём оплат (PHASE 20b, ADR-0009)
+
+```text
+/checkout N <ссылка Lemon Squeezy> ──► [подтверждение] ──► Checkout (owner)
+/l/<slug>/go (предзаказ) ──► cta_click ──► 303 ссылка + checkout[custom][experiment_id]
+Lemon Squeezy ──► POST /webhooks/lemonsqueezy ──► X-Signature (HMAC) ──► разбор (без данных покупателя)
+  └─ стоп-кран → доступ integration:lemonsqueezy → transaction + payment_events (каждое событие раз):
+       Test mode → Checkout.testedAt (Release Gate payment_flow)
+       оплата → RevenueEntry (preorder | payment, без налога) + funnel payment
+       возврат → recordRefund (прирост) → cost_entries refund
+```
+
+- **Система ничего не списывает:** ключа API провайдера нет, только секрет подписи webhook.
+- **Выручка от интеграции** — только от `integration:lemonsqueezy` (CHECK в базе); возвраты провайдера не считаются автоматическими тратами.
+
 ### Сквозные механизмы (реализованы в PHASE 00)
 
 | Механизм           | Где                                                                      | Контракт                                                                                                 |
@@ -263,22 +509,22 @@ events (INSERT) ──► триггер: у member / agent / integration ест
 - **PHASE 03 — Event History:** append-only event store, audit, idempotency.
 - **PHASE 04 — Identity / RBAC / Security:** users, roles, permissions, agent identity, service accounts.
 - **PHASE 05 — Evidence Engine:** sources, snapshots, evidence, claims, provenance, trust.
-- **PHASE 06 — Signals & Pain:** normalization, clustering, pain candidates.
-- **PHASE 07 — Opportunity Engine:** opportunity scoring, market context, Business Model Router.
-- **PHASE 08 — Company Brain v0.1:** knowledge, decisions, similar-case retrieval, history.
-- **PHASE 09 — AI Runtime:** provider abstraction, Model Router, costs, retries, schema validation.
-- **PHASE 10 — Agents:** Research, Pain, Market Context, Opportunity, Knowledge.
-- **PHASE 11 — Judges:** Market, Pain/Value, Economics, Buildability, Risk, Reuse.
-- **PHASE 12 — Decision Engine:** APPROVE / REJECT / MORE_RESEARCH / PAUSE / KILL / SCALE.
-- **PHASE 13 — Owner Command Center:** Telegram Mini App + typed command foundation; future Input Router must require confirmation for state-changing actions.
-- **PHASE 14 — Five Hypothesis Engine:** 5 distinct validation hypotheses with lineage, including offer/pricing/monetization and demo/outcome hypotheses where relevant.
-- **PHASE 15 — Experiment Engine:** budgets, metrics, stop-loss, states, results, Minimum Sellable Product gate and Feature Kill Gate.
-- **PHASE 16 — Economics:** Cost Ledger, Revenue Ledger, Unit Economics, refunds, budgets, free-tier cost and lifetime-deal liability modeling.
-- **PHASE 17 — Reward Engine:** contributions, rules, verification, calculation, payable state.
+- **PHASE 06 — Signals & Pain:** normalization, clustering, pain candidates. Реализовано: агент `pain-analyst`, AI-задачи `extract-signal` и `match-pain`, проверка цитат кодом, `/pains`.
+- **PHASE 07 — Opportunity Engine:** opportunity scoring, market context, Business Model Router. Реализовано: агент `opportunity-analyst`, задача `frame-opportunity`, оценка 0–100 и Business Model Router в коде, `/opportunities`.
+- **PHASE 08 — Company Brain v0.1:** knowledge, decisions, similar-case retrieval, history. Реализовано: полнотекстовый поиск PostgreSQL, `/search`, `/ask` с ответами из БД и источником, `/note`, `similarCases`.
+- **PHASE 09 — AI Runtime:** provider abstraction, Model Router, costs, retries, schema validation. Реализовано: Claude, GPT, Gemini за `runTask`; порядок моделей по evals; бюджет по дням с долями процессов (D-021, [ADR-0006](ADR/0006-ai-providers-and-runtime.md)).
+- **PHASE 10 — Agents:** Research, Pain, Market Context, Opportunity, Knowledge. Реализовано: общий запуск и расписание агентов, агенты исследований и рыночного контекста, `/agents`; агент знаний — с решениями (PHASE 12).
+- **PHASE 11 — Judges:** Market, Pain/Value, Economics, Buildability, Risk, Reuse. Реализовано: шесть отдельных оценок на сильных моделях трёх провайдеров, проверка кодом, итог `judgePanel`, очередь владельца.
+- **PHASE 12 — Decision Engine:** APPROVE / REJECT / MORE_RESEARCH / PAUSE / KILL / SCALE. Реализовано: карточка возможности с рекомендацией `recommendOpportunity`, ✅ / ❌ / 🔍 → `Decision` владельца; PAUSE / KILL / SCALE — с экспериментами (PHASE 15).
+- **PHASE 13 — Owner Command Center:** Telegram Mini App + typed command foundation; future Input Router must require confirmation for state-changing actions. Реализовано: 13a–13b, `/stats` и метрики системы (D-014 п.11), недельный разбор с предложениями (п.12), алерты, `/portfolio`, отклонение болей, Mini App с данными через `api` и проверку `initData` ([ADR-0008](ADR/0008-miniapp-data-through-api.md)).
+- **PHASE 14 — Five Hypothesis Engine:** 5 distinct validation hypotheses with lineage, including offer/pricing/monetization and demo/outcome hypotheses where relevant. Реализовано: агент гипотез, проверка полей и набора кодом, одна попытка исправить, `/hypotheses`.
+- **PHASE 15 — Experiment Engine:** budgets, metrics, stop-loss, states, results, Minimum Sellable Product gate and Feature Kill Gate. Реализовано: план в коде (наименьший артефакт, $0 на сборку), чек-лист честной проверки, `experiment_launch`, единая воронка (ADR-0007), автостоп, итог с решением владельца.
+- **PHASE 16 — Economics:** Cost Ledger, Revenue Ledger, Unit Economics, refunds, budgets, free-tier cost and lifetime-deal liability modeling. Реализовано: журнал выручки, возвраты, лимиты D-007, unit economics, `/economics`, `/cost`, автопауза (D-014 п.10); модель бесплатного тарифа и пожизненных лицензий — с продуктом (PHASE 21–22).
+- **PHASE 17 — Reward Engine:** contributions, rules, verification, calculation, payable state. Реализовано: вклады участников, проверка владельцем, правила `fixed-v1` и `revenue-share-v1`, запрос `payout` в `/decisions`, выплата расходом `human`, защита §2.10 в базе.
 - **PHASE 18 — Skill Registry:** lifecycle, Golden Sets, Evals, permissions, dependencies.
-- **PHASE 19 — Media Factory:** Creative Brief, Brand Kit, Persona, Media Jobs, Preview, QA.
-- **PHASE 20 — CRM / Customer / Outcomes:** leads, deals, customers, support, outcomes, Voice of Customer and Early User Crash Test evidence.
-- **PHASE 21 — Solution Factory:** Build/Buy/Improve/License/Partner, Minimum Sellable Product, QA, deployment and Productization Review.
+- **PHASE 19 — Media Factory:** Creative Brief, Brand Kit, Persona, Media Jobs, Preview, QA. Реализовано (19a): агент «Автор лендингов», задача `write-landing` с проверкой кодом, `MediaAsset`, проверка владельцем ✅ / ❌, предпросмотр `/p/<token>`, Cost per Approved Asset; картинки и видео — 19b.
+- **PHASE 20 — CRM / Customer / Outcomes:** leads, deals, customers, support, outcomes, Voice of Customer and Early User Crash Test evidence. Реализовано (минимум): форма заявки с согласием, `Lead` без персональных данных и почта отдельно, `/leads` до клиента и итог клиента, `/forget`, срок хранения 180 дней, `/privacy`; сделки, поддержка и Voice of Customer — по итогам первых клиентов.
+- **PHASE 21 — Solution Factory:** Build/Buy/Improve/License/Partner, Minimum Sellable Product, QA, deployment and Productization Review. Реализовано (минимум): Release Gate §7.2 в коде и подтверждения владельца, выпуск лендинга, публичная страница `/l/<slug>` на `api`, счётчик воронки своих страниц; сборка продуктов — по итогам тестов.
 - **PHASE 22 — Product & Portfolio:** registry, profitability, kill/merge/scale, capital allocation.
 - **PHASE 23 — Controlled Self-Improvement:** champion/challenger, sandbox, approval, rollback.
 

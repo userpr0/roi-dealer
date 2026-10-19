@@ -1,29 +1,172 @@
+/* Telegram passes its theme as --tg-theme-* variables; the fallbacks serve a plain browser. */
 :root {
   color-scheme: light dark;
+  --bg: var(--tg-theme-bg-color, Canvas);
+  --text: var(--tg-theme-text-color, CanvasText);
+  --muted: var(--tg-theme-hint-color, #8a8a8a);
+  --card: var(--tg-theme-secondary-bg-color, color-mix(in srgb, CanvasText 6%, Canvas));
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --ok: #3aa55d;
+  --warning: #e0a100;
+  --over: #d64545;
   font-family:
     system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
     sans-serif;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
-.placeholder {
-  max-width: 32rem;
+.panel {
+  max-width: 40rem;
   margin: 0 auto;
-  padding: 3rem 1rem;
+  padding: 1rem;
 }
 
-.placeholder h1 {
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+h1 {
   margin: 0;
+  font-size: 1.4rem;
 }
 
-.subtitle {
-  margin-top: 0.25rem;
-  opacity: 0.7;
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+p {
+  margin: 0.25rem 0;
+}
+
+button {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.status.running {
+  border-left: 4px solid var(--ok);
+}
+
+.status.paused {
+  border-left: 4px solid var(--over);
+}
+
+.meter {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.bar {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+}
+
+.bar > .ok {
+  background: var(--ok);
+}
+
+.bar > .warning {
+  background: var(--warning);
+}
+
+.bar > .over {
+  background: var(--over);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.test {
+  border-top: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+  padding: 0.6rem 0;
+}
+
+.test:first-of-type {
+  border-top: 0;
+}
+
+.cycle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cycle th,
+.cycle td {
+  padding: 0.2rem 0;
+  text-align: right;
+}
+
+.cycle th[scope='row'] {
+  text-align: left;
+  font-weight: normal;
+}
+
+.notice code {
+  font-size: 0.85rem;
 }

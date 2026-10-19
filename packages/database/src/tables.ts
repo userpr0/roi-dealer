@@ -2,26 +2,35 @@ import {
   approvalRequestSchema,
   contributionSchema,
   costEntrySchema,
+  revenueEntrySchema,
   decisionSchema,
   evidenceSchema,
   experimentSchema,
   hypothesisSchema,
   knowledgeAssetSchema,
+  checkoutSchema,
+  leadSchema,
+  mediaAssetSchema,
   opportunitySchema,
   painSchema,
   principalSchema,
   rewardSchema,
   signalSchema,
   sourceSchema,
+  sourceSnapshotSchema,
   systemControlSchema,
   type ApprovalRequest,
   type Contribution,
   type CostEntry,
+  type RevenueEntry,
   type Decision,
   type Evidence,
   type Experiment,
   type Hypothesis,
   type KnowledgeAsset,
+  type Checkout,
+  type Lead,
+  type MediaAsset,
   type Metric,
   type Opportunity,
   type Pain,
@@ -29,6 +38,7 @@ import {
   type Reward,
   type Signal,
   type Source,
+  type SourceSnapshot,
   type SystemControl,
 } from '@roi-dealer/domain';
 import type { Row } from './executor.js';
@@ -50,8 +60,9 @@ import {
 } from './rows.js';
 
 /*
- * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b) and
- * Principal (migration 0004, PHASE 04) to their tables (database/docs/schema.md).
+ * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b),
+ * Principal (migration 0004, PHASE 04), SourceSnapshot (migration 0005, PHASE 05) and later
+ * entities (RevenueEntry 0013, MediaAsset 0015) to their tables (database/docs/schema.md).
  * `toColumns` writes every column; `fromRow` rebuilds the domain object for schema validation.
  */
 
@@ -95,6 +106,7 @@ export const sourcesTable: TableSpec<Source> = {
     languages: source.languages,
     trust: source.trust,
     status: source.status,
+    catalog_key: source.catalogKey ?? null,
     ...mutableMetaColumns(source),
   }),
   fromRow: (row) =>
@@ -107,6 +119,7 @@ export const sourcesTable: TableSpec<Source> = {
       languages: row['languages'],
       trust: row['trust'],
       status: row['status'],
+      catalogKey: row['catalog_key'],
       ...readMutableMeta(row),
     }),
 };
@@ -125,6 +138,8 @@ export const evidenceTable: TableSpec<Evidence> = {
     observed_at: evidence.observedAt,
     market: evidence.market ?? null,
     language: evidence.language ?? null,
+    snapshot_id: evidence.snapshotId ?? null,
+    external_id: evidence.externalId ?? null,
     ...immutableMetaColumns(evidence),
   }),
   fromRow: (row) =>
@@ -137,6 +152,8 @@ export const evidenceTable: TableSpec<Evidence> = {
       observedAt: instant(row['observed_at']),
       market: row['market'],
       language: row['language'],
+      snapshotId: row['snapshot_id'],
+      externalId: row['external_id'],
       ...readImmutableMeta(row),
     }),
 };
@@ -419,6 +436,8 @@ export const experimentsTable: TableSpec<Experiment> = {
     kill_criteria: experiment.killCriteria,
     expected_evidence: experiment.expectedEvidence,
     status: experiment.status,
+    honest_checks: [...experiment.honestChecks],
+    checks_confirmed_at: experiment.checksConfirmedAt ?? null,
     approval_request_id: experiment.approvalRequestId ?? null,
     started_at: experiment.startedAt ?? null,
     ended_at: experiment.endedAt ?? null,
@@ -446,6 +465,8 @@ export const experimentsTable: TableSpec<Experiment> = {
       killCriteria: row['kill_criteria'],
       expectedEvidence: row['expected_evidence'],
       status: row['status'],
+      honestChecks: row['honest_checks'],
+      checksConfirmedAt: instant(row['checks_confirmed_at']),
       approvalRequestId: row['approval_request_id'],
       startedAt: instant(row['started_at']),
       endedAt: instant(row['ended_at']),
@@ -494,6 +515,88 @@ export const costEntriesTable: TableSpec<CostEntry> = {
       approvalRequestId: row['approval_request_id'],
       reversalOf: row['reversal_of'],
       ...readImmutableMeta(row),
+    }),
+};
+
+export const revenueEntriesTable: TableSpec<RevenueEntry> = {
+  entity: 'revenue_entry',
+  table: 'revenue_entries',
+  schema: revenueEntrySchema,
+  links: {},
+  toColumns: (entry) => ({
+    id: entry.id,
+    kind: entry.kind,
+    amount_usd_cents: cents(entry.amount),
+    customers: entry.customers,
+    description: entry.description,
+    received_at: entry.receivedAt,
+    opportunity_id: entry.allocation.opportunityId ?? null,
+    hypothesis_id: entry.allocation.hypothesisId ?? null,
+    experiment_id: entry.allocation.experimentId ?? null,
+    reversal_of: entry.reversalOf ?? null,
+    ...immutableMetaColumns(entry),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      kind: row['kind'],
+      amount: money(row['amount_usd_cents']),
+      customers: row['customers'],
+      description: row['description'],
+      receivedAt: instant(row['received_at']),
+      allocation: withoutNulls({
+        opportunityId: row['opportunity_id'],
+        hypothesisId: row['hypothesis_id'],
+        experimentId: row['experiment_id'],
+      }),
+      reversalOf: row['reversal_of'],
+      ...readImmutableMeta(row),
+    }),
+};
+
+/** JSON text read back for schema validation; text that is not JSON fails validation. */
+function jsonText(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+export const mediaAssetsTable: TableSpec<MediaAsset> = {
+  entity: 'media_asset',
+  table: 'media_assets',
+  schema: mediaAssetSchema,
+  links: {},
+  toColumns: (asset) => ({
+    id: asset.id,
+    kind: asset.kind,
+    experiment_id: asset.experimentId,
+    hypothesis_id: asset.hypothesisId,
+    opportunity_id: asset.opportunityId,
+    content: JSON.stringify(asset.content),
+    slug: asset.slug,
+    preview_token: asset.previewToken,
+    status: asset.status,
+    release_checks: [...asset.releaseChecks],
+    released_at: asset.releasedAt ?? null,
+    ...mutableMetaColumns(asset),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      kind: row['kind'],
+      experimentId: row['experiment_id'],
+      hypothesisId: row['hypothesis_id'],
+      opportunityId: row['opportunity_id'],
+      content: jsonText(row['content']),
+      slug: row['slug'],
+      previewToken: row['preview_token'],
+      status: row['status'],
+      releaseChecks: row['release_checks'],
+      releasedAt: instant(row['released_at']),
+      ...readMutableMeta(row),
     }),
 };
 
@@ -663,6 +766,101 @@ export const principalsTable: TableSpec<Principal> = {
       displayName: row['display_name'],
       purpose: row['purpose'],
       status: row['status'],
+      ...readMutableMeta(row),
+    }),
+};
+
+export const sourceSnapshotsTable: TableSpec<SourceSnapshot> = {
+  entity: 'source_snapshot',
+  table: 'source_snapshots',
+  schema: sourceSnapshotSchema,
+  links: {},
+  toColumns: (snapshot) => ({
+    id: snapshot.id,
+    source_id: snapshot.sourceId,
+    request_url: snapshot.requestUrl,
+    fetched_at: snapshot.fetchedAt,
+    content_sha256: snapshot.contentSha256,
+    item_count: snapshot.itemCount,
+    evidence_count: snapshot.evidenceCount,
+    ...immutableMetaColumns(snapshot),
+  }),
+  fromRow: (row) => ({
+    id: row['id'],
+    sourceId: row['source_id'],
+    requestUrl: row['request_url'],
+    fetchedAt: instant(row['fetched_at']),
+    contentSha256: row['content_sha256'],
+    itemCount: row['item_count'],
+    evidenceCount: row['evidence_count'],
+    ...readImmutableMeta(row),
+  }),
+};
+
+export const leadsTable: TableSpec<Lead> = {
+  entity: 'lead',
+  table: 'leads',
+  schema: leadSchema,
+  links: {},
+  toColumns: (lead) => ({
+    id: lead.id,
+    experiment_id: lead.experimentId,
+    hypothesis_id: lead.hypothesisId,
+    opportunity_id: lead.opportunityId,
+    media_asset_id: lead.mediaAssetId,
+    channel: lead.channel,
+    utm_source: lead.utmSource ?? null,
+    consent_at: lead.consentAt,
+    status: lead.status,
+    outcome: lead.outcome ?? null,
+    outcome_at: lead.outcomeAt ?? null,
+    contact_erased_at: lead.contactErasedAt ?? null,
+    ...mutableMetaColumns(lead),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      experimentId: row['experiment_id'],
+      hypothesisId: row['hypothesis_id'],
+      opportunityId: row['opportunity_id'],
+      mediaAssetId: row['media_asset_id'],
+      channel: row['channel'],
+      utmSource: row['utm_source'],
+      consentAt: instant(row['consent_at']),
+      status: row['status'],
+      outcome: row['outcome'],
+      outcomeAt: instant(row['outcome_at']),
+      contactErasedAt: instant(row['contact_erased_at']),
+      ...readMutableMeta(row),
+    }),
+};
+
+export const checkoutsTable: TableSpec<Checkout> = {
+  entity: 'checkout',
+  table: 'checkouts',
+  schema: checkoutSchema,
+  links: {},
+  toColumns: (checkout) => ({
+    id: checkout.id,
+    experiment_id: checkout.experimentId,
+    hypothesis_id: checkout.hypothesisId,
+    opportunity_id: checkout.opportunityId,
+    provider: checkout.provider,
+    url: checkout.url,
+    status: checkout.status,
+    tested_at: checkout.testedAt ?? null,
+    ...mutableMetaColumns(checkout),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      experimentId: row['experiment_id'],
+      hypothesisId: row['hypothesis_id'],
+      opportunityId: row['opportunity_id'],
+      provider: row['provider'],
+      url: row['url'],
+      status: row['status'],
+      testedAt: instant(row['tested_at']),
       ...readMutableMeta(row),
     }),
 };

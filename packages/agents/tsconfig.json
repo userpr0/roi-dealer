@@ -4,5 +4,34 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../ai-runtime"
+    },
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../evidence"
+    },
+    {
+      "path": "../media"
+    },
+    {
+      "path": "../observability"
+    },
+    {
+      "path": "../opportunities"
+    },
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../signals"
+    }
+  ]
 }

@@ -2,16 +2,30 @@
   "name": "@roi-dealer/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer background worker (PHASE 00: lifecycle skeleton, no workflows)",
+  "description": "ROI Dealer background worker: evidence collection (PHASE 05), pain analysis (PHASE 06), opportunity assessment (PHASE 07) AI maintenance (PHASE 09), agents (PHASE 10\u201314) and the spend guard (PHASE 16)",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "dev": "tsx watch --conditions=@roi-dealer/source --env-file-if-exists=../../.env src/main.ts",
     "start": "node --enable-source-maps dist/main.js"
   },
   "dependencies": {
+    "@roi-dealer/agents": "workspace:*",
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/command-center": "workspace:*",
+    "@roi-dealer/crm": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/economics": "workspace:*",
+    "@roi-dealer/evidence": "workspace:*",
+    "@roi-dealer/judges": "workspace:*",
+    "@roi-dealer/media": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/opportunities": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/signals": "workspace:*",
     "zod": "^4.6.5"
   }
 }

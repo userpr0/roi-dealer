@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   assertOwner,
+  immutableMeta,
   mutableMeta,
   mutableMetaShape,
   parseEntity,
@@ -22,10 +23,13 @@ import {
   timestampSchema,
   uniqueList,
   type ContributionId,
+  type CostEntryId,
   type RewardId,
+  type Timestamp,
 } from '../primitives.js';
 import { defineStateMachine } from '../state-machine.js';
 import { assertApprovalCovers, type ApprovalRequest } from './approval.js';
+import { costEntrySchema, type CostEntry } from './cost.js';
 
 // ---------------------------------------------------------------- Contribution
 
@@ -232,4 +236,37 @@ export function markRewardPaid(
 
 export function cancelReward(reward: Reward, context: DomainContext): Reward {
   return transition(reward, rewardLifecycle, rewardSchema, 'cancelled', context);
+}
+
+/**
+ * The owner paid a payable reward outside the system (PHASE 17): the reward becomes `paid` and
+ * the payout is recorded as a cost of category `human`, covered by the reward's approved
+ * `payout` request (D-006). The payout is a cost of the month, not of a test.
+ */
+export function recordRewardPayout(
+  reward: Reward,
+  payment: { readonly paidAt: Timestamp; readonly reference: string },
+  approval: ApprovalRequest | undefined,
+  context: CreateContext<CostEntryId>,
+): { readonly reward: Reward; readonly cost: CostEntry } {
+  assertOwner(context.actor, 'record reward payouts');
+  assertApprovalCovers(approval, {
+    ...(reward.approvalRequestId === undefined ? {} : { id: reward.approvalRequestId }),
+    kind: 'payout',
+    amount: reward.amount,
+    subject: { type: 'reward', id: reward.id },
+  });
+  const paid = markRewardPaid(reward, payment, { actor: context.actor, at: context.at });
+  const cost = parseEntity(costEntrySchema, 'cost_entry', {
+    category: 'human',
+    amount: reward.amount,
+    description: `Reward payout to ${reward.contributor.id}: ${payment.reference}`.slice(0, 500),
+    incurredAt: payment.paidAt,
+    recurring: false,
+    allocation: {},
+    approvalRequestId: paid.approvalRequestId,
+    id: context.id,
+    ...immutableMeta(context),
+  });
+  return { reward: paid, cost };
 }

@@ -1,5 +1,5 @@
 /**
- * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–04, 13b, ADR-0005).
+ * @roi-dealer/database — PostgreSQL access for ROI Dealer (PHASE 02–09, 13b, ADR-0005).
  *
  * Connection pool in UTC, SQL migrations with checksums and a lock, repositories that store
  * domain entities (validating every row they read) and append an event for every
@@ -17,6 +17,53 @@ export {
   type StoredAccessLogEntry,
 } from './access-log.js';
 export { findPrincipal, type AccessDeniedHandler } from './access.js';
+export {
+  AI_CALL_PURPOSES,
+  AI_FAILURES,
+  AI_PROVIDERS,
+  createAiCallLog,
+  type AiCallEntry,
+  type AiCallLog,
+  type AiCallPeriod,
+  type AiCallPurpose,
+  type AiFailure,
+  type AiProvider,
+  type AiSpend,
+  type StoredAiCall,
+} from './ai-calls.js';
+export {
+  anyWordsQuery,
+  COUNTED_ENTITIES,
+  createBrainQueries,
+  SEARCH_TYPES,
+  type BrainQueries,
+  type CostTotals,
+  type CountedEntity,
+  type Period,
+  type SearchHit,
+  type SearchOptions,
+  type SearchType,
+  type StatusEntity,
+} from './brain.js';
+export {
+  AGENT_RUN_OUTCOMES,
+  AGENT_STOPS,
+  AGENT_WORK_OUTCOMES,
+  createAgentRunLog,
+  createAgentWorkLog,
+  type AgentRunEntry,
+  type AgentRunLog,
+  type AgentRunOutcome,
+  type AgentRunTotals,
+  type AgentStop,
+  type AgentWorkEntry,
+  type AgentWorkLog,
+  type AgentWorkOutcome,
+  type AgentWorkResult,
+  type AgentWorkSubject,
+  type StoredAgentRun,
+  type StoredAgentWork,
+} from './agents.js';
 export {
   databaseConfigSchema,
   databaseConfigShape,
@@ -55,7 +102,54 @@ export {
   type Migration,
   type MigrationRunResult,
 } from './migrations.js';
-export { createRepositories, type PrincipalRepository, type Repositories } from './repositories.js';
+export {
+  createRepositories,
+  type EvidenceRepository,
+  type HypothesisRepository,
+  type KnowledgeAssetRepository,
+  type PrincipalRepository,
+  type Repositories,
+  type SourceRepository,
+  type CheckoutRepository,
+  type LeadRepository,
+  type MediaAssetRepository,
+} from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
+export { createEconomicsQueries, type EconomicsQueries, type MoneyPeriod } from './economics.js';
+export { createFunnelLog, type FunnelLog } from './experiments.js';
+export { createStatsQueries, type CycleCounts, type StatsQueries } from './stats.js';
+export {
+  createJudgementLog,
+  JUDGEMENT_OUTCOMES,
+  type JudgementEntry,
+  type JudgementLog,
+  type JudgementOutcome,
+  type StoredJudgement,
+} from './judgements.js';
+export {
+  createOpportunityAssessmentLog,
+  OPPORTUNITY_ASSESSMENT_OUTCOMES,
+  type OpportunityAssessmentEntry,
+  type OpportunityAssessmentLog,
+  type OpportunityAssessmentOutcome,
+  type OpportunityScore,
+  type ScoreComponents,
+} from './opportunity-assessments.js';
+export {
+  createSignalExtractionLog,
+  SIGNAL_EXTRACTION_OUTCOMES,
+  type SignalExtractionCounts,
+  type SignalExtractionEntry,
+  type SignalExtractionLog,
+  type SignalExtractionOutcome,
+} from './signal-extractions.js';
 
 export const PACKAGE_NAME = '@roi-dealer/database';
+export type { LeadContact, LeadContacts } from './lead-contacts.js';
+export {
+  PAYMENT_EVENT_KINDS,
+  type PaymentEventEntry,
+  type PaymentEventKind,
+  type PaymentEventLog,
+  type RecordedPaymentEvent,
+} from './payments.js';

@@ -1,0 +1,27 @@
+{
+  "name": "@roi-dealer/evidence",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Evidence Engine: source catalog, permitted connectors, privacy redaction and collection",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

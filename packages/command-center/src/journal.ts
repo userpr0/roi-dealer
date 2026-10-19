@@ -2,7 +2,7 @@ import { toTimestamp } from '@roi-dealer/domain';
 import type { EventStore } from '@roi-dealer/database';
 import type { StoredEvent } from '@roi-dealer/events';
 import { callbackButton, type InlineKeyboard } from '@roi-dealer/telegram';
-import { eventLine } from './texts.js';
+import { eventRuns, runLine } from './texts.js';
 
 const HOUR_MS = 3_600_000;
 
@@ -37,8 +37,11 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'decision':
     case 'approval_request':
     case 'cost_entry':
+    case 'revenue_entry':
+    case 'reward':
     case 'system_control':
     case 'principal':
+    case 'checkout':
       return true;
     case 'experiment': {
       const status = event.payload.snapshot['status'];
@@ -51,8 +54,10 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'opportunity':
     case 'hypothesis':
     case 'contribution':
-    case 'reward':
+    case 'media_asset':
+    case 'lead':
     case 'knowledge_asset':
+    case 'source_snapshot':
       return false;
   }
 }
@@ -112,7 +117,10 @@ export function choosePeriodText(kind: JournalKind): string {
   return `${KINDS[kind].title}: выберите период.`;
 }
 
-/** The latest `MAX_LINES` events of the period, oldest first, in Kyiv time. */
+/**
+ * The latest `MAX_LINES` lines of the period, oldest first, in Kyiv time; a run of events of
+ * one request (e.g. one load of evidence) is one line.
+ */
 export async function journalText(
   store: EventStore,
   kind: JournalKind,
@@ -127,9 +135,10 @@ export async function journalText(
   const header = `${KINDS[kind].title} ${PERIODS[period].title} (время по Киеву)`;
   if (events.length === 0) return `${header}\n\n${KINDS[kind].empty}`;
 
-  const lines = events.slice(-MAX_LINES).map(eventLine);
+  const runs = eventRuns(events);
+  const lines = runs.slice(-MAX_LINES).map(runLine);
   const render = (): string => {
-    const hidden = events.length - lines.length;
+    const hidden = runs.length - lines.length;
     const notes = [
       hidden > 0 ? `…и ещё ${hidden} раньше. Показаны последние ${lines.length}.` : undefined,
       partial ? `Прочитаны первые ${MAX_SCANNED} событий периода.` : undefined,

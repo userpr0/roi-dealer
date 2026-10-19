@@ -20,6 +20,7 @@ import {
 } from '../primitives.js';
 import { defineStateMachine } from '../state-machine.js';
 import { distinctSources, selectEvidence, type Evidence } from './evidence.js';
+import type { Signal } from './signal.js';
 
 export const PAIN_FREQUENCIES = ['rare', 'occasional', 'frequent', 'constant'] as const;
 
@@ -88,6 +89,71 @@ export function validatePain(
     );
   }
   return transition(pain, painLifecycle, painSchema, 'validated', context);
+}
+
+/** A pain holds at most this many signals and evidence items (PHASE 01 limits). */
+export const MAX_PAIN_SIGNALS = 100;
+export const MAX_PAIN_EVIDENCE = 200;
+const MAX_PAIN_MARKETS = 50;
+
+/** Severity of a pain first seen in a signal of this strength (PHASE 06). */
+export const SEVERITY_BY_STRENGTH: Readonly<Record<Signal['strength'], number>> = {
+  weak: 2,
+  moderate: 3,
+  strong: 4,
+};
+
+/** How often the pain is observed: by the number of its signals (PHASE 06). */
+export function frequencyForSignals(count: number): (typeof PAIN_FREQUENCIES)[number] {
+  if (count >= 15) return 'constant';
+  if (count >= 5) return 'frequent';
+  if (count >= 2) return 'occasional';
+  return 'rare';
+}
+
+/** Whether another signal fits into the pain. */
+export function painHasRoom(pain: Pain): boolean {
+  return pain.signalIds.length < MAX_PAIN_SIGNALS;
+}
+
+/**
+ * Adds a signal that describes the same pain (PHASE 06): its evidence and markets join the
+ * pain (up to the limits), severity keeps the strongest signal, frequency follows the number of
+ * signals. Only open pains (`candidate`, `validated`) take signals.
+ */
+export function addSignalToPain(pain: Pain, signal: Signal, context: DomainContext): Pain {
+  if (pain.status !== 'candidate' && pain.status !== 'validated') {
+    throw new DomainError('invalid_transition', 'Only an open pain takes new signals', {
+      pain_id: pain.id,
+      status: pain.status,
+    });
+  }
+  if (pain.signalIds.includes(signal.id)) {
+    throw new DomainError('invariant_violation', 'The signal is already part of the pain', {
+      pain_id: pain.id,
+      signal_id: signal.id,
+    });
+  }
+  if (!painHasRoom(pain)) {
+    throw new DomainError('invariant_violation', 'The pain holds the maximum number of signals', {
+      pain_id: pain.id,
+      max_signals: MAX_PAIN_SIGNALS,
+    });
+  }
+  const signalIds = [...pain.signalIds, signal.id];
+  const newEvidence = signal.evidenceIds.filter((id) => !pain.evidenceIds.includes(id));
+  const evidenceIds = [...pain.evidenceIds, ...newEvidence].slice(0, MAX_PAIN_EVIDENCE);
+  const markets = [...new Set([...pain.markets, ...signal.markets])].slice(0, MAX_PAIN_MARKETS);
+  return parseEntity(painSchema, 'pain', {
+    ...pain,
+    signalIds,
+    evidenceIds,
+    markets,
+    severity: Math.max(pain.severity, SEVERITY_BY_STRENGTH[signal.strength]),
+    frequency: frequencyForSignals(signalIds.length),
+    updatedAt: context.at,
+    version: pain.version + 1,
+  });
 }
 
 export function changePainStatus(

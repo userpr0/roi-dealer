@@ -1,0 +1,28 @@
+{
+  "name": "@roi-dealer/signals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Signals & Pain: AI finds pains in evidence, code checks quotes and groups them into pain candidates (PHASE 06)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

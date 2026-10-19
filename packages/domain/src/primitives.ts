@@ -16,6 +16,11 @@ export const ENTITY_TYPES = [
   'knowledge_asset',
   'system_control',
   'principal',
+  'source_snapshot',
+  'revenue_entry',
+  'media_asset',
+  'lead',
+  'checkout',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -51,6 +56,16 @@ export const systemControlIdSchema = z.uuid().brand<'SystemControlId'>();
 export type SystemControlId = z.infer<typeof systemControlIdSchema>;
 export const principalIdSchema = z.uuid().brand<'PrincipalId'>();
 export type PrincipalId = z.infer<typeof principalIdSchema>;
+export const sourceSnapshotIdSchema = z.uuid().brand<'SourceSnapshotId'>();
+export type SourceSnapshotId = z.infer<typeof sourceSnapshotIdSchema>;
+export const revenueEntryIdSchema = z.uuid().brand<'RevenueEntryId'>();
+export type RevenueEntryId = z.infer<typeof revenueEntryIdSchema>;
+export const mediaAssetIdSchema = z.uuid().brand<'MediaAssetId'>();
+export type MediaAssetId = z.infer<typeof mediaAssetIdSchema>;
+export const leadIdSchema = z.uuid().brand<'LeadId'>();
+export type LeadId = z.infer<typeof leadIdSchema>;
+export const checkoutIdSchema = z.uuid().brand<'CheckoutId'>();
+export type CheckoutId = z.infer<typeof checkoutIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();

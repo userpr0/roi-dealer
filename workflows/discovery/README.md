@@ -1,6 +1,6 @@
 # workflows/discovery — Discovery
 
-**Статус:** только структура (PHASE 00). Temporal workflows не реализованы.
+**Статус:** Temporal workflows не реализованы. Сбор Evidence (PHASE 05, `packages/evidence`) и разбор болей (PHASE 06, `packages/signals`) — короткие задачи по расписанию в `apps/worker`. Перенос сюда — с ADR на Temporal, когда появятся долгие процессы.
 **Реализация:** PHASE 05–06.
 
 ## Назначение

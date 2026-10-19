@@ -31,6 +31,14 @@ export const SOURCE_KINDS = [
   'other',
 ] as const;
 export const TRUST_LEVELS = ['unverified', 'low', 'medium', 'high'] as const;
+export type TrustLevel = (typeof TRUST_LEVELS)[number];
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+/** Key of a source catalog entry (PHASE 05), e.g. `hacker-news`. */
+export const catalogKeySchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{1,39}$/, 'expected a catalog key such as hacker-news');
+export type CatalogKey = z.infer<typeof catalogKeySchema>;
 
 export const SOURCE_STATUSES = ['active', 'paused', 'retired'] as const;
 export type SourceStatus = (typeof SOURCE_STATUSES)[number];
@@ -48,6 +56,8 @@ const newSourceShape = {
   markets: uniqueList(countryCodeSchema, { min: 1, max: 50 }),
   languages: uniqueList(languageTagSchema, { min: 1, max: 20 }),
   trust: z.enum(TRUST_LEVELS),
+  /** The catalog entry the source is connected by; one source per entry (PHASE 05). */
+  catalogKey: catalogKeySchema.optional(),
 };
 
 /** Where market data comes from. */

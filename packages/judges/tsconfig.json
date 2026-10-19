@@ -4,5 +4,22 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../agents"
+    },
+    {
+      "path": "../ai-runtime"
+    },
+    {
+      "path": "../brain"
+    },
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../domain"
+    }
+  ]
 }

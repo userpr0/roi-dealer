@@ -177,7 +177,7 @@ const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 1_000;
 
 /** Rebuilds entities from rows with their link lists and validates each (§2.13). */
-async function readEntities<E extends StoredEntity>(
+export async function readRows<E extends StoredEntity>(
   executor: Executor,
   spec: TableSpec<E>,
   rows: readonly Row[],
@@ -216,7 +216,7 @@ function createReader<E extends StoredEntity>(
       const rows = await executor<Row[]>`
         select * from ${executor(spec.table)} where id = any(${ids}::uuid[])
       `;
-      const entities = await readEntities(executor, spec, rows);
+      const entities = await readRows(executor, spec, rows);
       const byId = new Map(entities.map((entity) => [entity.id, entity]));
       return ids.flatMap((id) => {
         const entity = byId.get(id);
@@ -301,7 +301,7 @@ export function createVersionedRepository<E extends VersionedEntity>(
           order by updated_at, id
           limit ${limit}
         `;
-        return readEntities(executor, spec, rows);
+        return readRows(executor, spec, rows);
       }),
     update: (entity, actor) =>
       withAccessAudit(context, (denied) =>

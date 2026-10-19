@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../observability"
+    },
+    {
+      "path": "../shared"
+    }
+  ]
+}

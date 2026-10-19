@@ -40,6 +40,20 @@ const PROJECT_MIGRATIONS = [
   '0002_event_history',
   '0003_system_control',
   '0004_identity_access',
+  '0005_evidence_engine',
+  '0006_ai_runtime',
+  '0007_signals_pain',
+  '0008_opportunity_engine',
+  '0009_company_brain',
+  '0010_agents',
+  '0011_judges',
+  '0012_experiments',
+  '0013_economics',
+  '0014_rewards',
+  '0015_media',
+  '0016_release',
+  '0017_leads',
+  '0018_payments',
 ];
 
 describe('runMigrations with the project migrations', () => {

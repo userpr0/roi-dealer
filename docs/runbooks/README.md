@@ -5,13 +5,14 @@
 
 ## Какую инструкцию открыть
 
-| Что случилось                                                                   | Инструкция                                        | Сколько времени |
-| ------------------------------------------------------------------------------- | ------------------------------------------------- | --------------- |
-| Токен бота или ключ попал в чат, скриншот, репозиторий или к постороннему       | [Утечка токена или ключа](secret-leak.md)         | 5–10 минут      |
-| GitHub прислал письмо о найденном секрете (secret scanning)                     | [Утечка токена или ключа](secret-leak.md)         | 5–10 минут      |
-| Бот не отвечает, пришло «🔴 ROI Dealer bot остановлен», Mini App не открывается | [Сервис не работает](service-down.md)             | 5–15 минут      |
-| Письмо Railway о приближении к лимиту, неожиданный счёт                         | [Резкий рост расходов](spend-spike.md)            | 5–10 минут      |
-| Подозрение, что кто-то зашёл в ваш GitHub, Railway или Telegram                 | [Утечка токена или ключа](secret-leak.md#аккаунт) | 15 минут        |
+| Что случилось                                                                   | Инструкция                                            | Сколько времени |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------- |
+| Токен бота или ключ попал в чат, скриншот, репозиторий или к постороннему       | [Утечка токена или ключа](secret-leak.md)             | 5–10 минут      |
+| GitHub прислал письмо о найденном секрете (secret scanning)                     | [Утечка токена или ключа](secret-leak.md)             | 5–10 минут      |
+| Бот не отвечает, пришло «🔴 ROI Dealer bot остановлен», Mini App не открывается | [Сервис не работает](service-down.md)                 | 5–15 минут      |
+| Письмо Railway о приближении к лимиту, неожиданный счёт                         | [Резкий рост расходов](spend-spike.md)                | 5–10 минут      |
+| Подозрение, что кто-то зашёл в ваш GitHub, Railway или Telegram                 | [Утечка токена или ключа](secret-leak.md#аккаунт)     | 15 минут        |
+| Человек просит удалить его данные (пост, цитату) — CCPA / GDPR                  | [Запрос на удаление данных](data-deletion-request.md) | до 1 дня        |
 
 ## Общие правила
 
@@ -22,13 +23,14 @@
 
 ## Где что находится
 
-| Система      | Что там                               | Адрес                                                                                              |
-| ------------ | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Railway      | Бот-пульт (сервис `@roi-dealer/bot`)  | [railway.com/dashboard](https://railway.com/dashboard)                                             |
-| GitHub       | Код, проверки CI, публикация Mini App | [github.com/userpr0/roi-dealer](https://github.com/userpr0/roi-dealer)                             |
-| GitHub Pages | Mini App (пульт)                      | [userpr0.github.io/roi-dealer](https://userpr0.github.io/roi-dealer/)                              |
-| @BotFather   | Токен бота: выпуск, отзыв             | Telegram → [@BotFather](https://t.me/BotFather)                                                    |
-| Статусы      | Не сломался ли сам провайдер          | [status.railway.com](https://status.railway.com), [githubstatus.com](https://www.githubstatus.com) |
+| Система      | Что там                                              | Адрес                                                                                              |
+| ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Railway      | Бот-пульт (сервис `@roi-dealer/bot`)                 | [railway.com/dashboard](https://railway.com/dashboard)                                             |
+| Railway      | Сбор данных (сервис `worker`, PHASE 05) и PostgreSQL | [railway.com/dashboard](https://railway.com/dashboard)                                             |
+| GitHub       | Код, проверки CI, публикация Mini App                | [github.com/userpr0/roi-dealer](https://github.com/userpr0/roi-dealer)                             |
+| GitHub Pages | Mini App (пульт)                                     | [userpr0.github.io/roi-dealer](https://userpr0.github.io/roi-dealer/)                              |
+| @BotFather   | Токен бота: выпуск, отзыв                            | Telegram → [@BotFather](https://t.me/BotFather)                                                    |
+| Статусы      | Не сломался ли сам провайдер                         | [status.railway.com](https://status.railway.com), [githubstatus.com](https://www.githubstatus.com) |
 
 ## Секреты и где они хранятся
 

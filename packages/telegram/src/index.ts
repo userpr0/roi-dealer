@@ -45,5 +45,12 @@ export {
   type RejectedAttempt,
 } from './commands.js';
 export { createOwnerNotifier, type OwnerNotifier, type OwnerNotifierOptions } from './notifier.js';
+export {
+  INIT_DATA_MAX_AGE_SECONDS,
+  signInitData,
+  verifyInitData,
+  type InitDataCheck,
+  type InitDataRejection,
+} from './init-data.js';
 
 export const PACKAGE_NAME = '@roi-dealer/telegram';

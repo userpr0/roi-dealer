@@ -2,7 +2,7 @@
   "name": "@roi-dealer/agents",
   "version": "0.0.0",
   "private": true,
-  "description": "AI agents (proposals only, no direct state mutation)",
+  "description": "AI agents: one runner and scheduler, research and market context agents (PHASE 10); proposals only",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,17 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/evidence": "workspace:*",
+    "@roi-dealer/media": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/opportunities": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/signals": "workspace:*",
+    "zod": "^4.6.5"
   }
 }

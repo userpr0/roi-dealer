@@ -23,6 +23,7 @@ export const OWNER: Actor = { type: 'owner', id: 'owner' };
 export const MEMBER: Actor = { type: 'member', id: 'member-1' };
 export const AGENT: Actor = { type: 'agent', id: 'research-agent' };
 export const SYSTEM: Actor = { type: 'system', id: 'scheduler' };
+export const INTEGRATION: Actor = { type: 'integration', id: 'source:test-forum' };
 
 const BASE_MS = Date.parse('2026-10-01T10:00:00.000Z');
 

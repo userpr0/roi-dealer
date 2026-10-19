@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../crm"
+    },
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../media"
+    },
+    {
+      "path": "../observability"
+    },
+    {
+      "path": "../payments"
+    }
+  ]
+}

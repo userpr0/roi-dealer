@@ -276,7 +276,8 @@ describe('human gates', () => {
   it('rejects a running experiment without a launch approval', async () => {
     const error = await rejection(
       () => test.database.sql`
-        update experiments set status = 'running', started_at = now(), version = version + 1
+        update experiments set status = 'running', started_at = now(), version = version + 1,
+          honest_checks = '{no_fabrication}', checks_confirmed_at = now()
         where id = ${experiment.id}
       `,
     );

@@ -6,8 +6,29 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/observability" },
-    { "path": "../../packages/database" }
+    {
+      "path": "../../packages/command-center"
+    },
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/observability"
+    },
+    {
+      "path": "../../packages/payments"
+    },
+    {
+      "path": "../../packages/shared"
+    },
+    {
+      "path": "../../packages/site"
+    },
+    {
+      "path": "../../packages/telegram"
+    }
   ]
 }

@@ -3,6 +3,8 @@ import {
   CONFIRMATION_TTL_MS,
   createCommandCenter,
   NO_DATABASE_TEXT,
+  NO_OPPORTUNITIES_TEXT,
+  NO_PAINS_TEXT,
   ownerActor,
   sendDailyDigest,
   type CommandCenter,
@@ -14,16 +16,32 @@ import {
   AUTOMATION_CONTROL_ID,
   costEntryIdSchema,
   createApprovalRequest,
+  createEvidence,
   createSource,
+  createSourceSnapshot,
+  evidenceIdSchema,
   recordCostEntry,
   sourceIdSchema,
+  sourceSnapshotIdSchema,
   timestampMs,
   usd,
   type ApprovalRequest,
 } from '@roi-dealer/domain';
 import type { InlineKeyboard } from '@roi-dealer/telegram';
-import { after, at, createCtx, sourceData, SYSTEM } from '../../support/domain.js';
-import { createTestDatabase, type TestDatabase } from '../../support/database.js';
+import {
+  after,
+  at,
+  createCtx,
+  evidenceData,
+  INTEGRATION,
+  sourceData,
+  SYSTEM,
+} from '../../support/domain.js';
+import {
+  createTestDatabase,
+  registerPrincipal,
+  type TestDatabase,
+} from '../../support/database.js';
 import { createCapturingLogger } from '../../support/logger.js';
 
 const OWNER_TG = 1001;
@@ -280,7 +298,10 @@ describe('🛑 kill switch', () => {
     const control = await db.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
     expect(control).toMatchObject({ status: 'running' });
     expect(control).not.toHaveProperty('reason');
-    expect(await center.statusLines()).toEqual(['▶️ Автоматизации: работают']);
+    expect(await center.statusLines()).toEqual([
+      '▶️ Автоматизации: работают',
+      '🤖 AI: вызовов ещё не было',
+    ]);
   });
 });
 
@@ -322,6 +343,106 @@ describe('🧾 journal and 🕘 history', () => {
     expect(lines).toHaveLength(30);
     expect(text).toMatch(/…и ещё \d+ раньше\. Показаны последние 30\./);
     expect(lines.at(-1)).toContain('Source 34');
+  });
+});
+
+describe('📚 evidence in the journal and the digest (PHASE 05)', () => {
+  it('shows one load of evidence as one line and counts it in the digest', async () => {
+    await registerPrincipal(db, INTEGRATION);
+    const source = createSource(
+      sourceData({ name: 'Test forum' }),
+      createCtx(sourceIdSchema, SYSTEM, 3),
+    );
+    await db.repositories.sources.insert(source);
+    const snapshot = createSourceSnapshot(
+      {
+        sourceId: source.id,
+        requestUrl: 'https://forum.example.com/api/latest.json',
+        fetchedAt: at(4),
+        contentSha256: 'b'.repeat(64),
+        itemCount: 3,
+        evidenceCount: 3,
+      },
+      createCtx(sourceSnapshotIdSchema, INTEGRATION, 4),
+    );
+    await db.transaction(
+      async ({ repositories }) => {
+        await repositories.sourceSnapshots.insert(snapshot);
+        for (let index = 0; index < 3; index += 1) {
+          await repositories.evidence.insert(
+            createEvidence(
+              evidenceData(source.id, { snapshotId: snapshot.id, externalId: `item-${index}` }),
+              createCtx(evidenceIdSchema, INTEGRATION, 4),
+            ),
+          );
+        }
+      },
+      { correlationId: `evidence-collect-${snapshot.id}` },
+    );
+
+    const journal = (await press('jr:day')).edit.text;
+    expect(journal).toContain('Интеграция source:test-forum · ➕ Загрузка источника');
+    expect(journal).toContain('01.10 13:04 · Интеграция source:test-forum · ➕ Доказательство ×3');
+    const [digest] = await command('digest');
+    expect(digest?.text).toMatch(/📚 Новых доказательств за сутки: \d+ → \/journal/);
+  });
+});
+
+describe('🧩 /pains (PHASE 06)', () => {
+  it('explains when nothing was found yet and records the view in the access log', async () => {
+    const [reply] = await command('pains');
+    expect(reply?.text).toBe(NO_PAINS_TEXT);
+    const [view] = await db.access.list({ decision: 'allowed', limit: 1 });
+    expect(view).toMatchObject({ permission: 'research.read', actorType: 'owner' });
+  });
+});
+
+describe('💡 /opportunities (PHASE 07)', () => {
+  it('explains when there is nothing yet and records the view in the access log', async () => {
+    const [reply] = await command('opportunities');
+    expect(reply?.text).toBe(NO_OPPORTUNITIES_TEXT);
+    const [view] = await db.access.list({ decision: 'allowed', limit: 1 });
+    expect(view).toMatchObject({ permission: 'research.read', actorType: 'owner' });
+  });
+});
+
+describe('🤖 AI in /status and the digest (PHASE 09)', () => {
+  it('shows today against its allowance, the month against $50 and each provider', async () => {
+    const call = {
+      task: 'redact-names',
+      taskVersion: 1,
+      purpose: 'task',
+      inputTokens: 100,
+      outputTokens: 10,
+      latencyMs: 5,
+      actorType: 'system',
+      actorId: 'evidence-engine',
+    } as const;
+    await db.aiCalls.record({
+      ...call,
+      occurredAt: at(10),
+      provider: 'anthropic',
+      model: 'claude-haiku-5-5',
+      costMicroUsd: 120_000,
+      outcome: 'ok',
+    });
+    await db.aiCalls.record({
+      ...call,
+      occurredAt: at(11),
+      provider: 'openai',
+      model: 'gpt-5.4-mini',
+      costMicroUsd: 10_000,
+      outcome: 'failed',
+      failure: 'rate_limited',
+    });
+
+    // 1 October: $50 over 31 days.
+    const [, ai] = await center.statusLines();
+    expect(ai).toMatch(
+      /^🤖 AI сегодня: \$0\.13 из \$1\.61 · за месяц \$0\.13 из \$50\.00\nClaude ✓ \d\d\.\d\d \d\d:\d\d · GPT — · Gemini —$/,
+    );
+    const [digest] = await command('digest');
+    expect(digest?.text).toContain('🤖 AI за сутки: $0.13 · вызовов 2, с ошибкой 1');
   });
 });
 

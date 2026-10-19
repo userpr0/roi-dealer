@@ -18,12 +18,18 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@roi-dealer/brain": "workspace:*",
+    "@roi-dealer/crm": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/economics": "workspace:*",
     "@roi-dealer/events": "workspace:*",
+    "@roi-dealer/media": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
+    "@roi-dealer/rewards": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/site": "workspace:*",
     "@roi-dealer/telegram": "workspace:*"
   }
 }

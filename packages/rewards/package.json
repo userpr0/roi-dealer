@@ -2,7 +2,7 @@
   "name": "@roi-dealer/rewards",
   "version": "0.0.0",
   "private": true,
-  "description": "Reward engine",
+  "description": "Reward engine: rules and checks of rewards for verified contributions (PHASE 17)",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,8 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/domain": "workspace:*"
   }
 }

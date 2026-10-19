@@ -18,6 +18,7 @@ import {
 } from '@roi-dealer/domain';
 import {
   ConcurrencyError,
+  ConstraintViolationError,
   type AccessLogEntry,
   type Database,
   type Repositories,
@@ -55,16 +56,7 @@ export async function requestAccess(
     actor: PLATFORM,
     at: options.at,
   });
-  const request = createApprovalRequest(
-    {
-      kind: 'access_grant',
-      title: `Доступ: ${data.displayName}`,
-      summary: `${actorText(data.actor)}. ${data.purpose}`,
-      subject: { type: 'principal', id: principal.id },
-      expiresAt: toTimestamp(new Date(timestampMs(options.at) + ACCESS_REQUEST_TTL_MS)),
-    },
-    { id: approvalRequestIdSchema.parse(uuidv7()), actor: PLATFORM, at: options.at },
-  );
+  const request = accessGrantRequest(principal, options.at);
   await database.transaction(
     async ({ repositories }) => {
       await repositories.principals.insert(principal);
@@ -73,6 +65,77 @@ export async function requestAccess(
     { correlationId: options.correlationId },
   );
   return { principal, request };
+}
+
+/** The `access_grant` card for a pending identity, valid for `ACCESS_REQUEST_TTL_MS`. */
+function accessGrantRequest(principal: Principal, at: Timestamp): ApprovalRequest {
+  return createApprovalRequest(
+    {
+      kind: 'access_grant',
+      title: `Доступ: ${principal.displayName}`,
+      summary: `${actorText(principal.actor)}. ${principal.purpose}`,
+      subject: { type: 'principal', id: principal.id },
+      expiresAt: toTimestamp(new Date(timestampMs(at) + ACCESS_REQUEST_TTL_MS)),
+    },
+    { id: approvalRequestIdSchema.parse(uuidv7()), actor: PLATFORM, at },
+  );
+}
+
+/**
+ * Where an identity stands after `ensureAccessRequest`: just requested, waiting for the owner,
+ * asked again because the previous request expired, or decided (`active` / `suspended` /
+ * `revoked`).
+ */
+export type AccessRequestState =
+  'requested' | 'waiting' | 'renewed' | Exclude<PrincipalStatus, 'pending'>;
+
+/**
+ * Asks for access once per actor (PHASE 05: integrations set up on every start of the worker).
+ * A pending identity whose request expired unanswered is asked for again; a decided identity
+ * is left as the owner decided it.
+ */
+export async function ensureAccessRequest(
+  database: Database,
+  data: NewPrincipal,
+  options: { readonly at: Timestamp; readonly correlationId?: string | undefined },
+): Promise<{ state: AccessRequestState; principal: Principal }> {
+  let principal = await database.repositories.principals.getByActor(data.actor);
+  if (principal === undefined) {
+    try {
+      return {
+        state: 'requested',
+        principal: (await requestAccess(database, data, options)).principal,
+      };
+    } catch (error) {
+      // Another process registered the actor at the same time: continue with its identity.
+      if (
+        !(error instanceof ConstraintViolationError) ||
+        error.constraint !== 'principals_actor_key'
+      ) {
+        throw error;
+      }
+      principal = await database.repositories.principals.getByActor(data.actor);
+      if (principal === undefined) throw error;
+    }
+  }
+  if (principal.status !== 'pending') return { state: principal.status, principal };
+
+  const subjectId = principal.id;
+  const pending = await database.repositories.approvalRequests.listByStatus('pending', {
+    limit: 1_000,
+  });
+  const open = pending.some(
+    (request) =>
+      request.kind === 'access_grant' &&
+      request.subject?.id === subjectId &&
+      timestampMs(request.expiresAt) > timestampMs(options.at),
+  );
+  if (open) return { state: 'waiting', principal };
+  const request = accessGrantRequest(principal, options.at);
+  await database.transaction(({ repositories }) => repositories.approvalRequests.insert(request), {
+    correlationId: options.correlationId,
+  });
+  return { state: 'renewed', principal };
 }
 
 /**
@@ -336,13 +399,35 @@ export interface AccessAudit {
 export const REFUSED_THROTTLE_MS = 10 * 60_000;
 const MAX_TRACKED_SENDERS = 1_000;
 
+/**
+ * Whether a refused sender's attempt is recorded now: at most once per sender per window, with
+ * a bounded memory of senders. Used by the bot and the Mini App's API (PHASE 13).
+ */
+export function createSenderThrottle(
+  windowMs: number = REFUSED_THROTTLE_MS,
+): (sender: string, nowMs: number) => boolean {
+  const lastRecorded = new Map<string, number>();
+  return (sender, nowMs) => {
+    const previous = lastRecorded.get(sender);
+    if (previous !== undefined && nowMs - previous < windowMs) return false;
+    if (lastRecorded.size >= MAX_TRACKED_SENDERS) {
+      for (const [known, at] of lastRecorded) {
+        if (nowMs - at >= windowMs) lastRecorded.delete(known);
+      }
+      if (lastRecorded.size >= MAX_TRACKED_SENDERS) lastRecorded.clear();
+    }
+    lastRecorded.set(sender, nowMs);
+    return true;
+  };
+}
+
 export function createAccessAudit(deps: {
   readonly database: Database;
   readonly logger: Logger;
   readonly now: () => Timestamp;
   readonly owner: (telegramUserId: number) => Actor;
 }): AccessAudit {
-  const lastRecorded = new Map<string, number>();
+  const shouldRecord = createSenderThrottle();
 
   async function record(entry: AccessLogEntry): Promise<void> {
     try {
@@ -371,16 +456,7 @@ export function createAccessAudit(deps: {
 
     async refused({ userId, reason, updateId }) {
       const actorId = `telegram:${userId ?? 'unknown'}`;
-      const nowMs = timestampMs(deps.now());
-      const previous = lastRecorded.get(actorId);
-      if (previous !== undefined && nowMs - previous < REFUSED_THROTTLE_MS) return;
-      if (lastRecorded.size >= MAX_TRACKED_SENDERS) {
-        for (const [sender, at] of lastRecorded) {
-          if (nowMs - at >= REFUSED_THROTTLE_MS) lastRecorded.delete(sender);
-        }
-        if (lastRecorded.size >= MAX_TRACKED_SENDERS) lastRecorded.clear();
-      }
-      lastRecorded.set(actorId, nowMs);
+      if (!shouldRecord(actorId, timestampMs(deps.now()))) return;
       await record({
         occurredAt: deps.now(),
         channel: 'telegram',

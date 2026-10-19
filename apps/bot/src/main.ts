@@ -63,8 +63,12 @@ async function main(): Promise<void> {
     database,
     logger,
     deliverDigest: (text) => client.sendMessage({ chatId: ownerUserId, text }),
+    deliverCard: (text, keyboard) => client.sendMessage({ chatId: ownerUserId, text, keyboard }),
+    cardIntervalMs: config.DECISION_CARDS_INTERVAL_MS,
+    publicApiUrl: config.PUBLIC_API_URL,
   });
   shutdown.register('daily-digest', () => commandCenter.stopDigest());
+  shutdown.register('decision-cards', () => commandCenter.stopCards());
 
   const commands = createBotCommands({
     ...runtime,
@@ -113,6 +117,7 @@ async function main(): Promise<void> {
 
   await notifier.notify(startedText(runtime));
   commandCenter.startDigest();
+  commandCenter.startCards();
   logger.info('bot started', {
     node_env: config.NODE_ENV,
     version: config.APP_VERSION,

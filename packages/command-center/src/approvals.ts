@@ -12,6 +12,8 @@ import {
 import { ConcurrencyError, type Database, type Repositories } from '@roi-dealer/database';
 import { callbackButton, type CallbackContext, type InlineKeyboard } from '@roi-dealer/telegram';
 import { applyAccessDecision } from './access.js';
+import { applyExperimentLaunchDecision } from './experiments.js';
+import { applyPayoutDecision } from './rewards.js';
 import { APPROVAL_KIND_LABELS, formatTime, shorten } from './texts.js';
 
 /** Buttons of approval cards: `ap:<action>:<request id>`. */
@@ -110,9 +112,14 @@ function decidedAt(request: ApprovalRequest): string {
   return request.resolution === undefined ? '' : ` ${formatTime(request.resolution.decidedAt)}`;
 }
 
-const ACCESS_NOTES = {
+const NOTES = {
   granted: '\n🔐 Доступ выдан — /access',
   refused: '\n🔐 Доступ не выдан.',
+  launch_approved: '\n🧪 Запуск одобрен: запустите тест и нажмите ▶️ в /experiments.',
+  launch_rejected: '\n🧪 Тест вернулся к планированию — /experiments.',
+  payout_approved:
+    '\n🏆 Выплата одобрена: переведите деньги и отметьте /paid <номер> <ссылка> — /rewards.',
+  payout_rejected: '\n🏆 Начисление отменено: вклады снова можно вознаградить — /rewards.',
   none: '',
 } as const;
 
@@ -121,8 +128,12 @@ type ResolveOutcome =
   | {
       readonly outcome: 'resolved';
       readonly status: 'approved' | 'rejected';
-      /** For `access_grant` requests: whether the identity was granted (PHASE 04). */
-      readonly access?: 'granted' | 'refused' | undefined;
+      /**
+       * What the decision changed: the identity of an `access_grant` request (PHASE 04), the
+       * experiment of an `experiment_launch` request (PHASE 15), the reward of a `payout`
+       * request (PHASE 17).
+       */
+      readonly access?: Exclude<keyof typeof NOTES, 'none'> | undefined;
     }
   | { readonly outcome: 'closed'; readonly text: string }
   | { readonly outcome: 'not_found' };
@@ -207,7 +218,10 @@ export async function handleApprovalButton(
           { actor, at },
         );
         await repositories.approvalRequests.update(resolved, actor);
-        const access = await applyAccessDecision(repositories, resolved, actor, at);
+        const access =
+          (await applyAccessDecision(repositories, resolved, actor, at)) ??
+          (await applyExperimentLaunchDecision(repositories, resolved, actor, at)) ??
+          (await applyPayoutDecision(repositories, resolved, actor, at));
         return {
           outcome: 'resolved',
           status: resolved.status === 'approved' ? 'approved' : 'rejected',
@@ -241,7 +255,7 @@ export async function handleApprovalButton(
   const verdict =
     (result.status === 'approved'
       ? `✅ Одобрено${decidedAt(request)}${amountText(request)}`
-      : `❌ Отклонено${decidedAt(request)}`) + ACCESS_NOTES[result.access ?? 'none'];
+      : `❌ Отклонено${decidedAt(request)}`) + NOTES[result.access ?? 'none'];
   await context.edit(`${cardText(request)}\n\n${verdict}`);
   await context.answer(result.status === 'approved' ? 'Одобрено' : 'Отклонено');
 }

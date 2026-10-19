@@ -2,12 +2,31 @@ import postgres from 'postgres';
 import { correlationIdSchema, idempotencyKeySchema } from '@roi-dealer/events';
 import type { HealthCheck, Logger } from '@roi-dealer/observability';
 import { createAccessLog, type AccessLog, type AccessLogEntry } from './access-log.js';
+import {
+  createAgentRunLog,
+  createAgentWorkLog,
+  type AgentRunLog,
+  type AgentWorkLog,
+} from './agents.js';
+import { createAiCallLog, type AiCallLog } from './ai-calls.js';
+import { createBrainQueries, type BrainQueries } from './brain.js';
+import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
+import { createLeadContacts, type LeadContacts } from './lead-contacts.js';
+import { createPaymentEventLog, type PaymentEventLog } from './payments.js';
+import { createFunnelLog, type FunnelLog } from './experiments.js';
+import { createStatsQueries, type StatsQueries } from './stats.js';
+import { createJudgementLog, type JudgementLog } from './judgements.js';
 import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
 import { createEventStore, type EventStore } from './event-store.js';
 import { atomic, type Sql, type TransactionSql } from './executor.js';
 import { createRepositories, type Repositories } from './repositories.js';
 import type { WriteContext } from './repository.js';
+import { createSignalExtractionLog, type SignalExtractionLog } from './signal-extractions.js';
+import {
+  createOpportunityAssessmentLog,
+  type OpportunityAssessmentLog,
+} from './opportunity-assessments.js';
 
 export interface DatabaseOptions {
   /** `postgres://` URL with credentials. Never logged. */
@@ -25,6 +44,22 @@ export interface TransactionScope {
   readonly sql: TransactionSql;
   readonly repositories: Repositories;
   readonly events: EventStore;
+  /** Recorded in the same transaction as the signal and pain it describes (PHASE 06). */
+  readonly signalExtractions: SignalExtractionLog;
+  /** Recorded in the same transaction as the opportunity it created (PHASE 07). */
+  readonly opportunityAssessments: OpportunityAssessmentLog;
+  /** Recorded in the same transaction as the result an agent stored (PHASE 10). */
+  readonly agentWork: AgentWorkLog;
+  /** Recorded in the same transaction as the opportunity it completes (PHASE 11). */
+  readonly judgements: JudgementLog;
+  /** Recorded in the same transaction as the spend and stop it may cause (PHASE 15). */
+  readonly funnel: FunnelLog;
+  /** Sums over the ledgers, read in the same transaction as the money they limit (PHASE 16). */
+  readonly economics: EconomicsQueries;
+  /** Emails of leads, written and deleted with the lead's change (PHASE 20). */
+  readonly leadContacts: LeadContacts;
+  /** Payment events, recorded with the revenue or refund they create (PHASE 20b). */
+  readonly payments: PaymentEventLog;
 }
 
 export interface TransactionOptions {
@@ -54,6 +89,30 @@ export interface Database {
   readonly events: EventStore;
   /** Views and refused access attempts (PHASE 04); refused writes are recorded automatically. */
   readonly access: AccessLog;
+  /** Journal of AI calls: tokens, cost and failures (PHASE 09). */
+  readonly aiCalls: AiCallLog;
+  /** Journal of evidence analysis for pains (PHASE 06). */
+  readonly signalExtractions: SignalExtractionLog;
+  /** Journal of opportunity assessments (PHASE 07). */
+  readonly opportunityAssessments: OpportunityAssessmentLog;
+  /** Company Brain: search, counts and totals by fixed parameterized queries (PHASE 08). */
+  readonly brain: BrainQueries;
+  /** Journal of agent runs (PHASE 10). */
+  readonly agentRuns: AgentRunLog;
+  /** Journal of the object versions agents worked on (PHASE 10). */
+  readonly agentWork: AgentWorkLog;
+  /** Journal of the judges' assessments of opportunities (PHASE 11). */
+  readonly judgements: JudgementLog;
+  /** The funnel of experiments and their spend (PHASE 15). */
+  readonly funnel: FunnelLog;
+  /** Sums over the cost and revenue ledgers and the automated spend per day (PHASE 16). */
+  readonly economics: EconomicsQueries;
+  /** Counts of the cycle and the system's metrics (PHASE 13). */
+  readonly stats: StatsQueries;
+  /** Emails of leads, apart from the history (PHASE 20). */
+  readonly leadContacts: LeadContacts;
+  /** What the payment provider reported, once per event (PHASE 20b). */
+  readonly payments: PaymentEventLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -89,7 +148,19 @@ function writeContext(
 }
 
 function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
-  return { sql: tx, repositories: createRepositories(tx, context), events: createEventStore(tx) };
+  return {
+    sql: tx,
+    repositories: createRepositories(tx, context),
+    events: createEventStore(tx),
+    signalExtractions: createSignalExtractionLog(tx),
+    opportunityAssessments: createOpportunityAssessmentLog(tx),
+    agentWork: createAgentWorkLog(tx),
+    judgements: createJudgementLog(tx),
+    funnel: createFunnelLog(tx),
+    economics: createEconomicsQueries(tx),
+    leadContacts: createLeadContacts(tx),
+    payments: createPaymentEventLog(tx),
+  };
 }
 
 /**
@@ -142,6 +213,18 @@ export function createDatabase(options: DatabaseOptions): Database {
     repositories: createRepositories(sql, { onAccessDenied: recordDenial }),
     events: createEventStore(sql),
     access,
+    aiCalls: createAiCallLog(sql),
+    signalExtractions: createSignalExtractionLog(sql),
+    opportunityAssessments: createOpportunityAssessmentLog(sql),
+    brain: createBrainQueries(sql),
+    agentRuns: createAgentRunLog(sql),
+    agentWork: createAgentWorkLog(sql),
+    judgements: createJudgementLog(sql),
+    funnel: createFunnelLog(sql),
+    economics: createEconomicsQueries(sql),
+    stats: createStatsQueries(sql),
+    leadContacts: createLeadContacts(sql),
+    payments: createPaymentEventLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

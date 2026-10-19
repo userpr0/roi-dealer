@@ -4,6 +4,7 @@ import {
   calculateReward,
   changeSourceStatus,
   completeExperiment,
+  confirmHonestChecks,
   contributionIdSchema,
   costEntryIdSchema,
   createApprovalRequest,
@@ -175,7 +176,9 @@ async function storeChain() {
   );
   await repos.approvalRequests.update(launchApproved, OWNER);
 
-  const awaiting = requestExperimentApproval(planned, launch.id, ctx(SYSTEM, 9));
+  const checked = confirmHonestChecks(planned, selected, ctx(OWNER, 9));
+  await repos.experiments.update(checked, OWNER);
+  const awaiting = requestExperimentApproval(checked, launch.id, ctx(SYSTEM, 9));
   await repos.experiments.update(awaiting, SYSTEM);
   const approved = approveExperiment(awaiting, launchApproved, ctx(OWNER, 11));
   await repos.experiments.update(approved, OWNER);

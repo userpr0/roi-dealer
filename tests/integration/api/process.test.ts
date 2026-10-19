@@ -78,7 +78,10 @@ describe('api process with a database', () => {
     await database.drop();
   });
 
-  async function healthOf(databaseUrl: string): Promise<{ status: number; body: unknown }> {
+  async function healthOf(
+    databaseUrl: string,
+    waitFor?: string,
+  ): Promise<{ status: number; body: unknown; logs: readonly unknown[] }> {
     const service = startService('apps/api/src/main.ts', {
       NODE_ENV: 'test',
       API_HOST: '127.0.0.1',
@@ -90,20 +93,28 @@ describe('api process with a database', () => {
       const listening = await service.waitForLog((line) => line['message'] === 'api listening');
       const response = await fetch(`http://127.0.0.1:${String(listening['port'])}/health`);
       const body: unknown = await response.json();
+      if (waitFor !== undefined) await service.waitForLog((line) => line['message'] === waitFor);
       service.child.kill('SIGTERM');
       await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });
       expect(JSON.stringify(service.logs)).not.toContain('roi_dealer_dev_only');
-      return { status: response.status, body };
+      return { status: response.status, body, logs: service.logs };
     } finally {
       service.kill();
     }
   }
 
   it('reports the database check in GET /health', async () => {
-    await expect(healthOf(database.url)).resolves.toMatchObject({
+    const result = await healthOf(database.url, 'page counter access');
+    expect(result).toMatchObject({
       status: 200,
       body: { status: 'ok', service: 'api', checks: { database: { status: 'ok' } } },
     });
+    // The page counter asks the owner for access in /decisions (PHASE 21).
+    expect(result.logs).toContainEqual(
+      expect.objectContaining({ message: 'page counter access', state: 'requested' }),
+    );
+    const [request] = await database.database.repositories.approvalRequests.listByStatus('pending');
+    expect(request?.title).toBe('Доступ: Сайт тестов');
   });
 
   it('answers 503 when the database is unreachable', async () => {

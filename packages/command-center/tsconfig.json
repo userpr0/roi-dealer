@@ -6,12 +6,44 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../domain" },
-    { "path": "../events" },
-    { "path": "../database" },
-    { "path": "../observability" },
-    { "path": "../telegram" },
-    { "path": "../policies" },
-    { "path": "../shared" }
+    {
+      "path": "../brain"
+    },
+    {
+      "path": "../crm"
+    },
+    {
+      "path": "../database"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../economics"
+    },
+    {
+      "path": "../events"
+    },
+    {
+      "path": "../media"
+    },
+    {
+      "path": "../observability"
+    },
+    {
+      "path": "../policies"
+    },
+    {
+      "path": "../rewards"
+    },
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../site"
+    },
+    {
+      "path": "../telegram"
+    }
   ]
 }

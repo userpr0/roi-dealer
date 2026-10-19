@@ -1,0 +1,29 @@
+{
+  "name": "@roi-dealer/opportunities",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Opportunity Engine: AI frames pains as opportunities, code scores them and routes the business model (PHASE 07)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "@roi-dealer/signals": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

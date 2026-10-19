@@ -1,0 +1,24 @@
+{
+  "name": "@roi-dealer/brain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Company Brain v0.1: search, questions answered from the database, owner notes, similar cases (PHASE 08)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*"
+  }
+}
