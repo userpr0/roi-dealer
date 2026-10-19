@@ -1,6 +1,6 @@
 # @roi-dealer/command-center
 
-**Статус:** реализован (13b — ранний шаг PHASE 13, D-002, D-009, D-010, [спецификация](../../docs/phases/13b_owner_approvals.md); доступы — PHASE 04, [спецификация](../../docs/phases/04_identity_access.md); боли, возможности и Company Brain — PHASE 06–08; агенты и рыночный контекст в `/opportunities` — PHASE 10).
+**Статус:** реализован (13b — ранний шаг PHASE 13, D-002, D-009, D-010, [спецификация](../../docs/phases/13b_owner_approvals.md); доступы — PHASE 04, [спецификация](../../docs/phases/04_identity_access.md); боли, возможности и Company Brain — PHASE 06–08; агенты и рыночный контекст в `/opportunities` — PHASE 10; оценки судей там же — PHASE 11).
 
 Логика пульта владельца в Telegram. `apps/bot` только связывает её с Telegram (`@roi-dealer/telegram`) и PostgreSQL (`@roi-dealer/database`).
 

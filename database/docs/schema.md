@@ -203,6 +203,14 @@ rewards ─< reward_contributions >── contributions
   - `result` — `jsonb`-объект: id, числа и проверенный поисковый запрос (до 60 символов латиницей), без текстов.
 - **Рыночный контекст** — `knowledge_assets` вида `market_data` с тегом `market-context` и `opportunity_id`; в `body` — JSON по `marketContextSchema` (`@roi-dealer/domain`): альтернативы, суммы и покупатели с цитатами и id Evidence.
 
+## Judges (PHASE 11)
+
+- **`opportunity_judgements`** — оценка одной версии возможности по одному критерию, только добавление (триггеры `opportunity_judgements_append_only`, `opportunity_judgements_no_truncate`):
+  - возможность, её версия и критерий (`market`, `pain_value`, `economics`, `buildability`, `risk`, `reuse`) — уникально (`opportunity_judgements_once`);
+  - итог `judged` / `rejected` / `failed`; балл 1–5, «подтверждено доказательствами» и обоснование — ровно у `judged`;
+  - до 3 опасений, до 8 id Evidence (`uuid[]`, без FK на элементы массива — проверяет код), версия задачи, актор, `correlation_id`.
+- Итог 0–100 не хранится: его считает `judgePanel` (домен) из баллов.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
