@@ -32,3 +32,4 @@ ADR фиксирует значимое архитектурное решени�
 | [0005](0005-postgresql-driver-and-migrations.md)          | Драйвер PostgreSQL и миграции                                               | Accepted | 2026-09-25 |
 | [0006](0006-ai-providers-and-runtime.md)                  | AI-провайдеры (Anthropic, OpenAI, Google) и AI Runtime                      | Accepted | 2026-10-18 |
 | [0007](0007-experiment-funnel-in-postgresql.md)           | Воронка экспериментов — в собственной PostgreSQL                            | Accepted | 2026-10-19 |
+| [0008](0008-miniapp-data-through-api.md)                  | Данные Mini App — через `api` с проверкой подписи Telegram                  | Accepted | 2026-10-19 |

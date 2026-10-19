@@ -112,7 +112,8 @@
   - `hash = HMAC_SHA256(secret, data_check_string)`;
   - сравнение в постоянное время;
   - свежесть `auth_date` — не старше 24 часов;
-  - из `user` берётся только `id`.
+  - из `user` берётся только `id`;
+  - поле `signature` (подпись Telegram для третьих сторон) принимается внутри и вне проверяемой строки: обе формы закрыты HMAC с токеном бота.
 
 #### 7. `apps/api`: `GET /api/panel`
 
@@ -124,10 +125,10 @@
   - экономика месяца;
   - тесты с метрикой и деньгами;
   - статистика.
-- **Только чтение.** Каждый просмотр — в журнал доступа (канал `miniapp`, право `status.read`). Изменения — только кнопками в боте.
+- **Только чтение.** Каждый просмотр и каждый отказ чужому аккаунту — в журнал доступа (канал `telegram`, право `status.read`, корреляция `miniapp-<id>`). Изменения — только кнопками в боте.
 - **CORS** — только для origin Mini App (`MINIAPP_ORIGINS`, по умолчанию `https://userpr0.github.io`); `OPTIONS` для preflight.
 - **Логика снимка** — в `@roi-dealer/command-center` (`panelSnapshot`); `apps/api` её только подключает.
-- **Конфигурация:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`, `DATABASE_URL`, `MINIAPP_ORIGINS`. Токен нужен только для проверки подписи и в логи не попадает.
+- **Конфигурация:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_USER_ID`, `DATABASE_URL`, `MINIAPP_ORIGINS`. Токен нужен только для проверки подписи и в логи не попадает.
 - **Docker-образ `apps/api/Dockerfile`** — как у бота.
 
 #### 8. `apps/miniapp`
@@ -162,6 +163,6 @@
 
 ## Действия владельца после вливания
 
-1. **Railway:** сервис `api` по [docs/deploy/api.md](../deploy/api.md). Переменные: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_ID`. Публичный домен.
+1. **Railway:** сервис `api` по [docs/deploy/api.md](../deploy/api.md). Переменные: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_USER_ID`. Публичный домен.
 2. **GitHub → Settings → Variables:** `MINIAPP_API_URL` = адрес сервиса `api`. Mini App пересоберётся после следующего зелёного CI.
 3. **Стоимость:** ещё один небольшой сервис в Railway — в пределах лимита инфраструктуры $20 в месяц (D-007). Проверьте в `/economics` после первого счёта.
