@@ -92,6 +92,18 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  costPerApprovedLanding,
+  handleMediaButton,
+  LANDING_TASK,
+  landingCardText,
+  landingCostLine,
+  landingKeyboard,
+  landingLine,
+  MEDIA_PREFIX,
+  previewUrl,
+  type MediaFlowDeps,
+} from './media.js';
+export {
   applyPayoutDecision,
   CONTRIBUTION_KIND_LABELS,
   CONTRIBUTION_PREFIX,

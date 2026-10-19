@@ -1,0 +1,25 @@
+{
+  "name": "@roi-dealer/media",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Media Factory: landing pages and ad texts of experiments (PHASE 19a)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@roi-dealer/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

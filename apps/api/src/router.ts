@@ -13,6 +13,8 @@ export interface ApiResponse {
   readonly status: number;
   /** `undefined` sends no body (204). */
   readonly body: unknown;
+  /** A page instead of JSON (PHASE 19a): sent with a CSP that allows no scripts. */
+  readonly html?: string | undefined;
   readonly headers?: Readonly<Record<string, string>>;
 }
 
@@ -22,19 +24,28 @@ export interface PanelRoute {
   read(authorization: string | undefined, correlationId: string | undefined): Promise<ApiResponse>;
 }
 
+/** Public pages of experiments (PHASE 19a): present when the database is configured. */
+export interface SiteRoutes {
+  /** The private preview of a landing by its token. */
+  preview(token: string): Promise<{ readonly status: number; readonly html?: string | undefined }>;
+}
+
 export interface RouterDeps {
   readonly health: HealthRegistry;
   /** Absent until the database and the bot token are configured: `/api/panel` answers 503. */
   readonly panel?: PanelRoute | undefined;
+  readonly site?: SiteRoutes | undefined;
 }
 
 export type Router = (request: ApiRequest) => Promise<ApiResponse>;
 
 export const PANEL_PATH = '/api/panel';
+const PREVIEW_PATH = /^\/p\/([^/]{1,100})$/;
 
 /**
- * Transport-independent request routing: `GET /health` (PHASE 00) and `GET /api/panel` for the
- * Mini App (PHASE 13). Kept free of `node:http` so routes can be unit-tested without sockets.
+ * Transport-independent request routing: `GET /health` (PHASE 00), `GET /api/panel` for the
+ * Mini App (PHASE 13) and the public pages of experiments (PHASE 19a). Kept free of
+ * `node:http` so routes can be unit-tested without sockets.
  */
 export function createRouter(deps: RouterDeps): Router {
   return async (request) => {
@@ -50,6 +61,18 @@ export function createRouter(deps: RouterDeps): Router {
       return { status: report.status === 'down' ? 503 : 200, body: report };
     }
     if (request.path === PANEL_PATH) return panel(deps, request);
+    const preview = PREVIEW_PATH.exec(request.path);
+    if (preview !== null && deps.site !== undefined) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return {
+          status: 405,
+          body: { error: 'method_not_allowed' },
+          headers: { allow: 'GET, HEAD' },
+        };
+      }
+      const page = await deps.site.preview(preview[1] ?? '');
+      return { status: page.status, body: undefined, html: page.html };
+    }
     return { status: 404, body: { error: 'not_found' } };
   };
 }

@@ -8,6 +8,7 @@ import {
   experimentSchema,
   hypothesisSchema,
   knowledgeAssetSchema,
+  mediaAssetSchema,
   opportunitySchema,
   painSchema,
   principalSchema,
@@ -25,6 +26,7 @@ import {
   type Experiment,
   type Hypothesis,
   type KnowledgeAsset,
+  type MediaAsset,
   type Metric,
   type Opportunity,
   type Pain,
@@ -55,8 +57,8 @@ import {
 
 /*
  * Mapping of the 13 PHASE 01 entities (migration 0001), SystemControl (migration 0003, 13b),
- * Principal (migration 0004, PHASE 04) and SourceSnapshot (migration 0005, PHASE 05) to their
- * tables (database/docs/schema.md).
+ * Principal (migration 0004, PHASE 04), SourceSnapshot (migration 0005, PHASE 05) and later
+ * entities (RevenueEntry 0013, MediaAsset 0015) to their tables (database/docs/schema.md).
  * `toColumns` writes every column; `fromRow` rebuilds the domain object for schema validation.
  */
 
@@ -545,6 +547,48 @@ export const revenueEntriesTable: TableSpec<RevenueEntry> = {
       }),
       reversalOf: row['reversal_of'],
       ...readImmutableMeta(row),
+    }),
+};
+
+/** JSON text read back for schema validation; text that is not JSON fails validation. */
+function jsonText(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+export const mediaAssetsTable: TableSpec<MediaAsset> = {
+  entity: 'media_asset',
+  table: 'media_assets',
+  schema: mediaAssetSchema,
+  links: {},
+  toColumns: (asset) => ({
+    id: asset.id,
+    kind: asset.kind,
+    experiment_id: asset.experimentId,
+    hypothesis_id: asset.hypothesisId,
+    opportunity_id: asset.opportunityId,
+    content: JSON.stringify(asset.content),
+    slug: asset.slug,
+    preview_token: asset.previewToken,
+    status: asset.status,
+    ...mutableMetaColumns(asset),
+  }),
+  fromRow: (row) =>
+    withoutNulls({
+      id: row['id'],
+      kind: row['kind'],
+      experimentId: row['experiment_id'],
+      hypothesisId: row['hypothesis_id'],
+      opportunityId: row['opportunity_id'],
+      content: jsonText(row['content']),
+      slug: row['slug'],
+      previewToken: row['preview_token'],
+      status: row['status'],
+      ...readMutableMeta(row),
     }),
 };
 

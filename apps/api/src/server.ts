@@ -21,12 +21,36 @@ export interface ApiServer {
   close(): Promise<void>;
 }
 
+/**
+ * Pages are static HTML built by code (PHASE 19a): no scripts, frames or external resources;
+ * forms post only to this site.
+ */
+export const PAGE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  'content-security-policy':
+    "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'no-referrer',
+};
+
 function send(
   res: ServerResponse,
   method: string | undefined,
   response: ApiResponse,
   correlationId: string,
 ): void {
+  if (response.html !== undefined) {
+    res.writeHead(response.status, {
+      ...response.headers,
+      ...PAGE_SECURITY_HEADERS,
+      'content-type': 'text/html; charset=utf-8',
+      'content-length': Buffer.byteLength(response.html),
+      'cache-control': 'no-store',
+      [CORRELATION_ID_HEADER]: correlationId,
+    });
+    res.end(method === 'HEAD' ? undefined : response.html);
+    return;
+  }
   if (response.body === undefined) {
     res.writeHead(response.status, {
       ...response.headers,

@@ -110,6 +110,7 @@ export {
   type PrincipalRepository,
   type Repositories,
   type SourceRepository,
+  type MediaAssetRepository,
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
 export { createEconomicsQueries, type EconomicsQueries, type MoneyPeriod } from './economics.js';

@@ -55,6 +55,7 @@ import {
   type FunnelTotals,
   type HonestCheck,
   type Hypothesis,
+  type MediaAsset,
   type Metric,
   type Money,
   type MoneyFlow,
@@ -74,6 +75,7 @@ import {
   type CommandContext,
   type InlineKeyboard,
 } from '@roi-dealer/telegram';
+import { landingLine } from './media.js';
 import { formatTime, shorten } from './texts.js';
 
 /*
@@ -284,6 +286,8 @@ export interface ExperimentView {
   /** Spend, revenue, refunds and customers of the test (PHASE 16). */
   readonly money: MoneyFlow;
   readonly request?: ApprovalRequest | undefined;
+  /** The latest landing of a test with the `landing` artifact (PHASE 19a). */
+  readonly landing?: MediaAsset | undefined;
 }
 
 type Scope = Pick<TransactionScope, 'repositories' | 'funnel' | 'economics'>;
@@ -334,6 +338,13 @@ async function viewsOf(
   const totals = await funnel.totals(ids);
   const spent = await funnel.spent(ids);
   const money = await economics.moneyFlows(ids);
+  // Oldest first: the last one of each test is its latest landing (PHASE 19a).
+  const landings = new Map(
+    (await repositories.mediaAssets.listByExperiments(ids)).map((item) => [
+      item.experimentId,
+      item,
+    ]),
+  );
   const views: ExperimentView[] = [];
   for (const [index, experiment] of experiments.entries()) {
     const hypothesis = hypotheses.get(experiment.hypothesisId);
@@ -351,6 +362,7 @@ async function viewsOf(
         experiment.approvalRequestId === undefined
           ? undefined
           : requests.get(experiment.approvalRequestId),
+      landing: landings.get(experiment.id),
     });
   }
   return views;
@@ -411,6 +423,12 @@ export function experimentCardText(view: ExperimentView, at: Timestamp): string 
     `Воронка: ${funnelLine(view.totals)}`,
     `Потрачено ${formatUsd(view.spent)} из ${formatUsd(experiment.testBudget)} · stop-loss ${formatUsd(experiment.stopLoss)}`,
   ];
+  if (
+    experiment.artifact === 'landing' &&
+    !['completed', 'cancelled'].includes(experiment.status)
+  ) {
+    lines.push(landingLine(view.landing));
+  }
   const money = moneyLine(view.money);
   if (money !== undefined) lines.push(money);
   if (experiment.stopReason !== undefined) {

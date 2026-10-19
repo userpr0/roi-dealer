@@ -1,9 +1,16 @@
-import type { ActorType, Opportunity, Pain, Timestamp } from '@roi-dealer/domain';
+import type {
+  ActorType,
+  Experiment,
+  MediaAssetId,
+  Opportunity,
+  Pain,
+  Timestamp,
+} from '@roi-dealer/domain';
 import { translated } from './errors.js';
 import type { Executor, Row } from './executor.js';
 import { readRows } from './repository.js';
 import { instant, withoutNulls } from './rows.js';
-import { opportunitiesTable, painsTable } from './tables.js';
+import { experimentsTable, opportunitiesTable, painsTable } from './tables.js';
 
 /*
  * Journals of the agents (PHASE 10, migration 0010): runs for /agents and the object versions
@@ -49,7 +56,7 @@ export interface AgentRunLog {
 
 export const AGENT_WORK_OUTCOMES = ['done', 'empty', 'rejected', 'failed'] as const;
 export type AgentWorkOutcome = (typeof AGENT_WORK_OUTCOMES)[number];
-export type AgentWorkSubject = 'pain' | 'opportunity';
+export type AgentWorkSubject = 'pain' | 'opportunity' | 'experiment' | 'media_asset';
 
 /** Ids, counts and short checked values only — never a text from evidence or a model. */
 export type AgentWorkResult = Readonly<Record<string, string | number | boolean>>;
@@ -96,6 +103,17 @@ export interface AgentWorkLog {
     readonly status?: 'draft' | 'approved' | undefined;
     readonly limit?: number | undefined;
   }): Promise<Opportunity[]>;
+  /**
+   * Tests that need a landing (PHASE 19a): artifact `landing`, not started yet, without a live
+   * asset; either their current version was not worked on, or a rejected asset waits for a
+   * rewrite (`rework`) and the test has at most `maxRewrites` rejected assets. Least recently
+   * changed first. Default 3, at most 100.
+   */
+  pendingLandings(options: {
+    readonly agent: string;
+    readonly maxRewrites: number;
+    readonly limit?: number | undefined;
+  }): Promise<{ readonly experiment: Experiment; readonly rework?: MediaAssetId | undefined }[]>;
   /** Newest first; default 50, at most 1 000. */
   list(options?: {
     readonly agent?: string | undefined;
@@ -243,6 +261,52 @@ export function createAgentWorkLog(executor: Executor): AgentWorkLog {
           limit ${limit}
         `;
         return readRows(executor, opportunitiesTable, rows);
+      }),
+
+    pendingLandings: (options) =>
+      translated(async () => {
+        const limit = bounded(options.limit, DEFAULT_PENDING, MAX_PENDING);
+        const reworkable = executor`
+          select m.id from media_assets m
+          where m.experiment_id = e.id and m.status = 'rejected'
+            and not exists (
+              select 1 from agent_work w
+              where w.agent = ${options.agent} and w.subject_type = 'media_asset'
+                and w.subject_id = m.id and w.subject_version = m.version
+            )
+          order by m.updated_at desc, m.id desc
+          limit 1
+        `;
+        const rows = await executor<Row[]>`
+          select e.*, (${reworkable}) as rework_id from experiments e
+          where e.artifact = 'landing'
+            and e.status in ('planned', 'awaiting_approval', 'approved')
+            and not exists (
+              select 1 from media_assets m
+              where m.experiment_id = e.id and m.status in ('draft', 'approved', 'released')
+            )
+            and (
+              select count(*) from media_assets m
+              where m.experiment_id = e.id and m.status = 'rejected'
+            ) <= ${options.maxRewrites}
+            and (
+              not exists (
+                select 1 from agent_work w
+                where w.agent = ${options.agent} and w.subject_type = 'experiment'
+                  and w.subject_id = e.id and w.subject_version = e.version
+              )
+              or exists (${reworkable})
+            )
+          order by e.updated_at, e.id
+          limit ${limit}
+        `;
+        const experiments = await readRows(executor, experimentsTable, rows);
+        return experiments.map((experiment) => {
+          const rework = rows.find((row) => row['id'] === experiment.id)?.['rework_id'];
+          return typeof rework === 'string'
+            ? { experiment, rework: rework as MediaAssetId }
+            : { experiment };
+        });
       }),
 
     list: (options = {}) =>

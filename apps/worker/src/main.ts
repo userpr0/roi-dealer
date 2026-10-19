@@ -2,6 +2,7 @@ import {
   AGENT_TASKS,
   createAgentScheduler,
   hypothesisDesignerAgent,
+  landingWriterAgent,
   marketAnalystAgent,
   opportunityAnalystAgent,
   painAnalystAgent,
@@ -27,6 +28,7 @@ import {
   createHackerNewsSearchConnector,
   EVIDENCE_ENGINE_ACTOR,
 } from '@roi-dealer/evidence';
+import { MEDIA_TASKS } from '@roi-dealer/media';
 import { createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
 import { OPPORTUNITY_TASKS } from '@roi-dealer/opportunities';
@@ -99,7 +101,14 @@ function main(): void {
     runtime: ai,
     database,
     logger,
-    tasks: [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS, ...AGENT_TASKS, ...JUDGE_TASKS],
+    tasks: [
+      ...AI_TASKS,
+      ...SIGNAL_TASKS,
+      ...OPPORTUNITY_TASKS,
+      ...AGENT_TASKS,
+      ...JUDGE_TASKS,
+      ...MEDIA_TASKS,
+    ],
     intervalMs: config.AI_MAINTENANCE_INTERVAL_MS,
   });
 
@@ -139,6 +148,7 @@ function main(): void {
             { agent: marketAnalystAgent(), intervalMs: config.MARKET_INTERVAL_MS },
             { agent: judgesAgent(), intervalMs: config.JUDGES_INTERVAL_MS },
             { agent: hypothesisDesignerAgent(), intervalMs: config.HYPOTHESES_INTERVAL_MS },
+            { agent: landingWriterAgent(), intervalMs: config.LANDING_INTERVAL_MS },
           ],
   });
   // The spend guard (PHASE 16) pauses automation when it spends twice its usual (D-014 п.10).

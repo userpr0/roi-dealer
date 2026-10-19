@@ -8,6 +8,7 @@ import type {
   Experiment,
   Hypothesis,
   KnowledgeAsset,
+  MediaAsset,
   Opportunity,
   OpportunityId,
   Pain,
@@ -41,6 +42,7 @@ import {
   experimentsTable,
   hypothesesTable,
   knowledgeAssetsTable,
+  mediaAssetsTable,
   opportunitiesTable,
   painsTable,
   principalsTable,
@@ -74,6 +76,15 @@ export interface Repositories {
   readonly principals: PrincipalRepository;
   /** Loads from catalog sources (PHASE 05). */
   readonly sourceSnapshots: Repository<SourceSnapshot>;
+  /** Creatives of experiments: landing pages and ad texts (PHASE 19a). */
+  readonly mediaAssets: MediaAssetRepository;
+}
+
+export interface MediaAssetRepository extends VersionedRepository<MediaAsset> {
+  /** Every asset of these experiments, oldest first. */
+  listByExperiments(ids: readonly string[]): Promise<MediaAsset[]>;
+  getBySlug(slug: string): Promise<MediaAsset | undefined>;
+  getByPreviewToken(token: string): Promise<MediaAsset | undefined>;
 }
 
 export interface SourceRepository extends VersionedRepository<Source> {
@@ -183,5 +194,29 @@ export function createRepositories(executor: Executor, context: WriteContext = {
       getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
     },
     sourceSnapshots: createRepository(executor, sourceSnapshotsTable, context),
+    mediaAssets: {
+      ...createVersionedRepository(executor, mediaAssetsTable, context),
+      listByExperiments: (ids) =>
+        translated(async () => {
+          if (ids.length === 0) return [];
+          const rows = await executor<Row[]>`
+            select * from media_assets where experiment_id = any(${[...ids]}::uuid[])
+            order by created_at, id
+          `;
+          return readRows(executor, mediaAssetsTable, rows);
+        }),
+      getBySlug: (slug) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`select * from media_assets where slug = ${slug}`;
+          return (await readRows(executor, mediaAssetsTable, rows))[0];
+        }),
+      getByPreviewToken: (token) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`
+            select * from media_assets where preview_token = ${token}
+          `;
+          return (await readRows(executor, mediaAssetsTable, rows))[0];
+        }),
+    },
   };
 }

@@ -79,6 +79,12 @@ export {
   researcherAgent,
   type ResearcherOptions,
 } from './research/researcher.js';
+export {
+  LANDING_ATTEMPTS,
+  LANDING_WRITER,
+  LANDING_WRITER_ACCESS,
+  landingWriterAgent,
+} from './landing/writer.js';
 export { failureCode, runAgent, type RunnerDeps, type RunResult } from './runner.js';
 export {
   createAgentScheduler,

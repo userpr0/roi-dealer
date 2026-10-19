@@ -22,6 +22,7 @@
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/evidence": "workspace:*",
+    "@roi-dealer/media": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/opportunities": "workspace:*",
     "@roi-dealer/shared": "workspace:*",

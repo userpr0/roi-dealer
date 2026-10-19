@@ -1,9 +1,10 @@
 import { createDatabase, createDatabaseHealthCheck } from '@roi-dealer/database';
 import { createHealthRegistry, createLogger } from '@roi-dealer/observability';
 import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
+import { previewPage } from '@roi-dealer/site';
 import { loadApiConfig } from './config.js';
 import { createPanelRoute } from './panel.js';
-import { createRouter, type PanelRoute } from './router.js';
+import { createRouter, type PanelRoute, type SiteRoutes } from './router.js';
 import { startApiServer } from './server.js';
 
 const SERVICE = 'api';
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
   });
 
   let panel: PanelRoute | undefined;
+  let site: SiteRoutes | undefined;
   if (config.DATABASE_URL === undefined) {
     logger.info('database not configured');
   } else {
@@ -35,6 +37,8 @@ async function main(): Promise<void> {
     });
     health.register(createDatabaseHealthCheck(database));
     shutdown.register('database', () => database.close());
+    // Public pages of experiments (PHASE 19a): landing previews.
+    site = { preview: (token) => previewPage(database, token) };
     // The Mini App's data (PHASE 13): only with the bot token to check Telegram's signature.
     if (config.TELEGRAM_BOT_TOKEN !== undefined && config.TELEGRAM_OWNER_USER_ID !== undefined) {
       panel = createPanelRoute({
@@ -51,7 +55,7 @@ async function main(): Promise<void> {
   const server = await startApiServer({
     host: config.API_HOST,
     port: config.API_PORT,
-    router: createRouter({ health, panel }),
+    router: createRouter({ health, panel, site }),
     logger,
   });
   shutdown.register('http-server', () => server.close());

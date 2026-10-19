@@ -44,7 +44,9 @@ import {
   PART_LABELS,
 } from './opportunities.js';
 import { AUTO_PAUSE_PREFIX } from '@roi-dealer/economics';
+import { activeExperimentViews } from './experiments.js';
 import { hypothesesReadyText } from './hypotheses.js';
+import { landingCardContext, landingCardText, landingKeyboard } from './media.js';
 import { shorten } from './texts.js';
 
 /*
@@ -416,6 +418,8 @@ export interface DecisionCardNotifierOptions {
   readonly deliver: (text: string, keyboard?: InlineKeyboard) => Promise<void>;
   readonly intervalMs?: number | undefined;
   readonly now?: () => number;
+  /** The api's public address, for the preview link of landing cards (PHASE 19a). */
+  readonly publicApiUrl?: string | undefined;
 }
 
 export interface DecisionCardNotifier {
@@ -429,7 +433,8 @@ export interface DecisionCardNotifier {
  * Sends each version of an opportunity under review to the owner once (PHASE 12): the card is
  * delivered inside an idempotent command (`decision-card-<id>-v<version>`), so a failed delivery
  * is retried and a delivered one never repeats; likewise one notice per approved opportunity
- * when its hypotheses are ready (PHASE 14). The kill switch stops the sending; an automatic pause
+ * when its hypotheses are ready (PHASE 14) and one card per version of a draft landing (PHASE
+ * 19a). The kill switch stops the sending; an automatic pause
  * by the spend guard is itself announced once (PHASE 16).
  */
 export function createDecisionCardNotifier(
@@ -496,6 +501,31 @@ export function createDecisionCardNotifier(
         { name: 'hypotheses.notice', idempotencyKey: key, correlationId: key },
         async () => {
           await options.deliver(hypothesesReadyText(opportunity, count));
+          return { sentAt: toTimestamp(new Date(now())) };
+        },
+      );
+      if (outcome === 'executed') sent += 1;
+    }
+    // PHASE 19a: one card per version of a draft landing, with ✅ / ❌.
+    const drafts = await database.repositories.mediaAssets.listByStatus('draft', {
+      limit: QUEUE_LIMIT,
+    });
+    const views = drafts.length === 0 ? [] : await activeExperimentViews(database);
+    for (const asset of drafts) {
+      const key = `landing-card-${asset.id}-v${String(asset.version)}`;
+      const number = views.find((view) => view.experiment.id === asset.experimentId)?.number;
+      const { outcome } = await database.command(
+        { name: 'media.card', idempotencyKey: key, correlationId: key },
+        async (scope) => {
+          const current = await scope.repositories.mediaAssets.getById(asset.id);
+          if (current?.status !== 'draft' || current.version !== asset.version) {
+            return { skipped: true };
+          }
+          const context = await landingCardContext(scope.repositories, current, number);
+          await options.deliver(
+            landingCardText(current, { ...context, publicApiUrl: options.publicApiUrl }),
+            landingKeyboard(current),
+          );
           return { sentAt: toTimestamp(new Date(now())) };
         },
       );

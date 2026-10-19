@@ -6,16 +6,41 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/observability" },
-    { "path": "../../packages/database" },
-    { "path": "../../packages/evidence" },
-    { "path": "../../packages/command-center" },
-    { "path": "../../packages/ai-runtime" },
-    { "path": "../../packages/signals" },
-    { "path": "../../packages/opportunities" },
-    { "path": "../../packages/agents" },
-    { "path": "../../packages/judges" },
-    { "path": "../../packages/economics" }
+    {
+      "path": "../../packages/agents"
+    },
+    {
+      "path": "../../packages/ai-runtime"
+    },
+    {
+      "path": "../../packages/command-center"
+    },
+    {
+      "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/economics"
+    },
+    {
+      "path": "../../packages/evidence"
+    },
+    {
+      "path": "../../packages/judges"
+    },
+    {
+      "path": "../../packages/media"
+    },
+    {
+      "path": "../../packages/observability"
+    },
+    {
+      "path": "../../packages/opportunities"
+    },
+    {
+      "path": "../../packages/shared"
+    },
+    {
+      "path": "../../packages/signals"
+    }
   ]
 }

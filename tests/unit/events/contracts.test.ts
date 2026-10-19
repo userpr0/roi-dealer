@@ -36,7 +36,7 @@ describe('event types', () => {
     expect(VERSIONED_ENTITY_TYPES).toHaveLength(
       ENTITY_TYPES.length - APPEND_ONLY_ENTITY_TYPES.length,
     );
-    expect(EVENT_TYPES).toHaveLength(17 + 11);
+    expect(EVENT_TYPES).toHaveLength(18 + 12);
     expect(EVENT_TYPES).toContain('system_control.updated');
     expect(EVENT_TYPES).toContain('principal.updated');
     expect(EVENT_TYPES).toContain('approval_request.updated');

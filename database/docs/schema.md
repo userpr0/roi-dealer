@@ -43,6 +43,7 @@ rewards ─< reward_contributions >── contributions
 | `system_controls`   | SystemControl   | версии      | — (одна строка `automation`: стоп-кран, 13b)                       |
 | `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
 | `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                      |
+| `media_assets`      | MediaAsset      | версии      | — (лендинги тестов, PHASE 19a)                                     |
 | `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
 | `ai_calls`          | —               | append-only | вызовы AI: токены, стоимость, итог (PHASE 09)                      |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
@@ -240,6 +241,16 @@ rewards ─< reward_contributions >── contributions
   - блокирует строку вклада (`FOR UPDATE`) — два одновременных начисления одного вклада не пройдут;
   - вклад подтверждён (`verified`), принадлежит человеку начисления и не входит в другое неотменённое начисление.
 - **Выплата** — `cost_entries` категории `human` со ссылкой на одобренный запрос `payout`, без привязки к тесту.
+
+## Media Factory (PHASE 19a)
+
+- **`media_assets`** (миграция `0015`) — лендинги тестов, версии с событием `media_asset.created` / `.updated`, без удаления:
+  - вид `landing`, статус `draft` / `approved` / `rejected` / `released` / `retired`;
+  - тест, гипотеза и возможность — внешние ключи;
+  - `content` — JSON-текст до 20 000 символов, CHECK `jsonb_typeof(content::jsonb) = 'object'`; структуру проверяет домен при чтении;
+  - `slug` и `preview_token` уникальны и проверяются по формату.
+- **`media_assets_one_live`** — уникальный частичный индекс: у теста один лендинг в статусе `draft`, `approved` или `released`.
+- **`agent_work.subject_type`** — плюс `experiment` (первый текст лендинга) и `media_asset` (переписывание после ❌).
 
 ## Ошибки
 

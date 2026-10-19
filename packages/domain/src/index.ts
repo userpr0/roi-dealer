@@ -1,6 +1,6 @@
 /**
  * @roi-dealer/domain — core domain of ROI Dealer (PHASE 01; SystemControl — 13b; Principal — PHASE 04;
- * SourceSnapshot and the contact data rule of Evidence — PHASE 05).
+ * SourceSnapshot and the contact data rule of Evidence — PHASE 05; MediaAsset — PHASE 19a).
  *
  * Pure TypeScript + Zod: entities, value objects, lifecycles and invariants.
  * No I/O: persistence (PHASE 02) and events (PHASE 03) build on top of this package.
@@ -35,6 +35,7 @@ export * from './entities/system-control.js';
 export * from './entities/principal.js';
 export * from './entities/source-snapshot.js';
 export * from './entities/revenue.js';
+export * from './entities/media-asset.js';
 export * from './ai-budget.js';
 export * from './markets.js';
 export * from './market-context.js';

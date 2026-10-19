@@ -41,6 +41,9 @@ importers:
       '@roi-dealer/judges':
         specifier: workspace:*
         version: link:packages/judges
+      '@roi-dealer/media':
+        specifier: workspace:*
+        version: link:packages/media
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:packages/observability
@@ -62,6 +65,9 @@ importers:
       '@roi-dealer/signals':
         specifier: workspace:*
         version: link:packages/signals
+      '@roi-dealer/site':
+        specifier: workspace:*
+        version: link:packages/site
       '@roi-dealer/skills':
         specifier: workspace:*
         version: link:packages/skills
@@ -116,6 +122,9 @@ importers:
       '@roi-dealer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@roi-dealer/site':
+        specifier: workspace:*
+        version: link:../../packages/site
       '@roi-dealer/telegram':
         specifier: workspace:*
         version: link:../../packages/telegram
@@ -189,6 +198,9 @@ importers:
       '@roi-dealer/judges':
         specifier: workspace:*
         version: link:../../packages/judges
+      '@roi-dealer/media':
+        specifier: workspace:*
+        version: link:../../packages/media
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -219,6 +231,9 @@ importers:
       '@roi-dealer/evidence':
         specifier: workspace:*
         version: link:../evidence
+      '@roi-dealer/media':
+        specifier: workspace:*
+        version: link:../media
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../observability
@@ -288,6 +303,9 @@ importers:
       '@roi-dealer/events':
         specifier: workspace:*
         version: link:../events
+      '@roi-dealer/media':
+        specifier: workspace:*
+        version: link:../media
       '@roi-dealer/observability':
         specifier: workspace:*
         version: link:../observability
@@ -394,6 +412,18 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
+  packages/media:
+    dependencies:
+      '@roi-dealer/ai-runtime':
+        specifier: workspace:*
+        version: link:../ai-runtime
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
   packages/observability: {}
 
   packages/opportunities:
@@ -467,6 +497,18 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/site:
+    dependencies:
+      '@roi-dealer/database':
+        specifier: workspace:*
+        version: link:../database
+      '@roi-dealer/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@roi-dealer/media':
+        specifier: workspace:*
+        version: link:../media
 
   packages/skills: {}
 

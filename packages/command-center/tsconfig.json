@@ -22,6 +22,9 @@
       "path": "../events"
     },
     {
+      "path": "../media"
+    },
+    {
       "path": "../observability"
     },
     {

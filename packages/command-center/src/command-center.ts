@@ -54,6 +54,7 @@ import {
 } from './opportunity-cards.js';
 import { handlePainButton, PAIN_PREFIX, painsReply } from './pains.js';
 import { handlePortfolioButton, PORTFOLIO_PREFIX, sendPortfolio } from './portfolio.js';
+import { handleMediaButton, MEDIA_PREFIX } from './media.js';
 import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.js';
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
@@ -69,6 +70,8 @@ export interface CommandCenterOptions {
   readonly deliverCard?: ((text: string, keyboard?: InlineKeyboard) => Promise<void>) | undefined;
   /** How often new decision cards are looked for; default 5 minutes. */
   readonly cardIntervalMs?: number | undefined;
+  /** The api's public address (`PUBLIC_API_URL`): preview links of landings (PHASE 19a). */
+  readonly publicApiUrl?: string | undefined;
   readonly now?: () => number;
 }
 
@@ -154,6 +157,7 @@ function withoutDatabase(): Pick<
       COST_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
+      MEDIA_PREFIX,
       CONTRIBUTION_PREFIX,
       REWARD_PREFIX,
       KILL_SWITCH_PREFIX,
@@ -276,6 +280,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
           deliver: deliverCard,
           now: nowMs,
           intervalMs: options.cardIntervalMs,
+          publicApiUrl: options.publicApiUrl,
         });
 
   return {
@@ -373,6 +378,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         handlePortfolioButton(deps, context),
       ),
       button(PAIN_PREFIX, 'research.write', (context) => handlePainButton(deps, context)),
+      button(MEDIA_PREFIX, 'research.write', (context) =>
+        handleMediaButton({ ...deps, publicApiUrl: options.publicApiUrl }, context),
+      ),
       button(CONTRIBUTION_PREFIX, 'contribution.write', rewards.handleContributionButton),
       button(REWARD_PREFIX, 'reward.write', rewards.handleRewardButton),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),

@@ -110,6 +110,8 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   principal: { create: 'access.propose', update: 'access.manage' },
   source_snapshot: { create: 'evidence.write' },
   revenue_entry: { create: 'revenue.record' },
+  // An agent's proposal like a hypothesis; only the owner approves it (domain, PHASE 19a).
+  media_asset: { create: 'research.write', update: 'research.write' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

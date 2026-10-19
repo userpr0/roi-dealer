@@ -438,8 +438,8 @@ export const judgeOpportunityTask: AiTask<JudgeInput, JudgeOutput, JudgeExpected
   // on the dearest strong model.
   maxCostMicroUsd: 150_000,
   // Six calls per opportunity, a few opportunities a day: most of what the other processes leave
-  // (D-021); 5 % went to the hypotheses in PHASE 14.
-  dailyShare: 0.25,
+  // (D-021); 5 % went to the hypotheses in PHASE 14, 3 % to the landing pages in PHASE 19a.
+  dailyShare: 0.22,
   evalCases: cases,
   score: scoreJudge,
 };

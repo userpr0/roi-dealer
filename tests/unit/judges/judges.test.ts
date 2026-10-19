@@ -17,6 +17,7 @@ import {
   scoreJudge,
   toJudgement,
 } from '@roi-dealer/judges';
+import { MEDIA_TASKS } from '@roi-dealer/media';
 import { OPPORTUNITY_TASKS } from '@roi-dealer/opportunities';
 import { SIGNAL_TASKS } from '@roi-dealer/signals';
 import { perfectJudgeAnswer } from '../../support/judge-answers.js';
@@ -198,6 +199,7 @@ describe('the judge task and its golden set (D-014 п.7)', () => {
       ...OPPORTUNITY_TASKS,
       ...AGENT_TASKS,
       ...JUDGE_TASKS,
+      ...MEDIA_TASKS,
     ];
     expect(new Set(tasks.map((task) => task.name)).size).toBe(tasks.length);
     // Shares are whole percents; summed as such to avoid floating-point noise.

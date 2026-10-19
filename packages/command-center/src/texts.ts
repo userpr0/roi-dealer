@@ -38,6 +38,7 @@ export const ENTITY_LABELS: Readonly<Record<EntityType, string>> = {
   principal: 'Доступ',
   source_snapshot: 'Загрузка источника',
   revenue_entry: 'Выручка',
+  media_asset: 'Лендинг',
 };
 
 export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {

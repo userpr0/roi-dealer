@@ -27,6 +27,7 @@ import { aiCents, monthReport, type EconomicsReport } from '@roi-dealer/economic
 import { uuidv7 } from '@roi-dealer/shared';
 import { callbackButton, type CallbackContext, type CommandContext } from '@roi-dealer/telegram';
 import { formatMicroUsd } from './ai-status.js';
+import { landingCostLine } from './media.js';
 import { shorten } from './texts.js';
 
 /*
@@ -128,7 +129,13 @@ export function economicsText(report: EconomicsReport): string {
 }
 
 export async function economicsReply(database: Database, nowMs: number): Promise<string> {
-  return economicsText(await monthReport(database, nowMs));
+  const text = economicsText(await monthReport(database, nowMs));
+  // Cost per Approved Asset (PHASE 19a, D-012), above the source line.
+  const landing = await landingCostLine(database, nowMs);
+  if (landing === undefined) return text;
+  const lines = text.split('\n');
+  lines.splice(lines.length - 2, 0, landing);
+  return lines.join('\n');
 }
 
 export const COST_USAGE = [

@@ -65,6 +65,7 @@ async function main(): Promise<void> {
     deliverDigest: (text) => client.sendMessage({ chatId: ownerUserId, text }),
     deliverCard: (text, keyboard) => client.sendMessage({ chatId: ownerUserId, text, keyboard }),
     cardIntervalMs: config.DECISION_CARDS_INTERVAL_MS,
+    publicApiUrl: config.PUBLIC_API_URL,
   });
   shutdown.register('daily-digest', () => commandCenter.stopDigest());
   shutdown.register('decision-cards', () => commandCenter.stopCards());
