@@ -12,6 +12,7 @@
     { "path": "../../packages/evidence" },
     { "path": "../../packages/command-center" },
     { "path": "../../packages/ai-runtime" },
-    { "path": "../../packages/signals" }
+    { "path": "../../packages/signals" },
+    { "path": "../../packages/opportunities" }
   ]
 }

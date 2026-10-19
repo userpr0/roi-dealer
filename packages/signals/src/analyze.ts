@@ -12,6 +12,7 @@ import {
   painIdSchema,
   SEVERITY_BY_STRENGTH,
   signalIdSchema,
+  TARGET_MARKETS,
   toTimestamp,
   validatePain,
   type Actor,
@@ -45,8 +46,6 @@ export const PAIN_ANALYST_ACCESS: NewPrincipal = {
     'доступов не касается. AI — в пределах 20 % дневной квоты.',
 };
 
-/** D-008: when neither the evidence nor its source names a market. */
-const DEFAULT_MARKETS: readonly CountryCode[] = ['US', 'GB', 'CA', 'AU'];
 const DEFAULT_BATCH = 20;
 const TITLE_LENGTH = 200;
 
@@ -239,7 +238,8 @@ export async function analyzeEvidence(
     let markets = sourceMarkets.get(evidence.sourceId);
     if (markets === undefined) {
       const source = await database.repositories.sources.getById(evidence.sourceId);
-      markets = source?.markets ?? DEFAULT_MARKETS;
+      // D-008 when neither the evidence nor its source names a market.
+      markets = source?.markets ?? TARGET_MARKETS;
       sourceMarkets.set(evidence.sourceId, markets);
     }
     const at = nowTimestamp();

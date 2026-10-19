@@ -26,6 +26,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { aiStatusLine } from './ai-status.js';
+import { opportunitiesText } from './opportunities.js';
 import { painsText } from './pains.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
@@ -40,7 +41,7 @@ export interface CommandCenterOptions {
 }
 
 export interface CommandCenter {
-  /** /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains */
+  /** /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
   /**
@@ -72,6 +73,7 @@ const DESCRIPTIONS = {
   digest: 'Дайджест сейчас',
   access: 'Доступы агентов и интеграций',
   pains: 'Боли, которые нашла система',
+  opportunities: 'Возможности с оценкой',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -99,7 +101,7 @@ function withoutDatabase(): Pick<
 
 /**
  * The owner command center (13b, PHASE 04, 06): approvals, kill switch, journal, history,
- * digest, access and the pains the system found. Every command and button is checked against the owner's permissions and
+ * digest, access, and the pains and opportunities the system found. Every command and button is checked against the owner's permissions and
  * recorded in the access log.
  */
 export function createCommandCenter(options: CommandCenterOptions): CommandCenter {
@@ -194,6 +196,11 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('pains', 'research.read', async (context) =>
         context.reply(await painsText(database.repositories)),
+      ),
+      command('opportunities', 'research.read', async (context) =>
+        context.reply(
+          await opportunitiesText(database.repositories, database.opportunityAssessments),
+        ),
       ),
     ],
     callbacks: [

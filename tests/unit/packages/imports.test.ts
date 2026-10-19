@@ -8,6 +8,7 @@ import * as events from '@roi-dealer/events';
 import * as evidence from '@roi-dealer/evidence';
 import * as judges from '@roi-dealer/judges';
 import * as observability from '@roi-dealer/observability';
+import * as opportunities from '@roi-dealer/opportunities';
 import * as policies from '@roi-dealer/policies';
 import * as rewards from '@roi-dealer/rewards';
 import * as schemas from '@roi-dealer/schemas';
@@ -27,6 +28,7 @@ describe('workspace packages', () => {
     ['@roi-dealer/evidence', evidence],
     ['@roi-dealer/judges', judges],
     ['@roi-dealer/observability', observability],
+    ['@roi-dealer/opportunities', opportunities],
     ['@roi-dealer/policies', policies],
     ['@roi-dealer/rewards', rewards],
     ['@roi-dealer/schemas', schemas],

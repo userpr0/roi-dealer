@@ -43,6 +43,7 @@ export async function buildDigest(
   const evidence = events.filter((event) => event.type === 'evidence.created').length;
   const signals = events.filter((event) => event.type === 'signal.created').length;
   const newPains = events.filter((event) => event.type === 'pain.created').length;
+  const newOpportunities = events.filter((event) => event.type === 'opportunity.created').length;
   const costs = events.flatMap((event): CostEntry[] => {
     if (event.type !== 'cost_entry.created') return [];
     const parsed = costEntrySchema.safeParse(event.payload.snapshot);
@@ -68,6 +69,11 @@ export async function buildDigest(
       ? []
       : [
           `🧩 За сутки: сигналов ${String(signals)}${partial ? '+' : ''}, новых болей ${String(newPains)} → /pains`,
+        ]),
+    ...(newOpportunities === 0
+      ? []
+      : [
+          `💡 Новых возможностей за сутки: ${String(newOpportunities)}${partial ? '+' : ''} → /opportunities`,
         ]),
     ...(ai === undefined ? [] : [ai]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),

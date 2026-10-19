@@ -43,6 +43,7 @@ const PROJECT_MIGRATIONS = [
   '0005_evidence_engine',
   '0006_ai_runtime',
   '0007_signals_pain',
+  '0008_opportunity_engine',
 ];
 
 describe('runMigrations with the project migrations', () => {

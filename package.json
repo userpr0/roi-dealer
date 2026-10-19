@@ -38,6 +38,7 @@
     "@roi-dealer/evidence": "workspace:*",
     "@roi-dealer/judges": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/opportunities": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
     "@roi-dealer/rewards": "workspace:*",
     "@roi-dealer/schemas": "workspace:*",

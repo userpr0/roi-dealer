@@ -10,6 +10,10 @@ import { atomic, type Sql, type TransactionSql } from './executor.js';
 import { createRepositories, type Repositories } from './repositories.js';
 import type { WriteContext } from './repository.js';
 import { createSignalExtractionLog, type SignalExtractionLog } from './signal-extractions.js';
+import {
+  createOpportunityAssessmentLog,
+  type OpportunityAssessmentLog,
+} from './opportunity-assessments.js';
 
 export interface DatabaseOptions {
   /** `postgres://` URL with credentials. Never logged. */
@@ -29,6 +33,8 @@ export interface TransactionScope {
   readonly events: EventStore;
   /** Recorded in the same transaction as the signal and pain it describes (PHASE 06). */
   readonly signalExtractions: SignalExtractionLog;
+  /** Recorded in the same transaction as the opportunity it created (PHASE 07). */
+  readonly opportunityAssessments: OpportunityAssessmentLog;
 }
 
 export interface TransactionOptions {
@@ -62,6 +68,8 @@ export interface Database {
   readonly aiCalls: AiCallLog;
   /** Journal of evidence analysis for pains (PHASE 06). */
   readonly signalExtractions: SignalExtractionLog;
+  /** Journal of opportunity assessments (PHASE 07). */
+  readonly opportunityAssessments: OpportunityAssessmentLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -102,6 +110,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     repositories: createRepositories(tx, context),
     events: createEventStore(tx),
     signalExtractions: createSignalExtractionLog(tx),
+    opportunityAssessments: createOpportunityAssessmentLog(tx),
   };
 }
 
@@ -157,6 +166,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     access,
     aiCalls: createAiCallLog(sql),
     signalExtractions: createSignalExtractionLog(sql),
+    opportunityAssessments: createOpportunityAssessmentLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

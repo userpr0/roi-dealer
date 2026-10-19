@@ -3,6 +3,7 @@ import {
   CONFIRMATION_TTL_MS,
   createCommandCenter,
   NO_DATABASE_TEXT,
+  NO_OPPORTUNITIES_TEXT,
   NO_PAINS_TEXT,
   ownerActor,
   sendDailyDigest,
@@ -391,6 +392,15 @@ describe('🧩 /pains (PHASE 06)', () => {
   it('explains when nothing was found yet and records the view in the access log', async () => {
     const [reply] = await command('pains');
     expect(reply?.text).toBe(NO_PAINS_TEXT);
+    const [view] = await db.access.list({ decision: 'allowed', limit: 1 });
+    expect(view).toMatchObject({ permission: 'research.read', actorType: 'owner' });
+  });
+});
+
+describe('💡 /opportunities (PHASE 07)', () => {
+  it('explains when there is nothing yet and records the view in the access log', async () => {
+    const [reply] = await command('opportunities');
+    expect(reply?.text).toBe(NO_OPPORTUNITIES_TEXT);
     const [view] = await db.access.list({ decision: 'allowed', limit: 1 });
     expect(view).toMatchObject({ permission: 'research.read', actorType: 'owner' });
   });

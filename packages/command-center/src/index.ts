@@ -39,6 +39,7 @@ export {
   type CommandCenterOptions,
 } from './command-center.js';
 export { NO_PAINS_TEXT, painsText, PAINS_SHOWN } from './pains.js';
+export { NO_OPPORTUNITIES_TEXT, OPPORTUNITIES_SHOWN, opportunitiesText } from './opportunities.js';
 export {
   buildDigest,
   createDigestScheduler,

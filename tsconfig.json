@@ -19,6 +19,7 @@
     { "path": "./packages/command-center" },
     { "path": "./packages/evidence" },
     { "path": "./packages/signals" },
+    { "path": "./packages/opportunities" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/bot" },

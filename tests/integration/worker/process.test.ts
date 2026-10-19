@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { redactNamesTask } from '@roi-dealer/ai-runtime';
+import { frameOpportunityTask, OPPORTUNITY_ANALYST } from '@roi-dealer/opportunities';
 import { extractSignalTask, matchPainTask, PAIN_ANALYST } from '@roi-dealer/signals';
 import { approvePrincipal, toTimestamp } from '@roi-dealer/domain';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
@@ -122,8 +123,8 @@ describe('worker process with a database (PHASE 05)', () => {
   });
 });
 
-describe('worker process with AI providers (PHASE 09, 06)', () => {
-  it('verifies models, runs evals, redacts names and finds pains in new evidence', async () => {
+describe('worker process with AI providers (PHASE 09, 06, 07)', () => {
+  it('verifies models, runs evals, redacts names, finds pains and drafts an opportunity', async () => {
     const test = await createTestDatabase();
     const hn = await startFakeHackerNews();
     const fakes = await Promise.all([
@@ -137,6 +138,27 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
     const matchGolden = new Map(
       matchPainTask.evalCases.map((c) => [matchPainTask.render(c.input), c.expected]),
     );
+    const frameGolden = new Map(
+      frameOpportunityTask.evalCases.map((c) => [frameOpportunityTask.render(c.input), c.expected]),
+    );
+    const frame = (
+      buyer: 'business' | 'consumer',
+      recurring: boolean,
+      paymentQuotes: readonly string[],
+    ) => ({
+      title: 'Invoices that get paid without chasing',
+      summary: 'Small agencies lose days chasing late invoices.',
+      icp: 'Agencies with 2–10 people',
+      problem: 'Clients pay invoices late',
+      change: 'Reminders and follow-ups run on their own',
+      measurableResult: 'A day a week back',
+      buyer,
+      recurring,
+      urgency: 'medium',
+      serviceHeavy: false,
+      paymentQuotes,
+      pricingHypothesis: '$29 a month',
+    });
     const noPain = {
       pain: false,
       statement: '',
@@ -163,15 +185,25 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
               ? painOf('Someone struggles with a costly problem here', text.slice(0, 40))
               : noPain
             : text.includes('chasing invoices')
-              ? painOf(
-                  'Small agencies struggle to get invoices paid',
-                  'spends Fridays chasing invoices',
-                )
+              ? painOf('Small agencies struggle to get invoices paid', 'chasing invoices')
               : noPain;
         return { text: JSON.stringify(output) };
       }
       if (request.instructions === matchPainTask.instructions) {
-        return { text: JSON.stringify({ match: matchGolden.get(request.prompt) ?? 'none' }) };
+        // Outside the golden set: the second invoice post is the same pain.
+        return { text: JSON.stringify({ match: matchGolden.get(request.prompt) ?? 'P1' }) };
+      }
+      if (request.instructions === frameOpportunityTask.instructions) {
+        const expected = frameGolden.get(request.prompt);
+        const output =
+          expected === undefined
+            ? frame('business', true, ['We pay $300 a month'])
+            : frame(
+                expected.buyer,
+                expected.recurring,
+                expected.paying ? [(expected.excerpts.at(-1) ?? '').slice(0, 40)] : [],
+              );
+        return { text: JSON.stringify(output) };
       }
       const names = golden.get(text) ?? (text.includes('Sarah Chen') ? ['Sarah Chen'] : []);
       return { text: JSON.stringify({ names }) };
@@ -194,6 +226,14 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
         title: 'Ask HN: Invoicing for a two-person agency?',
         text: 'My partner Sarah Chen spends Fridays chasing invoices',
       },
+      {
+        id: 10,
+        type: 'story',
+        by: 'author_z',
+        time: Math.floor(Date.now() / 1_000) - 30,
+        title: 'Ask HN: Anyone automated chasing invoices?',
+        text: 'We pay $300 a month to an assistant just for chasing invoices',
+      },
     ]);
     const service = startService('apps/worker/src/main.ts', {
       NODE_ENV: 'test',
@@ -201,6 +241,7 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
       DATABASE_URL: test.url,
       EVIDENCE_COLLECT_INTERVAL_MS: '200',
       SIGNALS_INTERVAL_MS: '200',
+      OPPORTUNITIES_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
       ...keys,
       ANTHROPIC_BASE_URL: claude.baseUrl,
@@ -215,7 +256,7 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
       expect(configured['providers']).toEqual(['anthropic', 'openai', 'google']);
       await service.waitForLog((line) => line['message'] === 'ai models verified');
       // Evals first: a model without a passing report never runs a task.
-      for (const task of ['redact-names', 'extract-signal', 'match-pain']) {
+      for (const task of ['redact-names', 'extract-signal', 'match-pain', 'frame-opportunity']) {
         for (const model of ['claude-haiku-5-5', 'gemini-3.1-flash-lite', 'gpt-5.4-mini']) {
           await service.waitForLog(
             (line) =>
@@ -225,39 +266,63 @@ describe('worker process with AI providers (PHASE 09, 06)', () => {
           );
         }
       }
-      // The pain analyst asks for its access too; the owner grants both.
-      await service.waitForLog(
-        (line) =>
-          line['message'] === 'pain analysis skipped' && line['reason'] === 'access_not_active',
-      );
-      const analyst = await test.database.repositories.principals.getByActor(PAIN_ANALYST);
-      if (analyst === undefined) throw new Error('the pain analyst did not ask for access');
-      await test.database.repositories.principals.update(
-        approvePrincipal(analyst, { actor: OWNER, at: toTimestamp(new Date()) }),
-        OWNER,
-      );
+      // Both agents ask for their access too; the owner grants them and the source.
+      for (const [message, agent] of [
+        ['pain analysis skipped', PAIN_ANALYST],
+        ['opportunity assessment skipped', OPPORTUNITY_ANALYST],
+      ] as const) {
+        await service.waitForLog(
+          (line) => line['message'] === message && line['reason'] === 'access_not_active',
+        );
+        const principal = await test.database.repositories.principals.getByActor(agent);
+        if (principal === undefined) throw new Error(`${agent.id} did not ask for access`);
+        await test.database.repositories.principals.update(
+          approvePrincipal(principal, { actor: OWNER, at: toTimestamp(new Date()) }),
+          OWNER,
+        );
+      }
       await grantHackerNews(test, service);
       await service.waitForLog((line) => line['message'] === 'evidence collected');
-      const rows = await test.database.sql<{ excerpt: string }[]>`select excerpt from evidence`;
+      const rows = await test.database.sql<{ excerpt: string }[]>`
+        select excerpt from evidence order by external_id
+      `;
       expect(rows.map((row) => row.excerpt)).toEqual([
+        'Ask HN: Anyone automated chasing invoices?\n\nWe pay $300 a month to an assistant just for chasing invoices',
         'Ask HN: Invoicing for a two-person agency?\n\nMy partner [name] spends Fridays chasing invoices',
       ]);
       await service.waitForLog(
-        (line) => line['message'] === 'pain analysis' && line['signals'] === 1,
+        (line) => line['message'] === 'pain analysis' && line['signals'] === 2,
       );
       const pains = await test.database.repositories.pains.listByStatus('candidate');
       expect(pains).toMatchObject([
         { title: 'Small agencies struggle to get invoices paid', createdBy: PAIN_ANALYST },
       ]);
+      expect(pains[0]?.signalIds).toHaveLength(2);
+      await service.waitForLog(
+        (line) => line['message'] === 'opportunity assessment' && line['opportunities'] === 1,
+      );
+      expect(await test.database.repositories.opportunities.listByStatus('draft')).toMatchObject([
+        {
+          title: 'Invoices that get paid without chasing',
+          businessModel: { model: 'subscription' },
+          createdBy: OPPORTUNITY_ANALYST,
+        },
+      ]);
       const tasks = await test.database.aiCalls.list({ limit: 1_000 });
       expect(
         new Set(tasks.filter((call) => call.purpose === 'task').map((call) => call.task)),
-      ).toEqual(new Set(['redact-names', 'extract-signal']));
+      ).toEqual(new Set(['redact-names', 'extract-signal', 'match-pain', 'frame-opportunity']));
 
       service.child.kill('SIGTERM');
       await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });
       const output = JSON.stringify(service.logs) + service.stderr();
-      for (const secret of [...Object.values(keys), test.url, 'Sarah Chen', 'author_y']) {
+      for (const secret of [
+        ...Object.values(keys),
+        test.url,
+        'Sarah Chen',
+        'author_y',
+        '$300 a month',
+      ]) {
         expect(output).not.toContain(secret);
       }
     } finally {
