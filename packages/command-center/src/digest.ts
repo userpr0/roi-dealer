@@ -9,6 +9,7 @@ import type { Database } from '@roi-dealer/database';
 import type { Logger } from '@roi-dealer/observability';
 import { aiDigestLine } from './ai-status.js';
 import { decidableRequests } from './approvals.js';
+import { reviewCount } from './opportunity-cards.js';
 import { collectEvents, PERIODS } from './journal.js';
 import { killSwitchStatus } from './kill-switch.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
@@ -34,6 +35,7 @@ export async function buildDigest(
     decision: 'denied',
   });
   const requests = await decidableRequests(database.repositories, now);
+  const review = await reviewCount(database.repositories);
   const nearest = requests[0];
   const { events, partial } = await collectEvents(database.events, {
     fromMs: nowMs - PERIODS.day.ms,
@@ -58,6 +60,7 @@ export async function buildDigest(
       : `📥 Ждут решения: ${requests.length}` +
         (nearest === undefined ? '' : ` · ближайший срок ${formatTime(nearest.expiresAt)}`) +
         ' → /decisions',
+    ...(review === 0 ? [] : [`⚖️ Возможностей на решение: ${String(review)} → /decisions`]),
     `🧾 За сутки изменений: ${events.length}${partial ? '+' : ''}, ваших: ${byOwner} → /journal`,
     costs.length === 0
       ? '💸 Расходов за сутки не записано.'

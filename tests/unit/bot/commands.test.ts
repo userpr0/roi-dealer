@@ -144,6 +144,7 @@ describe('bot config', () => {
       TELEGRAM_API_BASE_URL: 'https://api.telegram.org',
       DATABASE_POOL_MAX: 5,
       DATABASE_CONNECT_TIMEOUT_SECONDS: 10,
+      DECISION_CARDS_INTERVAL_MS: 300_000,
     });
   });
 

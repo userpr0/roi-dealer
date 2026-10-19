@@ -3,12 +3,26 @@ import {
   approvalRequestIdSchema,
   AUTOMATION_CONTROL_ID,
   createApprovalRequest,
+  createEvidence,
+  createOpportunity,
+  createPain,
+  createSignal,
+  createSource,
+  evidenceIdSchema,
+  JUDGE_CRITERIA,
+  opportunityIdSchema,
+  painIdSchema,
+  resumeSystem,
+  signalIdSchema,
+  sourceIdSchema,
+  submitOpportunityForReview,
   toTimestamp,
   usd,
+  type SystemControl,
 } from '@roi-dealer/domain';
 import { uuidv7 } from '@roi-dealer/shared';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
-import { SYSTEM } from '../../support/domain.js';
+import { OWNER, SYSTEM, sourceData } from '../../support/domain.js';
 import {
   FAKE_BOT_TOKEN,
   startFakeTelegram,
@@ -142,7 +156,7 @@ describe('owner bot process with a database (13b)', () => {
     database = await createTestDatabase();
     service = startService(
       'apps/bot/src/main.ts',
-      botEnv(telegram, { DATABASE_URL: database.url }),
+      botEnv(telegram, { DATABASE_URL: database.url, DECISION_CARDS_INTERVAL_MS: '200' }),
     );
     await telegram.waitForSent((message) => message.text.includes('запущен'));
   });
@@ -228,6 +242,115 @@ describe('owner bot process with a database (13b)', () => {
       status: 'approved',
       resolution: { decidedBy: { type: 'owner', id: `telegram:${OWNER_ID}` } },
     });
+  });
+
+  it('sends a judged opportunity by itself and records the decision with two presses', async () => {
+    const db = database.database;
+    const at = () => toTimestamp(new Date());
+    // An earlier test paused the automations; the card waits for them.
+    const control = (await db.repositories.systemControls.getById(
+      AUTOMATION_CONTROL_ID,
+    )) as SystemControl;
+    if (control.status === 'paused') {
+      await db.repositories.systemControls.update(
+        resumeSystem(control, { actor: OWNER, at: at() }),
+        OWNER,
+      );
+    }
+    const source = createSource(sourceData({ name: 'Forum' }), {
+      id: sourceIdSchema.parse(uuidv7()),
+      actor: SYSTEM,
+      at: at(),
+    });
+    await db.repositories.sources.insert(source);
+    const evidence = createEvidence(
+      {
+        sourceId: source.id,
+        kind: 'post',
+        excerpt: 'We pay $300 a month to chase invoices.',
+        observedAt: at(),
+      },
+      { id: evidenceIdSchema.parse(uuidv7()), actor: SYSTEM, at: at() },
+    );
+    await db.repositories.evidence.insert(evidence);
+    const signal = createSignal(
+      {
+        title: 'Late invoices',
+        summary: 'Late invoices',
+        evidenceIds: [evidence.id],
+        markets: ['US'],
+        strength: 'moderate',
+      },
+      { id: signalIdSchema.parse(uuidv7()), actor: SYSTEM, at: at() },
+    );
+    await db.repositories.signals.insert(signal);
+    const pain = createPain(
+      {
+        title: 'Late invoices',
+        description: 'Late invoices',
+        audience: 'Freelancers',
+        desiredOutcome: 'Paid on time',
+        severity: 3,
+        frequency: 'rare',
+        markets: ['US'],
+        signalIds: [signal.id],
+        evidenceIds: [evidence.id],
+      },
+      { id: painIdSchema.parse(uuidv7()), actor: SYSTEM, at: at() },
+    );
+    await db.repositories.pains.insert(pain);
+    const draft = createOpportunity(
+      {
+        title: 'Invoices that get paid',
+        summary: 'Freelancers chase late invoices.',
+        painIds: [pain.id],
+        icp: 'Freelancers',
+        markets: ['US'],
+        valueProposition: {
+          problem: 'Late invoices',
+          change: 'Automatic reminders',
+          measurableResult: 'A day a month back',
+        },
+        businessModel: { model: 'subscription' },
+      },
+      { id: opportunityIdSchema.parse(uuidv7()), actor: SYSTEM, at: at() },
+    );
+    await db.repositories.opportunities.insert(draft);
+    for (const criterion of JUDGE_CRITERIA) {
+      await db.judgements.record({
+        opportunityId: draft.id,
+        opportunityVersion: 1,
+        criterion,
+        taskVersion: 1,
+        outcome: 'judged',
+        score: 4,
+        supported: true,
+        rationale: 'Freelancers already pay to chase invoices.',
+        evidenceIds: [evidence.id],
+        actorType: 'agent',
+        actorId: 'judges',
+      });
+    }
+    const opportunity = submitOpportunityForReview(draft, { actor: SYSTEM, at: at() });
+    await db.repositories.opportunities.update(opportunity, SYSTEM);
+
+    const card = await telegram.waitForSent((message) =>
+      message.text.includes('«Invoices that get paid»'),
+    );
+    expect(card.text).toContain('💡 Возможность на решение');
+    expect(card.text).toContain('Рекомендация системы: ✅ проверять');
+    expect(card.buttons).toHaveLength(3);
+    telegram.pushCallback({ fromId: OWNER_ID, data: card.buttons?.[0] ?? '' });
+    const question = await telegram.waitForEdit((edit) => edit.text.includes('❓ Проверять'));
+    telegram.pushCallback({ fromId: OWNER_ID, data: question.buttons?.[0] ?? '' });
+    await telegram.waitForEdit((edit) => edit.text.includes('✅ Решение: проверять'));
+    expect(await db.repositories.opportunities.getById(opportunity.id)).toMatchObject({
+      status: 'approved',
+    });
+    // Sent once per version: no second card for the same opportunity.
+    expect(
+      telegram.sent.filter((message) => message.text.includes('«Invoices that get paid»')),
+    ).toHaveLength(1);
   });
 
   it('shows the journal for a period', async () => {

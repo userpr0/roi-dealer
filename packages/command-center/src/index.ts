@@ -60,6 +60,24 @@ export {
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
 export {
+  CARD_INTERVAL_MS,
+  cardKeyboard as opportunityCardKeyboard,
+  cardText as opportunityCardText,
+  createDecisionCardNotifier,
+  decisionRationale,
+  handleOpportunityButton,
+  loadCard,
+  MAX_OPPORTUNITY_CARDS,
+  OPPORTUNITY_PREFIX,
+  reviewCount,
+  reviewQueue,
+  sendOpportunityCards,
+  type CardData,
+  type DecisionCardNotifier,
+  type DecisionCardNotifierOptions,
+  type OpportunityFlowDeps,
+} from './opportunity-cards.js';
+export {
   buildDigest,
   createDigestScheduler,
   DIGEST_HOUR,

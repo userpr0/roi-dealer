@@ -6,6 +6,7 @@ import type {
   CallbackContext,
   CallbackHandlerDefinition,
   CommandContext,
+  InlineKeyboard,
 } from '@roi-dealer/telegram';
 import type { Permission } from '@roi-dealer/policies';
 import {
@@ -15,7 +16,12 @@ import {
   sendAccessOverview,
   type RefusedAttempt,
 } from './access.js';
-import { APPROVAL_PREFIX, handleApprovalButton, sendDecisionCards } from './approvals.js';
+import {
+  APPROVAL_PREFIX,
+  decidableRequests,
+  handleApprovalButton,
+  sendDecisionCards,
+} from './approvals.js';
 import { buildDigest, createDigestScheduler, sendDailyDigest } from './digest.js';
 import {
   callbackPrefix,
@@ -29,6 +35,14 @@ import { agentsText } from './agents.js';
 import { aiStatusLine } from './ai-status.js';
 import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
+import {
+  createDecisionCardNotifier,
+  handleOpportunityButton,
+  MAX_OPPORTUNITY_CARDS,
+  OPPORTUNITY_PREFIX,
+  reviewQueue,
+  sendOpportunityCards,
+} from './opportunity-cards.js';
 import { painsText } from './pains.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
@@ -39,6 +53,10 @@ export interface CommandCenterOptions {
   readonly logger: Logger;
   /** Delivers the scheduled digest to the owner; must throw when delivery fails. */
   readonly deliverDigest: (text: string) => Promise<void>;
+  /** Delivers a decision card with its buttons to the owner (PHASE 12); must throw on failure. */
+  readonly deliverCard?: ((text: string, keyboard: InlineKeyboard) => Promise<void>) | undefined;
+  /** How often new decision cards are looked for; default 5 minutes. */
+  readonly cardIntervalMs?: number | undefined;
   readonly now?: () => number;
 }
 
@@ -59,6 +77,9 @@ export interface CommandCenter {
   /** Starts the daily digest at 10:00 Kyiv (no-op without a database). */
   startDigest(): void;
   stopDigest(): Promise<void>;
+  /** Sends the cards of opportunities under review as they arrive (no-op without a database). */
+  startCards(): void;
+  stopCards(): Promise<void>;
 }
 
 /**
@@ -99,12 +120,18 @@ function withoutDatabase(): Pick<
       description,
       handler: reply,
     })),
-    callbacks: [APPROVAL_PREFIX, KILL_SWITCH_PREFIX, ACCESS_PREFIX, NOTE_PREFIX, 'jr', 'hs'].map(
-      (prefix) => ({
-        prefix,
-        handler: answer,
-      }),
-    ),
+    callbacks: [
+      APPROVAL_PREFIX,
+      OPPORTUNITY_PREFIX,
+      KILL_SWITCH_PREFIX,
+      ACCESS_PREFIX,
+      NOTE_PREFIX,
+      'jr',
+      'hs',
+    ].map((prefix) => ({
+      prefix,
+      handler: answer,
+    })),
     statusLines: () => Promise.resolve(['⚪ База данных не подключена: пульт недоступен']),
     refused: () => Promise.resolve(),
   };
@@ -124,6 +151,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ...withoutDatabase(),
       startDigest: () => undefined,
       stopDigest: () => Promise.resolve(),
+      startCards: () => undefined,
+      stopCards: () => Promise.resolve(),
     };
   }
 
@@ -192,11 +221,38 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     },
   });
 
+  const deliverCard = options.deliverCard;
+  const cards =
+    deliverCard === undefined
+      ? undefined
+      : createDecisionCardNotifier({
+          database,
+          logger,
+          deliver: deliverCard,
+          now: nowMs,
+          intervalMs: options.cardIntervalMs,
+        });
+
   return {
     commands: [
-      command('decisions', 'decisions.read', (context) =>
-        sendDecisionCards(deps, (text, keyboard) => context.reply(text, keyboard)),
-      ),
+      command('decisions', 'decisions.read', async (context) => {
+        const reply = (text: string, keyboard?: InlineKeyboard) => context.reply(text, keyboard);
+        const queue = await reviewQueue(database.repositories);
+        if (queue.length === 0) {
+          await sendDecisionCards(deps, reply);
+          return;
+        }
+        if ((await decidableRequests(database.repositories, now())).length > 0) {
+          await sendDecisionCards(deps, reply);
+        }
+        await reply(
+          `⚖️ Возможностей на решение: ${String(queue.length)}` +
+            (queue.length > MAX_OPPORTUNITY_CARDS
+              ? ` · показаны ${String(MAX_OPPORTUNITY_CARDS)}, старые — первыми`
+              : ''),
+        );
+        await sendOpportunityCards(deps, queue, reply);
+      }),
       command('stop', 'system.control', killSwitch.stop),
       command('resume', 'system.control', killSwitch.resume),
       journal('journal'),
@@ -232,6 +288,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),
+      button(OPPORTUNITY_PREFIX, 'decision.record', (context) =>
+        handleOpportunityButton(deps, context),
+      ),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
       button(NOTE_PREFIX, 'research.write', notes.handleButton),
@@ -248,5 +307,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     refused: (attempt) => audit.refused(attempt),
     startDigest: () => scheduler.start(),
     stopDigest: () => scheduler.stop(),
+    startCards: () => cards?.start(),
+    stopCards: () => cards?.stop() ?? Promise.resolve(),
   };
 }

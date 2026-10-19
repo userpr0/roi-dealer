@@ -18,7 +18,7 @@ import type {
 /** At most this many opportunities are listed in /opportunities. */
 export const OPPORTUNITIES_SHOWN = 10;
 
-const MODEL_LABELS: Readonly<Record<Opportunity['businessModel']['model'], string>> = {
+export const MODEL_LABELS: Readonly<Record<Opportunity['businessModel']['model'], string>> = {
   free_limit: 'бесплатный лимит',
   subscription: 'подписка',
   one_time: 'разовая покупка',
@@ -34,7 +34,7 @@ const MODEL_LABELS: Readonly<Record<Opportunity['businessModel']['model'], strin
   licensing: 'лицензия',
   other: 'другая',
 };
-const PART_LABELS: Readonly<Record<string, string>> = {
+export const PART_LABELS: Readonly<Record<string, string>> = {
   frequency: 'частота',
   severity: 'тяжесть',
   sources: 'источники',

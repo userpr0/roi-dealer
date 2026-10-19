@@ -46,7 +46,9 @@ export interface JudgementLog {
   /**
    * Draft opportunities whose current version is missing some of the six judgements and whose
    * market context is ready: the market agent worked on this version, or the version is older
-   * than `waitMs`. Least recently changed first; default 2, at most 100.
+   * than `waitMs`. An opportunity judged before (sent back for more research, PHASE 12) waits
+   * until one of its pains has changed since its last judgement. Least recently changed first;
+   * default 2, at most 100.
    */
   pending(options: {
     readonly marketAgent: string;
@@ -120,6 +122,24 @@ export function createJudgementLog(executor: Executor): JudgementLog {
                   and w.subject_id = o.id and w.subject_version = o.version
               )
               or o.updated_at < now() - make_interval(secs => ${seconds})
+            )
+            and (
+              not exists (
+                select 1 from opportunity_judgements j
+                where j.opportunity_id = o.id and j.opportunity_version < o.version
+              )
+              or exists (
+                select 1 from opportunity_judgements j
+                where j.opportunity_id = o.id and j.opportunity_version = o.version
+              )
+              or exists (
+                select 1 from opportunity_pains l join pains p on p.id = l.pain_id
+                where l.opportunity_id = o.id
+                  and p.updated_at > (
+                    select max(j.occurred_at) from opportunity_judgements j
+                    where j.opportunity_id = o.id
+                  )
+              )
             )
           order by o.updated_at, o.id
           limit ${limit}
