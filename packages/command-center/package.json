@@ -18,6 +18,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@roi-dealer/brain": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/events": "workspace:*",

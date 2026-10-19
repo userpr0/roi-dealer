@@ -44,6 +44,7 @@ const PROJECT_MIGRATIONS = [
   '0006_ai_runtime',
   '0007_signals_pain',
   '0008_opportunity_engine',
+  '0009_company_brain',
 ];
 
 describe('runMigrations with the project migrations', () => {

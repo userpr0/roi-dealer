@@ -26,6 +26,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { aiStatusLine } from './ai-status.js';
+import { askReply, createNoteFlow, NOTE_PREFIX, searchReply } from './brain.js';
 import { opportunitiesText } from './opportunities.js';
 import { painsText } from './pains.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
@@ -41,7 +42,10 @@ export interface CommandCenterOptions {
 }
 
 export interface CommandCenter {
-  /** /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities */
+  /**
+   * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
+   * /search, /ask, /note
+   */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
   /**
@@ -74,6 +78,9 @@ const DESCRIPTIONS = {
   access: 'Доступы агентов и интеграций',
   pains: 'Боли, которые нашла система',
   opportunities: 'Возможности с оценкой',
+  search: 'Поиск по базе',
+  ask: 'Спросить систему',
+  note: 'Записать знание',
 } as const;
 
 const NO_PERMISSION_TEXT = '⛔ Нет прав на это действие.';
@@ -90,19 +97,22 @@ function withoutDatabase(): Pick<
       description,
       handler: reply,
     })),
-    callbacks: [APPROVAL_PREFIX, KILL_SWITCH_PREFIX, ACCESS_PREFIX, 'jr', 'hs'].map((prefix) => ({
-      prefix,
-      handler: answer,
-    })),
+    callbacks: [APPROVAL_PREFIX, KILL_SWITCH_PREFIX, ACCESS_PREFIX, NOTE_PREFIX, 'jr', 'hs'].map(
+      (prefix) => ({
+        prefix,
+        handler: answer,
+      }),
+    ),
     statusLines: () => Promise.resolve(['⚪ База данных не подключена: пульт недоступен']),
     refused: () => Promise.resolve(),
   };
 }
 
 /**
- * The owner command center (13b, PHASE 04, 06): approvals, kill switch, journal, history,
- * digest, access, and the pains and opportunities the system found. Every command and button is checked against the owner's permissions and
- * recorded in the access log.
+ * The owner command center (13b, PHASE 04, 06–08): approvals, kill switch, journal, history,
+ * digest, access, the pains and opportunities the system found, and the Company Brain: search,
+ * questions answered from the database and the owner's notes. Every command and button is
+ * checked against the owner's permissions and recorded in the access log.
  */
 export function createCommandCenter(options: CommandCenterOptions): CommandCenter {
   const { database, logger } = options;
@@ -118,6 +128,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const now = (): Timestamp => toTimestamp(new Date(nowMs()));
   const deps = { database, now, owner: ownerActor };
   const killSwitch = createKillSwitchFlow(deps);
+  const notes = createNoteFlow(deps);
   const audit = createAccessAudit({ database, logger, now, owner: ownerActor });
 
   /** Checks the permission and records the use before running the handler. */
@@ -202,11 +213,19 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
           await opportunitiesText(database.repositories, database.opportunityAssessments),
         ),
       ),
+      command('search', 'research.read', async (context) =>
+        context.reply(await searchReply(database, context.args)),
+      ),
+      command('ask', 'research.read', async (context) =>
+        context.reply(await askReply(database, context.args, nowMs())),
+      ),
+      command('note', 'research.write', notes.note),
     ],
     callbacks: [
       button(APPROVAL_PREFIX, 'approval.update', (context) => handleApprovalButton(deps, context)),
       button(KILL_SWITCH_PREFIX, 'system.control', killSwitch.handleButton),
       button(ACCESS_PREFIX, 'access.manage', (context) => handleAccessButton(deps, context)),
+      button(NOTE_PREFIX, 'research.write', notes.handleButton),
       journalButton('journal'),
       journalButton('history'),
     ],

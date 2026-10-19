@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as agents from '@roi-dealer/agents';
 import * as aiRuntime from '@roi-dealer/ai-runtime';
+import * as brain from '@roi-dealer/brain';
 import * as database from '@roi-dealer/database';
 import * as domain from '@roi-dealer/domain';
 import * as economics from '@roi-dealer/economics';
@@ -21,6 +22,7 @@ describe('workspace packages', () => {
   it.each([
     ['@roi-dealer/agents', agents],
     ['@roi-dealer/ai-runtime', aiRuntime],
+    ['@roi-dealer/brain', brain],
     ['@roi-dealer/database', database],
     ['@roi-dealer/domain', domain],
     ['@roi-dealer/economics', economics],

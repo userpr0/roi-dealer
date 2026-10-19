@@ -20,6 +20,7 @@
     { "path": "./packages/evidence" },
     { "path": "./packages/signals" },
     { "path": "./packages/opportunities" },
+    { "path": "./packages/brain" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/bot" },

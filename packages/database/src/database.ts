@@ -3,6 +3,7 @@ import { correlationIdSchema, idempotencyKeySchema } from '@roi-dealer/events';
 import type { HealthCheck, Logger } from '@roi-dealer/observability';
 import { createAccessLog, type AccessLog, type AccessLogEntry } from './access-log.js';
 import { createAiCallLog, type AiCallLog } from './ai-calls.js';
+import { createBrainQueries, type BrainQueries } from './brain.js';
 import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
 import { createEventStore, type EventStore } from './event-store.js';
@@ -70,6 +71,8 @@ export interface Database {
   readonly signalExtractions: SignalExtractionLog;
   /** Journal of opportunity assessments (PHASE 07). */
   readonly opportunityAssessments: OpportunityAssessmentLog;
+  /** Company Brain: search, counts and totals by fixed parameterized queries (PHASE 08). */
+  readonly brain: BrainQueries;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -167,6 +170,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     aiCalls: createAiCallLog(sql),
     signalExtractions: createSignalExtractionLog(sql),
     opportunityAssessments: createOpportunityAssessmentLog(sql),
+    brain: createBrainQueries(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

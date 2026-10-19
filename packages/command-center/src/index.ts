@@ -39,6 +39,17 @@ export {
   type CommandCenterOptions,
 } from './command-center.js';
 export { NO_PAINS_TEXT, painsText, PAINS_SHOWN } from './pains.js';
+export {
+  answerText,
+  ASK_USAGE,
+  askReply,
+  createNoteFlow,
+  NOTE_PREFIX,
+  NOTE_USAGE,
+  SEARCH_USAGE,
+  searchReply,
+  searchResultText,
+} from './brain.js';
 export { NO_OPPORTUNITIES_TEXT, OPPORTUNITIES_SHOWN, opportunitiesText } from './opportunities.js';
 export {
   buildDigest,
