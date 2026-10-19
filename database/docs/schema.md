@@ -174,6 +174,21 @@ rewards ─< reward_contributions >── contributions
 - Боль с итогом `opportunity` больше не оценивается; выросшая боль (новая версия) — оценивается заново.
 - Тексты не хранятся: подтверждённые цитаты о деньгах — в `opportunities.value_proof`.
 
+## Company Brain (PHASE 08)
+
+- **Индексы поиска** — GIN по выражениям `to_tsvector('english', …)`, без новых колонок:
+
+  | Индекс                        | Текст                                                              |
+  | ----------------------------- | ------------------------------------------------------------------ |
+  | `pains_search_idx`            | заголовок, описание, аудитория, желаемый результат                 |
+  | `opportunities_search_idx`    | заголовок, описание, ICP, проблема, изменение, измеримый результат |
+  | `evidence_search_idx`         | цитата `excerpt`                                                   |
+  | `knowledge_assets_search_idx` | заголовок, описание, тело                                          |
+  | `decisions_search_idx`        | обоснование `rationale`                                            |
+
+- Запросы `database.brain` повторяют эти выражения дословно — иначе PostgreSQL не использует индекс.
+- Знания с тегом `eval` (отчёты evals) в поиск и счёт не попадают; заметки владельца — `knowledge_assets` с тегом `owner-note`.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
