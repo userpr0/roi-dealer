@@ -211,6 +211,19 @@ rewards ─< reward_contributions >── contributions
   - до 3 опасений, до 8 id Evidence (`uuid[]`, без FK на элементы массива — проверяет код), версия задачи, актор, `correlation_id`.
 - Итог 0–100 не хранится: его считает `judgePanel` (домен) из баллов.
 
+## Experiments (PHASE 15)
+
+- **`experiments`** (миграция `0012`):
+  - `honest_checks` — подтверждённые владельцем пункты чек-листа честной проверки (9 допустимых, без повторов), `checks_confirmed_at` — когда;
+  - `experiments_checks_confirmed`: время ⇔ непустой список;
+  - `experiments_checks_before_start`: статусы `running`, `stopped`, `completed` — только после чек-листа;
+  - уникальный ключ `(id, hypothesis_id)` — цель ссылки событий.
+- **`experiment_events`** — единая воронка всех тестов ([ADR-0007](../../docs/ADR/0007-experiment-funnel-in-postgresql.md)), только добавление (триггеры `experiment_events_append_only`, `experiment_events_no_truncate`):
+  - шаг (`impression`, `attention`, `cta_click`, `activation`, `lead`, `payment`, `product_use`, `outcome`, `retention`), количество 1–1 000 000 (сводные цифры площадки или одно событие);
+  - канал, UTM-метки (необязательно), время UTC, источник `owner_report` / `tracker`, актор, `correlation_id`;
+  - FK `(experiment_id, hypothesis_id)` → `experiments`: событие относится к гипотезе своего эксперимента.
+- Траты эксперимента — `cost_entries` с `experiment_id` и ссылкой на одобренный запуск; сумма и метрика считаются SQL и доменом (`metricValue`).
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
