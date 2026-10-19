@@ -9,5 +9,8 @@ onlyBuiltDependencies: []
 # Reviewed and intentionally not executed:
 # - esbuild: postinstall only verifies the native binary, which is installed
 #   through its platform-specific optional dependency (@esbuild/<platform>).
+# - protobufjs (via @google/genai, ADR-0006): postinstall only prints a warning
+#   about the version range a dependent package uses.
 ignoredBuiltDependencies:
   - esbuild
+  - protobufjs

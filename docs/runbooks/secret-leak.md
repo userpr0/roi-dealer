@@ -50,6 +50,22 @@
 
 Конкретные шаги для каждого провайдера добавляются в [README](README.md) при его подключении.
 
+## Ключи AI: Claude, GPT, Gemini
+
+У ключа AI нет личности в `/access`. Поэтому первый шаг другой:
+
+0. **Сразу `/stop`** в боте — стоп-кран останавливает все вызовы AI из ROI Dealer.
+
+   Это не мешает чужому человеку тратить ваш ключ, поэтому шаг 1 — срочно.
+
+1. **Отозвать** ключ:
+   - Claude — [console.anthropic.com](https://console.anthropic.com) → **API Keys** → ⋯ у ключа → **Delete**;
+   - GPT — [platform.openai.com](https://platform.openai.com) → **API keys** → **Revoke**;
+   - Gemini — [aistudio.google.com](https://aistudio.google.com) → **API keys** → **Delete** (или Google Cloud Console → **APIs & Services** → **Credentials**).
+2. **Выпустить новый** ключ и проверить месячный лимит в кабинете.
+3. Railway → `worker` → **Variables** → заменить ключ → **Deploy**.
+4. **Проверить** расходы в кабинете провайдера за последние дни. Затем `/resume`.
+
 ## Аккаунт
 
 Если есть подозрение, что кто-то вошёл в ваш аккаунт.

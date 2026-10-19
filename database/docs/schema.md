@@ -44,6 +44,7 @@ rewards ─< reward_contributions >── contributions
 | `principals`        | Principal       | версии      | — (личности агентов, интеграций и участников, PHASE 04)            |
 | `source_snapshots`  | SourceSnapshot  | append-only | — (загрузки из источников каталога, PHASE 05)                      |
 | `access_log`        | —               | append-only | просмотры пульта и отказы в доступе (PHASE 04)                     |
+| `ai_calls`          | —               | append-only | вызовы AI: токены, стоимость, итог (PHASE 09)                      |
 | `events`            | —               | append-only | Event History: событие на каждую версию каждой сущности (PHASE 03) |
 | `idempotency_keys`  | —               | служебная   | команды, выполненные ровно один раз, и их результат (PHASE 03)     |
 | `schema_migrations` | —               | служебная   | журнал раннера миграций                                            |
@@ -140,6 +141,18 @@ rewards ─< reward_contributions >── contributions
   - `external_id` — id у источника, уникален в пределах источника (`evidence_source_external_key`): повторный сбор не создаёт дубликатов;
   - CHECK `evidence_excerpt_without_email`: в цитате нет email. Телефоны и прочие идентификаторы отсекает домен (`containsContactData`) и очистка перед записью.
 - Домен `entity_type` расширен значением `source_snapshot`.
+
+## AI Runtime (PHASE 09)
+
+- **`ai_calls`** — одна попытка AI-задачи, только добавление (триггеры `ai_calls_append_only`, `ai_calls_no_truncate`):
+  - время (по умолчанию часы БД), задача и версия промпта, назначение `task` / `eval`;
+  - провайдер `anthropic` / `openai` / `google`, модель;
+  - токены in/out, `cost_micro_usd` — стоимость в миллионных долях доллара, задержка;
+  - итог `ok` / `failed` и класс сбоя — ровно у неудачных (`ai_calls_failure_for_failed`);
+  - актор и `correlation_id`.
+- Промпты, ответы и ключи не хранятся.
+- Индексы `(occurred_at)` и `(task, occurred_at)`: суммы за месяц, за день и по задаче — основа бюджета и строк пульта.
+- Отчёты evals — сущности `knowledge_assets` с тегами `eval`, `task-…`, `v-…`, `model-…`; расходы за день — `cost_entries` категории `ai`.
 
 ## Ошибки
 

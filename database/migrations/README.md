@@ -9,6 +9,7 @@
 | [`0003_system_control.sql`](0003_system_control.sql)   | 13b   | Стоп-кран: таблица `system_controls`, строка `automation` с событием                                    |
 | [`0004_identity_access.sql`](0004_identity_access.sql) | 04    | Личности `principals`, запрос `access_grant`, запрет записи без активной личности, `access_log`         |
 | [`0005_evidence_engine.sql`](0005_evidence_engine.sql) | 05    | `sources.catalog_key`, загрузки `source_snapshots`, у `evidence` — снимок, `external_id` и запрет email |
+| [`0006_ai_runtime.sql`](0006_ai_runtime.sql)           | 09    | Журнал вызовов AI `ai_calls` (только добавление): токены, стоимость в микродолларах, итог и класс сбоя  |
 
 ## Правила
 

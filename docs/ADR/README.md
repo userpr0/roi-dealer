@@ -30,3 +30,4 @@ ADR фиксирует значимое архитектурное решени�
 | [0003](0003-early-telegram-owner-bot.md)                  | Ранний Telegram-модуль — бот-пульт владельца                                | Accepted | 2026-09-24 |
 | [0004](0004-constitution-pattern-and-permitted-access.md) | Поправки к конституции: «паттерн, а не копия» и «только разрешённый доступ» | Accepted | 2026-09-24 |
 | [0005](0005-postgresql-driver-and-migrations.md)          | Драйвер PostgreSQL и миграции                                               | Accepted | 2026-09-25 |
+| [0006](0006-ai-providers-and-runtime.md)                  | AI-провайдеры (Anthropic, OpenAI, Google) и AI Runtime                      | Accepted | 2026-10-18 |
