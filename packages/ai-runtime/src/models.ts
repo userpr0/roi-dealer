@@ -72,6 +72,32 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     priceSource: 'Claude API reference',
     checkedOn: '2026-10-18',
   },
+  // PHASE 11 (ADR-0006): strong models of the other providers, so judgement runs with any key.
+  {
+    id: 'gpt-5.5',
+    provider: 'openai',
+    tier: 'strong',
+    inputMicroUsdPerMTok: 5 * USD,
+    // Reasoning tokens are billed as output.
+    outputMicroUsdPerMTok: 30 * USD,
+    contextTokens: 1_000_000,
+    structuredOutput: true,
+    priceSource: 'Third-party price tables (June and August 2026); confirmed by the model list',
+    checkedOn: '2026-10-19',
+  },
+  {
+    id: 'gemini-3.1-pro-preview',
+    provider: 'google',
+    tier: 'strong',
+    // Sources differ ($2/$12 and $2.50/$15): the higher price keeps the budget safe.
+    inputMicroUsdPerMTok: 2.5 * USD,
+    // Thinking tokens are billed as output.
+    outputMicroUsdPerMTok: 15 * USD,
+    contextTokens: 1_000_000,
+    structuredOutput: true,
+    priceSource: 'Third-party price tables (July and September 2026, higher of the two)',
+    checkedOn: '2026-10-19',
+  },
 ];
 
 /** Cost of one call in micro-USD, rounded up. */

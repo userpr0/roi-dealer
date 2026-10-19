@@ -112,6 +112,14 @@ export {
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
 export {
+  createJudgementLog,
+  JUDGEMENT_OUTCOMES,
+  type JudgementEntry,
+  type JudgementLog,
+  type JudgementOutcome,
+  type StoredJudgement,
+} from './judgements.js';
+export {
   createOpportunityAssessmentLog,
   OPPORTUNITY_ASSESSMENT_OUTCOMES,
   type OpportunityAssessmentEntry,

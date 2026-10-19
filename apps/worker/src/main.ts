@@ -17,6 +17,7 @@ import {
   type AiProviderClient,
 } from '@roi-dealer/ai-runtime';
 import { ensureAccessRequest } from '@roi-dealer/command-center';
+import { JUDGE_TASKS, judgesAgent } from '@roi-dealer/judges';
 import { createDatabase } from '@roi-dealer/database';
 import {
   createEvidenceScheduler,
@@ -96,7 +97,7 @@ function main(): void {
     runtime: ai,
     database,
     logger,
-    tasks: [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS, ...AGENT_TASKS],
+    tasks: [...AI_TASKS, ...SIGNAL_TASKS, ...OPPORTUNITY_TASKS, ...AGENT_TASKS, ...JUDGE_TASKS],
     intervalMs: config.AI_MAINTENANCE_INTERVAL_MS,
   });
 
@@ -112,7 +113,7 @@ function main(): void {
     intervalMs: config.EVIDENCE_COLLECT_INTERVAL_MS,
     redactNames: namesPass,
   });
-  // The agents (PHASE 06, 07, 10) need AI: without a provider they do not even ask for access.
+  // The agents (PHASE 06, 07, 10, 11) need AI: without a provider they do not even ask for access.
   const agents = createAgentScheduler({
     database,
     logger,
@@ -134,6 +135,7 @@ function main(): void {
               intervalMs: config.RESEARCH_INTERVAL_MS,
             },
             { agent: marketAnalystAgent(), intervalMs: config.MARKET_INTERVAL_MS },
+            { agent: judgesAgent(), intervalMs: config.JUDGES_INTERVAL_MS },
           ],
   });
   maintenance.start();

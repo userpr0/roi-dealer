@@ -344,7 +344,7 @@ describe('stops without wasting budget', () => {
 
 describe('the owner sees what was found', () => {
   it('/opportunities lists drafts with score, model and pain; the digest counts them', async () => {
-    const text = await opportunitiesText(db.repositories, db.opportunityAssessments);
+    const text = await opportunitiesText(db.repositories, db.opportunityAssessments, db.judgements);
     expect(text).not.toBe(NO_OPPORTUNITIES_TEXT);
     expect(text).toMatch(/^💡 Возможности · открытых: 2/);
     expect(text).toContain('1. Payouts that reconcile themselves for small agencies — 62/100');

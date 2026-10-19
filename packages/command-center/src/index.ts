@@ -51,6 +51,8 @@ export {
   searchResultText,
 } from './brain.js';
 export {
+  CRITERION_LABELS,
+  judgesLines,
   marketLine,
   NO_OPPORTUNITIES_TEXT,
   OPPORTUNITIES_SHOWN,

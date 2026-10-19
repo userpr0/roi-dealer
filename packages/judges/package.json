@@ -2,7 +2,7 @@
   "name": "@roi-dealer/judges",
   "version": "0.0.0",
   "private": true,
-  "description": "Evaluation judges",
+  "description": "Judges: six independent judgements of opportunities with evidence (PHASE 11)",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,13 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@roi-dealer/agents": "workspace:*",
+    "@roi-dealer/ai-runtime": "workspace:*",
+    "@roi-dealer/brain": "workspace:*",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "zod": "^4.6.5"
   }
 }

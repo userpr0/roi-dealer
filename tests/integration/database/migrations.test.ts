@@ -46,6 +46,7 @@ const PROJECT_MIGRATIONS = [
   '0008_opportunity_engine',
   '0009_company_brain',
   '0010_agents',
+  '0011_judges',
 ];
 
 describe('runMigrations with the project migrations', () => {

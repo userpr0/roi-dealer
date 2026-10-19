@@ -470,7 +470,7 @@ describe('the market context agent keeps only quoted facts (PHASE 10)', () => {
     expect(market?.alternatives.map((item) => item.name)).toEqual(['Bookkeeper']);
     expect(entry?.links.evidenceIds).toEqual([market?.money[0]?.evidenceId]);
 
-    const text = await opportunitiesText(db.repositories, db.opportunityAssessments);
+    const text = await opportunitiesText(db.repositories, db.opportunityAssessments, db.judgements);
     expect(text).toContain(
       '   Рынок: сейчас — Bookkeeper · суммы — $400/мес · платит — agency owner',
     );

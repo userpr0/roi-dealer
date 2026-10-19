@@ -6,6 +6,7 @@ import {
   researchQueryTask,
 } from '@roi-dealer/agents';
 import { redactNamesTask } from '@roi-dealer/ai-runtime';
+import { JUDGES, judgeOpportunityTask } from '@roi-dealer/judges';
 import { frameOpportunityTask, OPPORTUNITY_ANALYST } from '@roi-dealer/opportunities';
 import { extractSignalTask, matchPainTask, PAIN_ANALYST } from '@roi-dealer/signals';
 import { approvePrincipal, readMarketContext, toTimestamp } from '@roi-dealer/domain';
@@ -14,6 +15,7 @@ import {
   perfectMarketAnswer,
   perfectResearchAnswer,
 } from '../../support/agent-answers.js';
+import { judgeGolden, perfectJudgeAnswer } from '../../support/judge-answers.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { OWNER } from '../../support/domain.js';
 import { promptText, startFakeAi, type FakeAiRequest } from '../../support/fake-ai.js';
@@ -153,6 +155,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       frameOpportunityTask.evalCases.map((c) => [frameOpportunityTask.render(c.input), c.expected]),
     );
     const agentsGolden = agentGolden();
+    const judgesGolden = judgeGolden();
     const frame = (
       buyer: 'business' | 'consumer',
       recurring: boolean,
@@ -229,6 +232,21 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
           ),
         };
       }
+      if (request.instructions === judgeOpportunityTask.instructions) {
+        const expected = judgesGolden.get(request.prompt);
+        return {
+          text: JSON.stringify(
+            expected === undefined
+              ? {
+                  score: 4,
+                  rationale: 'Agencies already pay an assistant every month to chase invoices.',
+                  evidence: [1],
+                  concerns: [],
+                }
+              : perfectJudgeAnswer(expected),
+          ),
+        };
+      }
       if (request.instructions === frameOpportunityTask.instructions) {
         const expected = frameGolden.get(request.prompt);
         const output =
@@ -244,9 +262,9 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       const names = golden.get(text) ?? (text.includes('Sarah Chen') ? ['Sarah Chen'] : []);
       return { text: JSON.stringify({ names }) };
     };
-    claude.listModels(['claude-haiku-5-5']);
-    gpt.listModels(['gpt-5.4-mini']);
-    gemini.listModels(['gemini-3.1-flash-lite']);
+    claude.listModels(['claude-haiku-5-5', 'claude-opus-5-5']);
+    gpt.listModels(['gpt-5.4-mini', 'gpt-5.5']);
+    gemini.listModels(['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview']);
     for (const fake of fakes) fake.answer(answer);
     const keys = {
       ANTHROPIC_API_KEY: 'sk-ant-process-0123456789',
@@ -278,6 +296,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       EVIDENCE_COLLECT_INTERVAL_MS: '200',
       SIGNALS_INTERVAL_MS: '200',
       OPPORTUNITIES_INTERVAL_MS: '200',
+      JUDGES_INTERVAL_MS: '200',
       RESEARCH_INTERVAL_MS: '200',
       MARKET_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
@@ -312,8 +331,17 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
           );
         }
       }
+      // The judges run on the strong models of all three providers (PHASE 11).
+      for (const model of ['claude-opus-5-5', 'gemini-3.1-pro-preview', 'gpt-5.5']) {
+        await service.waitForLog(
+          (line) =>
+            line['message'] === 'ai eval passed' &&
+            line['task'] === 'judge-opportunity' &&
+            line['model'] === model,
+        );
+      }
       // Every agent asks for its access too; the owner grants them and the source.
-      for (const agent of [PAIN_ANALYST, OPPORTUNITY_ANALYST, RESEARCHER, MARKET_ANALYST]) {
+      for (const agent of [PAIN_ANALYST, OPPORTUNITY_ANALYST, RESEARCHER, MARKET_ANALYST, JUDGES]) {
         await service.waitForLog(
           (line) =>
             line['message'] === 'agent run' &&
@@ -347,7 +375,12 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       await service.waitForLog(
         (line) => line['message'] === 'opportunity assessment' && line['opportunities'] === 1,
       );
-      expect(await test.database.repositories.opportunities.listByStatus('draft')).toMatchObject([
+      // A draft, or already judged and in front of the owner.
+      const drafted = [
+        ...(await test.database.repositories.opportunities.listByStatus('draft')),
+        ...(await test.database.repositories.opportunities.listByStatus('under_review')),
+      ];
+      expect(drafted).toMatchObject([
         {
           title: 'Invoices that get paid without chasing',
           businessModel: { model: 'subscription' },
@@ -364,6 +397,22 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       expect(market === undefined ? undefined : readMarketContext(market)).toMatchObject({
         money: [{ amountUsd: 300, period: 'month' }],
       });
+      // Six judgements, then the owner's review queue.
+      await service.waitForLog((line) => line['message'] === 'judges' && line['submitted'] === 1);
+      const [judged] = await test.database.repositories.opportunities.listByStatus('under_review');
+      expect(judged?.title).toBe('Invoices that get paid without chasing');
+      const panel =
+        judged === undefined
+          ? undefined
+          : (await test.database.judgements.latest([judged.id])).get(judged.id);
+      expect(panel?.map((item) => [item.criterion, item.score])).toEqual([
+        ['market', 4],
+        ['pain_value', 4],
+        ['economics', 4],
+        ['buildability', 4],
+        ['risk', 4],
+        ['reuse', 4],
+      ]);
       // The research agent searched HN for the pain while it had fewer than 3 signals.
       expect(hn.searches).toContain('chasing invoices');
       const tasks = await test.database.aiCalls.list({ limit: 1_000 });
@@ -377,6 +426,7 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
           'frame-opportunity',
           'research-query',
           'market-context',
+          'judge-opportunity',
         ]),
       );
 

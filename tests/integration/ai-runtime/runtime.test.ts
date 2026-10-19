@@ -166,6 +166,9 @@ describe('evals (D-014 п.7)', () => {
       'claude-opus-5-5': true,
       'gemini-3.1-flash-lite': true,
       'gpt-5.4-mini': true,
+      // Strong models of the other providers (PHASE 11); this GPT account does not list one.
+      'gemini-3.1-pro-preview': true,
+      'gpt-5.5': false,
     });
     expect(claude.requests).toContain('/v1/models');
     expect(gemini.requests).toContain('/v1beta/models');

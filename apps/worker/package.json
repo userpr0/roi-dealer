@@ -18,6 +18,7 @@
     "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/evidence": "workspace:*",
+    "@roi-dealer/judges": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/opportunities": "workspace:*",
     "@roi-dealer/shared": "workspace:*",

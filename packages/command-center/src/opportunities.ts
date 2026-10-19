@@ -1,12 +1,19 @@
 import {
+  judgePanel,
   MARKET_CONTEXT_TAG,
   readMarketContext,
+  type JudgeCriterion,
   type MarketContextData,
   type MoneyPeriod,
   type Opportunity,
   type OpportunityId,
 } from '@roi-dealer/domain';
-import type { OpportunityAssessmentLog, Repositories } from '@roi-dealer/database';
+import type {
+  JudgementLog,
+  OpportunityAssessmentLog,
+  Repositories,
+  StoredJudgement,
+} from '@roi-dealer/database';
 
 /** At most this many opportunities are listed in /opportunities. */
 export const OPPORTUNITIES_SHOWN = 10;
@@ -35,6 +42,37 @@ const PART_LABELS: Readonly<Record<string, string>> = {
   market: 'рынок',
   buyer: 'покупатель',
 };
+
+/** Short names of the judges' criteria (PHASE 11), in the order of `JUDGE_CRITERIA`. */
+export const CRITERION_LABELS: Readonly<Record<JudgeCriterion, string>> = {
+  market: 'рынок',
+  pain_value: 'боль',
+  economics: 'экономика',
+  buildability: 'сборка',
+  risk: 'риск',
+  reuse: 'повтор',
+};
+
+/** The judges' line (PHASE 11): the total, every score and the weak spots. */
+export function judgesLines(judgements: readonly StoredJudgement[]): string[] {
+  const scores: Partial<Record<JudgeCriterion, number>> = {};
+  for (const item of judgements) {
+    if (item.outcome === 'judged' && item.score !== undefined) scores[item.criterion] = item.score;
+  }
+  const panel = judgePanel(scores);
+  const parts = (Object.keys(CRITERION_LABELS) as JudgeCriterion[]).map(
+    (criterion) => `${CRITERION_LABELS[criterion]} ${String(scores[criterion] ?? '—')}`,
+  );
+  const lines = [
+    `   ⚖️ Судьи: ${panel.total === undefined ? 'оценивают' : `${String(panel.total)}/100`} · ${parts.join(' · ')}`,
+  ];
+  if (panel.weak.length > 0) {
+    lines.push(
+      `   Слабые места: ${panel.weak.map((criterion) => CRITERION_LABELS[criterion]).join(', ')}`,
+    );
+  }
+  return lines;
+}
 
 const PERIOD_SUFFIX: Readonly<Record<MoneyPeriod, string>> = {
   one_time: '',
@@ -75,13 +113,14 @@ export const NO_OPPORTUNITIES_TEXT =
   'дважды (/pains), когда в worker есть ключи AI и его доступ одобрен в /decisions.';
 
 /**
- * /opportunities (PHASE 07, 10): draft opportunities with the best score first, with the parts
- * of the score, the business model, the market context and the pain. From the database only
- * (§2.13).
+ * /opportunities (PHASE 07, 10, 11): open opportunities with the best score first, with the
+ * parts of the score, the business model, the judges, the market context and the pain. From the
+ * database only (§2.13).
  */
 export async function opportunitiesText(
   repositories: Pick<Repositories, 'opportunities' | 'pains' | 'knowledgeAssets'>,
   assessments: Pick<OpportunityAssessmentLog, 'scores'>,
+  judgements: Pick<JudgementLog, 'latest'>,
 ): Promise<string> {
   const open: Opportunity[] = [];
   for (const status of ['draft', 'under_review'] as const) {
@@ -94,6 +133,7 @@ export async function opportunitiesText(
   const top = [...open]
     .sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, OPPORTUNITIES_SHOWN);
+  const panels = await judgements.latest(top.map((item) => item.id));
   // Newest first: the first entry of an opportunity is its latest context.
   const markets = new Map<OpportunityId, MarketContextData>();
   const entries = await repositories.knowledgeAssets.listByTags([MARKET_CONTEXT_TAG], {
@@ -117,6 +157,7 @@ export async function opportunitiesText(
     const [painId] = opportunity.painIds;
     const pain = painId === undefined ? undefined : await repositories.pains.getById(painId);
     const market = markets.get(opportunity.id);
+    const judged = panels.get(opportunity.id);
     const marketText = market === undefined ? undefined : marketLine(market);
     const parts =
       score === undefined
@@ -131,10 +172,11 @@ export async function opportunitiesText(
       `   Модель: ${MODEL_LABELS[opportunity.businessModel.model]} · рынки: ${opportunity.markets.join(', ')}` +
         (opportunity.status === 'under_review' ? ' · ждёт решения' : ' · черновик'),
       ...(parts === '' ? [] : [`   Оценка: ${parts}`]),
+      ...(judged === undefined ? [] : judgesLines(judged)),
       ...(marketText === undefined ? [] : [marketText]),
       ...(pain === undefined ? [] : [`   Боль: ${pain.title}`]),
     );
   }
-  lines.push('', 'Решение по возможности — карточкой с кнопками после судей (PHASE 11–12).');
+  lines.push('', 'Решение по возможности — карточкой с кнопками (PHASE 12).');
   return lines.join('\n');
 }

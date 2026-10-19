@@ -212,7 +212,11 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('opportunities', 'research.read', async (context) =>
         context.reply(
-          await opportunitiesText(database.repositories, database.opportunityAssessments),
+          await opportunitiesText(
+            database.repositories,
+            database.opportunityAssessments,
+            database.judgements,
+          ),
         ),
       ),
       command('search', 'research.read', async (context) =>
