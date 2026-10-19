@@ -163,6 +163,17 @@ rewards ─< reward_contributions >── contributions
 - Тексты не хранятся: цитата живёт в `signals.summary` и `pains.description`, взятая из уже очищенного Evidence.
 - Строка пишется в той же транзакции, что сигнал и боль.
 
+## Opportunity Engine (PHASE 07)
+
+- **`opportunity_assessments`** — оценка одной версии боли агентом возможностей, только добавление (триггеры `opportunity_assessments_append_only`, `opportunity_assessments_no_truncate`):
+  - боль и её версия (уникально: `opportunity_assessments_pain_version_once`), версия задачи `frame-opportunity`;
+  - итог `opportunity` / `below_threshold` / `rejected` / `failed`;
+  - оценка 0–100 и составляющие (`jsonb`-объект) — ровно у оценённых итогов;
+  - возможность — ровно у `opportunity`;
+  - актор и `correlation_id`.
+- Боль с итогом `opportunity` больше не оценивается; выросшая боль (новая версия) — оценивается заново.
+- Тексты не хранятся: подтверждённые цитаты о деньгах — в `opportunities.value_proof`.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
