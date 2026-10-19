@@ -2,7 +2,7 @@
   "name": "@roi-dealer/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "ROI Dealer background worker: evidence collection from catalog sources (PHASE 05)",
+  "description": "ROI Dealer background worker: evidence collection (PHASE 05) and AI maintenance (PHASE 09)",
   "type": "module",
   "files": [
     "dist"
@@ -13,6 +13,7 @@
     "start": "node --enable-source-maps dist/main.js"
   },
   "dependencies": {
+    "@roi-dealer/ai-runtime": "workspace:*",
     "@roi-dealer/command-center": "workspace:*",
     "@roi-dealer/database": "workspace:*",
     "@roi-dealer/evidence": "workspace:*",

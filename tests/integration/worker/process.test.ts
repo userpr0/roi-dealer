@@ -1,9 +1,33 @@
 import { describe, expect, it } from 'vitest';
+import { redactNamesTask } from '@roi-dealer/ai-runtime';
 import { approvePrincipal, toTimestamp } from '@roi-dealer/domain';
-import { createTestDatabase } from '../../support/database.js';
+import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { OWNER } from '../../support/domain.js';
+import { promptText, startFakeAi, type FakeAiRequest } from '../../support/fake-ai.js';
 import { startFakeHackerNews } from '../../support/fake-hacker-news.js';
-import { startService } from '../../support/service-process.js';
+import { startService, type ServiceProcess } from '../../support/service-process.js';
+
+/** The owner grants the Hacker News integration in /decisions, once the worker asked. */
+async function grantHackerNews(
+  test: TestDatabase,
+  service: ServiceProcess,
+  beforeGrant: () => void = () => undefined,
+): Promise<void> {
+  await service.waitForLog(
+    (line) =>
+      line['message'] === 'evidence collection skipped' && line['reason'] === 'access_not_active',
+  );
+  beforeGrant();
+  const principal = await test.database.repositories.principals.getByActor({
+    type: 'integration',
+    id: 'source:hacker-news',
+  });
+  if (principal === undefined) throw new Error('the worker did not ask for access');
+  await test.database.repositories.principals.update(
+    approvePrincipal(principal, { actor: OWNER, at: toTimestamp(new Date()) }),
+    OWNER,
+  );
+}
 
 describe('worker process', () => {
   it('starts, emits heartbeats and stops gracefully on SIGTERM', async () => {
@@ -74,23 +98,8 @@ describe('worker process with a database (PHASE 05)', () => {
 
     try {
       await service.waitForLog((line) => line['message'] === 'evidence collection scheduled');
-      await service.waitForLog(
-        (line) =>
-          line['message'] === 'evidence collection skipped' &&
-          line['reason'] === 'access_not_active',
-      );
-      expect(hn.requests).toEqual([]);
-
-      // The owner grants the integration in /decisions.
-      const principal = await test.database.repositories.principals.getByActor({
-        type: 'integration',
-        id: 'source:hacker-news',
-      });
-      if (principal === undefined) throw new Error('the worker did not ask for access');
-      await test.database.repositories.principals.update(
-        approvePrincipal(principal, { actor: OWNER, at: toTimestamp(new Date()) }),
-        OWNER,
-      );
+      // Nothing is fetched before the grant.
+      await grantHackerNews(test, service, () => expect(hn.requests).toEqual([]));
 
       await service.waitForLog((line) => line['message'] === 'evidence collected');
       const rows = await test.database.sql<{ excerpt: string }[]>`select excerpt from evidence`;
@@ -107,6 +116,88 @@ describe('worker process with a database (PHASE 05)', () => {
     } finally {
       service.kill();
       await hn.close();
+      await test.drop();
+    }
+  });
+});
+
+describe('worker process with AI providers (PHASE 09)', () => {
+  it('verifies models, runs evals and redacts names in new evidence', async () => {
+    const test = await createTestDatabase();
+    const hn = await startFakeHackerNews();
+    const fakes = await Promise.all([
+      startFakeAi('anthropic'),
+      startFakeAi('openai'),
+      startFakeAi('google'),
+    ]);
+    const [claude, gpt, gemini] = fakes;
+    const golden = new Map(redactNamesTask.evalCases.map((c) => [c.input.text, c.expected]));
+    const answer = (request: FakeAiRequest) => {
+      const text = promptText(request.prompt);
+      const names = golden.get(text) ?? (text.includes('Sarah Chen') ? ['Sarah Chen'] : []);
+      return { text: JSON.stringify({ names }) };
+    };
+    claude.listModels(['claude-haiku-5-5']);
+    gpt.listModels(['gpt-5.4-mini']);
+    gemini.listModels(['gemini-3.1-flash-lite']);
+    for (const fake of fakes) fake.answer(answer);
+    const keys = {
+      ANTHROPIC_API_KEY: 'sk-ant-process-0123456789',
+      OPENAI_API_KEY: 'sk-openai-process-0123456789',
+      GEMINI_API_KEY: 'gemini-process-0123456789',
+    };
+    hn.publish([
+      {
+        id: 9,
+        type: 'story',
+        by: 'author_y',
+        time: Math.floor(Date.now() / 1_000) - 60,
+        title: 'Ask HN: Invoicing for a two-person agency?',
+        text: 'My partner Sarah Chen spends Fridays chasing invoices',
+      },
+    ]);
+    const service = startService('apps/worker/src/main.ts', {
+      NODE_ENV: 'test',
+      LOG_LEVEL: 'info',
+      DATABASE_URL: test.url,
+      EVIDENCE_COLLECT_INTERVAL_MS: '200',
+      HACKER_NEWS_API_URL: hn.baseUrl,
+      ...keys,
+      ANTHROPIC_BASE_URL: claude.baseUrl,
+      OPENAI_BASE_URL: gpt.baseUrl,
+      GEMINI_BASE_URL: gemini.baseUrl,
+    });
+
+    try {
+      const configured = await service.waitForLog(
+        (line) => line['message'] === 'ai providers configured',
+      );
+      expect(configured['providers']).toEqual(['anthropic', 'openai', 'google']);
+      await service.waitForLog((line) => line['message'] === 'ai models verified');
+      // Evals first: a model without a passing report never runs a task.
+      for (const model of ['claude-haiku-5-5', 'gemini-3.1-flash-lite', 'gpt-5.4-mini']) {
+        await service.waitForLog(
+          (line) => line['message'] === 'ai eval passed' && line['model'] === model,
+        );
+      }
+      await grantHackerNews(test, service);
+      await service.waitForLog((line) => line['message'] === 'evidence collected');
+      const rows = await test.database.sql<{ excerpt: string }[]>`select excerpt from evidence`;
+      expect(rows.map((row) => row.excerpt)).toEqual([
+        'Ask HN: Invoicing for a two-person agency?\n\nMy partner [name] spends Fridays chasing invoices',
+      ]);
+      const [task] = await test.database.aiCalls.list({ limit: 1 });
+      expect(task).toMatchObject({ purpose: 'task', provider: 'anthropic', outcome: 'ok' });
+
+      service.child.kill('SIGTERM');
+      await expect(service.waitForExit()).resolves.toEqual({ code: 0, signal: null });
+      const output = JSON.stringify(service.logs) + service.stderr();
+      for (const secret of [...Object.values(keys), test.url, 'Sarah Chen', 'author_y']) {
+        expect(output).not.toContain(secret);
+      }
+    } finally {
+      service.kill();
+      await Promise.all([hn.close(), ...fakes.map((fake) => fake.close())]);
       await test.drop();
     }
   });

@@ -62,7 +62,7 @@ export interface Repositories {
   readonly costEntries: Repository<CostEntry>;
   readonly contributions: VersionedRepository<Contribution>;
   readonly rewards: VersionedRepository<Reward>;
-  readonly knowledgeAssets: Repository<KnowledgeAsset>;
+  readonly knowledgeAssets: KnowledgeAssetRepository;
   /** The automation kill switch (13b); its row is created by migration 0003. */
   readonly systemControls: VersionedRepository<SystemControl>;
   /** Identities of members, agents and integrations (PHASE 04). */
@@ -74,6 +74,14 @@ export interface Repositories {
 export interface SourceRepository extends VersionedRepository<Source> {
   /** The source connected by this catalog entry (PHASE 05), whatever its status. */
   getByCatalogKey(catalogKey: string): Promise<Source | undefined>;
+}
+
+export interface KnowledgeAssetRepository extends Repository<KnowledgeAsset> {
+  /** Assets carrying every one of `tags`, newest first (e.g. eval reports, PHASE 09). */
+  listByTags(
+    tags: readonly string[],
+    options?: { readonly limit?: number },
+  ): Promise<KnowledgeAsset[]>;
 }
 
 export interface EvidenceRepository extends Repository<Evidence> {
@@ -125,7 +133,19 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     costEntries: createRepository(executor, costEntriesTable, context),
     contributions: createVersionedRepository(executor, contributionsTable, context),
     rewards: createVersionedRepository(executor, rewardsTable, context),
-    knowledgeAssets: createRepository(executor, knowledgeAssetsTable, context),
+    knowledgeAssets: {
+      ...createRepository(executor, knowledgeAssetsTable, context),
+      listByTags: (tags, options = {}) =>
+        translated(async () => {
+          const limit = Math.min(Math.max(Math.trunc(options.limit ?? 20), 1), 1_000);
+          const rows = await executor<Row[]>`
+            select * from knowledge_assets where tags @> ${[...tags]}::text[]
+            order by created_at desc, id desc
+            limit ${limit}
+          `;
+          return readRows(executor, knowledgeAssetsTable, rows);
+        }),
+    },
     systemControls: createVersionedRepository(executor, systemControlsTable, context),
     principals: {
       ...createVersionedRepository(executor, principalsTable, context),

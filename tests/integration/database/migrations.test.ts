@@ -41,6 +41,7 @@ const PROJECT_MIGRATIONS = [
   '0003_system_control',
   '0004_identity_access',
   '0005_evidence_engine',
+  '0006_ai_runtime',
 ];
 
 describe('runMigrations with the project migrations', () => {

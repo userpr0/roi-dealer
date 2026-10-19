@@ -1,4 +1,4 @@
-# ROI Dealer worker — production image (PHASE 05: evidence collection).
+# ROI Dealer worker — production image (PHASE 05 evidence collection, PHASE 09 AI runtime).
 #
 # Build from the repository root:
 #   docker build -f apps/worker/Dockerfile --build-arg APP_VERSION=$(git rev-parse --short HEAD) -t roi-dealer-worker .

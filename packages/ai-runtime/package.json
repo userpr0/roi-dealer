@@ -2,7 +2,7 @@
   "name": "@roi-dealer/ai-runtime",
   "version": "0.0.0",
   "private": true,
-  "description": "Provider-agnostic AI runtime",
+  "description": "AI Runtime: provider abstraction, model router, structured outputs, limits, evals (PHASE 09)",
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +16,15 @@
   ],
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@google/genai": "^2.26.0",
+    "@roi-dealer/database": "workspace:*",
+    "@roi-dealer/domain": "workspace:*",
+    "@roi-dealer/observability": "workspace:*",
+    "@roi-dealer/shared": "workspace:*",
+    "openai": "^7.38.0",
+    "zod": "^4.6.5"
   }
 }

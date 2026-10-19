@@ -10,6 +10,7 @@
     { "path": "../../packages/observability" },
     { "path": "../../packages/database" },
     { "path": "../../packages/evidence" },
-    { "path": "../../packages/command-center" }
+    { "path": "../../packages/command-center" },
+    { "path": "../../packages/ai-runtime" }
   ]
 }

@@ -2,6 +2,7 @@ import postgres from 'postgres';
 import { correlationIdSchema, idempotencyKeySchema } from '@roi-dealer/events';
 import type { HealthCheck, Logger } from '@roi-dealer/observability';
 import { createAccessLog, type AccessLog, type AccessLogEntry } from './access-log.js';
+import { createAiCallLog, type AiCallLog } from './ai-calls.js';
 import type { AccessDeniedHandler } from './access.js';
 import { InvalidWriteError, translated } from './errors.js';
 import { createEventStore, type EventStore } from './event-store.js';
@@ -54,6 +55,8 @@ export interface Database {
   readonly events: EventStore;
   /** Views and refused access attempts (PHASE 04); refused writes are recorded automatically. */
   readonly access: AccessLog;
+  /** Journal of AI calls: tokens, cost and failures (PHASE 09). */
+  readonly aiCalls: AiCallLog;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -142,6 +145,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     repositories: createRepositories(sql, { onAccessDenied: recordDenial }),
     events: createEventStore(sql),
     access,
+    aiCalls: createAiCallLog(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

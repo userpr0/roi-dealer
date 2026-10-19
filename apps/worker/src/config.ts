@@ -20,6 +20,25 @@ const workerConfigSchema = z.object({
     .default(15 * 60_000),
   /** Official API by default; tests point it to a local fake. */
   HACKER_NEWS_API_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_API_URL),
+  /**
+   * AI providers (PHASE 09, ADR-0006, D-021): optional; without a key its models are not used.
+   * Secrets.
+   */
+  ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
+  OPENAI_API_KEY: z.string().trim().min(1).optional(),
+  GEMINI_API_KEY: z.string().trim().min(1).optional(),
+  /** Official APIs by default; tests point them to local fakes. */
+  ANTHROPIC_BASE_URL: z.url({ protocol: /^https?$/ }).optional(),
+  OPENAI_BASE_URL: z.url({ protocol: /^https?$/ }).optional(),
+  GEMINI_BASE_URL: z.url({ protocol: /^https?$/ }).optional(),
+  /**
+   * D-007: at most $50 a month, spread over the days left (D-021); the daily cap keeps a day's
+   * cost entry under the $20 gate (D-006).
+   */
+  AI_MONTHLY_LIMIT_USD: z.coerce.number().positive().max(50).default(50),
+  AI_DAILY_LIMIT_USD: z.coerce.number().positive().max(20).default(20),
+  /** How often models, evals and the daily cost are maintained. Default: one hour. */
+  AI_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(100).default(3_600_000),
 });
 
 export type WorkerConfig = z.infer<typeof workerConfigSchema>;

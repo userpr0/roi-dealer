@@ -46,6 +46,12 @@ export interface EngineDeps {
   readonly now?: () => number;
   /** Default: `SOURCE_CATALOG`; tests pass their own entries. */
   readonly catalog?: readonly CatalogEntry[];
+  /**
+   * Second pass after the rules (PHASE 09): replaces the names of people, e.g. with the
+   * `redact-names` AI task. Throws when it cannot run; the rule-based text is kept then.
+   */
+  readonly redactNames?:
+    ((text: string) => Promise<{ readonly text: string; readonly replaced: number }>) | undefined;
 }
 
 /** Kill switch (13b): every automation checks it as its first step. */
@@ -177,12 +183,30 @@ export async function collectEvidence(
   const at = nowTimestamp(deps);
   const snapshotId = sourceSnapshotIdSchema.parse(uuidv7());
   let redactions = 0;
+  // After the first failure of the AI pass the rest of the load keeps the rule-based text,
+  // so an unavailable provider costs one attempt, not one per item.
+  let namesPass = deps.redactNames;
   const evidence: Evidence[] = [];
   for (const item of run.items) {
     // One item that cannot be stored safely is skipped; it must not stop the whole load.
     try {
       const redacted = redactPersonalData(item.text);
-      const excerpt = shortExcerpt(redacted.text);
+      // Only the stored excerpt is sent to the AI pass: fewer tokens, and nothing more leaves.
+      let text = shortExcerpt(redacted.text);
+      if (text !== '' && namesPass !== undefined) {
+        try {
+          const withoutNames = await namesPass(text);
+          text = withoutNames.text;
+          redactions += withoutNames.replaced;
+        } catch (error) {
+          namesPass = undefined;
+          logger.warn('name redaction unavailable: rules only', {
+            catalog_key: entry.key,
+            code: error instanceof Error && 'code' in error ? String(error.code) : 'unknown',
+          });
+        }
+      }
+      const excerpt = shortExcerpt(text);
       if (excerpt === '') continue;
       const observedAt = timestampMs(item.observedAt) <= timestampMs(at) ? item.observedAt : at;
       evidence.push(

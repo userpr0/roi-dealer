@@ -25,6 +25,7 @@ import {
   periodKeyboard,
   type JournalKind,
 } from './journal.js';
+import { aiStatusLine } from './ai-status.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
 
@@ -199,7 +200,10 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     ],
     async statusLines(request) {
       if (request !== undefined) await audit.allow(request.userId, request.updateId, 'status.read');
-      return [await killSwitchStatus(database.repositories, database.events)];
+      return [
+        await killSwitchStatus(database.repositories, database.events),
+        await aiStatusLine(database.aiCalls, nowMs()),
+      ];
     },
     refused: (attempt) => audit.refused(attempt),
     startDigest: () => scheduler.start(),

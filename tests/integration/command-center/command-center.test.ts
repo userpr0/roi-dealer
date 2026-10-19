@@ -296,7 +296,10 @@ describe('🛑 kill switch', () => {
     const control = await db.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
     expect(control).toMatchObject({ status: 'running' });
     expect(control).not.toHaveProperty('reason');
-    expect(await center.statusLines()).toEqual(['▶️ Автоматизации: работают']);
+    expect(await center.statusLines()).toEqual([
+      '▶️ Автоматизации: работают',
+      '🤖 AI: вызовов ещё не было',
+    ]);
   });
 });
 
@@ -380,6 +383,46 @@ describe('📚 evidence in the journal and the digest (PHASE 05)', () => {
     expect(journal).toContain('01.10 13:04 · Интеграция source:test-forum · ➕ Доказательство ×3');
     const [digest] = await command('digest');
     expect(digest?.text).toMatch(/📚 Новых доказательств за сутки: \d+ → \/journal/);
+  });
+});
+
+describe('🤖 AI in /status and the digest (PHASE 09)', () => {
+  it('shows today against its allowance, the month against $50 and each provider', async () => {
+    const call = {
+      task: 'redact-names',
+      taskVersion: 1,
+      purpose: 'task',
+      inputTokens: 100,
+      outputTokens: 10,
+      latencyMs: 5,
+      actorType: 'system',
+      actorId: 'evidence-engine',
+    } as const;
+    await db.aiCalls.record({
+      ...call,
+      occurredAt: at(10),
+      provider: 'anthropic',
+      model: 'claude-haiku-5-5',
+      costMicroUsd: 120_000,
+      outcome: 'ok',
+    });
+    await db.aiCalls.record({
+      ...call,
+      occurredAt: at(11),
+      provider: 'openai',
+      model: 'gpt-5.4-mini',
+      costMicroUsd: 10_000,
+      outcome: 'failed',
+      failure: 'rate_limited',
+    });
+
+    // 1 October: $50 over 31 days.
+    const [, ai] = await center.statusLines();
+    expect(ai).toMatch(
+      /^🤖 AI сегодня: \$0\.13 из \$1\.61 · за месяц \$0\.13 из \$50\.00\nClaude ✓ \d\d\.\d\d \d\d:\d\d · GPT — · Gemini —$/,
+    );
+    const [digest] = await command('digest');
+    expect(digest?.text).toContain('🤖 AI за сутки: $0.13 · вызовов 2, с ошибкой 1');
   });
 });
 
