@@ -154,6 +154,15 @@ rewards ─< reward_contributions >── contributions
 - Индексы `(occurred_at)` и `(task, occurred_at)`: суммы за месяц, за день и по задаче — основа бюджета и строк пульта.
 - Отчёты evals — сущности `knowledge_assets` с тегами `eval`, `task-…`, `v-…`, `model-…`; расходы за день — `cost_entries` категории `ai`.
 
+## Signals & Pain (PHASE 06)
+
+- **`signal_extractions`** — разбор одного Evidence агентом болей, только добавление (триггеры `signal_extractions_append_only`, `signal_extractions_no_truncate`):
+  - Evidence (уникально: `signal_extractions_evidence_once` — каждое разбирается один раз), версия задачи `extract-signal`;
+  - итог `signal` / `no_pain` / `rejected` / `failed`; сигнал — ровно у `signal` (`signal_extractions_signal_for_signal`), боль — только вместе с сигналом;
+  - актор и `correlation_id`.
+- Тексты не хранятся: цитата живёт в `signals.summary` и `pains.description`, взятая из уже очищенного Evidence.
+- Строка пишется в той же транзакции, что сигнал и боль.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.

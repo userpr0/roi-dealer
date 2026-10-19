@@ -131,15 +131,15 @@ TypeScript **modular monolith** в pnpm monorepo:
                      └─► ai-runtime ─► AI providers (заменяемые)   └─► S3-compatible storage
 ```
 
-| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                       | Появится                                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                                                                       | Бизнес-API — по Phase                                                                                          |
-| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown; с `DATABASE_URL` — сбор Evidence из источников каталога по расписанию (PHASE 05, `@roi-dealer/evidence`); с ключами AI — проверка моделей, evals, вычистка имён и учёт расходов AI (PHASE 09, `@roi-dealer/ai-runtime`); Docker-образ с миграциями      | Агенты и судьи (PHASE 10+); Temporal — ADR при первом долгом workflow                                          |
-| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                                                                  | PHASE 13 — Owner Command Center                                                                                |
-| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`); Docker-образ с миграциями | Alerts, Input Router, Mini App с данными — PHASE 13+                                                           |
-| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 16 сущностей и журналов (миграции `0001`–`0006`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                         | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота и worker |
-| Temporal              | Не запущен                                                                                                                                                                                                                                                                                              | Отдельный шаг с ADR                                                                                            |
-| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                              | При первой потребности (Evidence snapshots, media)                                                             |
+| Компонент             | Статус в PHASE 00                                                                                                                                                                                                                                                                                                                                 | Появится                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `apps/api`            | `GET /health`, structured logs, correlation id, graceful shutdown                                                                                                                                                                                                                                                                                 | Бизнес-API — по Phase                                                                                          |
+| `apps/worker`         | Lifecycle: start, heartbeat, graceful shutdown; с `DATABASE_URL` — сбор Evidence из источников каталога по расписанию (PHASE 05, `@roi-dealer/evidence`); с ключами AI — проверка моделей, evals, вычистка имён и учёт расходов AI (PHASE 09, `@roi-dealer/ai-runtime`), поиск болей (PHASE 06, `@roi-dealer/signals`); Docker-образ с миграциями | Агенты и судьи (PHASE 10+); Temporal — ADR при первом долгом workflow                                          |
+| `apps/miniapp`        | Placeholder-экран, опубликован на GitHub Pages и открывается кнопкой бота (ADR-0002); без Telegram SDK                                                                                                                                                                                                                                            | PHASE 13 — Owner Command Center                                                                                |
+| `apps/bot`            | Бот-пульт владельца (13a, ADR-0003; 13b; PHASE 04): только владелец, `/status`, уведомления, long polling; с `DATABASE_URL` — одобрения с подтверждением, стоп-кран, журнал, история, дайджест 10:00 Kyiv, доступы `/access` и журнал доступа (`@roi-dealer/command-center`); Docker-образ с миграциями                                           | Alerts, Input Router, Mini App с данными — PHASE 13+                                                           |
+| PostgreSQL 18         | Docker Compose (локально), сервис в CI; схема 16 сущностей и журналов (миграции `0001`–`0007`); доступ — `@roi-dealer/database`; `api` и `bot` проверяют БД в health, если задан `DATABASE_URL`                                                                                                                                                   | Облачная БД — создаёт владелец ([инструкция](deploy/database.md)); миграции — Pre-deploy Command бота и worker |
+| Temporal              | Не запущен                                                                                                                                                                                                                                                                                                                                        | Отдельный шаг с ADR                                                                                            |
+| S3-compatible storage | Не запущен                                                                                                                                                                                                                                                                                                                                        | При первой потребности (Evidence snapshots, media)                                                             |
 
 ### Направления зависимостей
 
@@ -152,7 +152,8 @@ apps/bot ──► packages/command-center ──► packages/database, packages
 apps/* ──► packages/database ──► packages/events ──► packages/domain   (PostgreSQL только через database)
 packages/database, packages/command-center ──► packages/policies ──► packages/domain   (права, PHASE 04)
 apps/worker ──► packages/evidence ──► packages/database, packages/domain   (сбор данных, PHASE 05)
-apps/worker ──► packages/command-center   (ensureAccessRequest передаётся в evidence как зависимость)
+apps/worker ──► packages/signals ──► packages/ai-runtime, packages/database, packages/domain   (боли, PHASE 06)
+apps/worker ──► packages/command-center   (ensureAccessRequest передаётся в evidence и signals как зависимость)
 packages/*  ──►  packages/shared, packages/observability
 ```
 
@@ -164,7 +165,7 @@ packages/*  ──►  packages/shared, packages/observability
 
 | Система                             | Где будет жить                                                                                                                                                                            |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `workflows/discovery`                                                                                                                       |
+| 1. Sensory System                   | `packages/domain` (Source, Evidence, Signal), `packages/evidence` (PHASE 05), `packages/signals` (PHASE 06), `workflows/discovery` — с Temporal                                           |
 | 2. Company Brain                    | `packages/domain` + PostgreSQL (PHASE 08)                                                                                                                                                 |
 | 3. Opportunity & Decision           | `packages/domain`, `packages/judges`, `workflows/opportunity`                                                                                                                             |
 | 4. Validation System                | `workflows/validation` (PHASE 14–15)                                                                                                                                                      |
@@ -264,6 +265,22 @@ worker (по расписанию) ──► стоп-кран ──► кат�
   - домен и БД не пропускают email (домен — и телефоны).
 - **Worker без Temporal:** планировщик внутри процесса, без наложения запусков; Temporal — ADR при первом долгом workflow.
 
+### Signals & Pain (PHASE 06)
+
+```text
+worker (раз в 15 минут, есть ключи AI) ──► стоп-кран ──► доступ агента pain-analyst (/decisions)
+  └─ до 20 Evidence без строки в signal_extractions
+       ──► runTask(extract-signal): боль? утверждение, аудитория, результат, сила, цитата
+       ──► код: цитата есть в тексте? (иначе rejected)
+       ──► closestPains (слова, бесплатно) ──► runTask(match-pain) по ≤ 10 ближайшим
+       ──► одна транзакция: Signal (new → triaged) + Pain (createPain | addSignalToPain [| validatePain])
+           + строка signal_extractions (correlation signals-<evidenceId>)
+```
+
+- **AI предлагает, код применяет (§2.3):** цитата проверяется кодом, ключ совпадения сверяется со списком, сущности меняют функции домена.
+- **Бюджет:** доли дня `extract-signal` 15 %, `match-pain` 5 % (D-021); нет квоты или модели — запуск останавливается, Evidence ждут.
+- **Боль подтверждается** правилом PHASE 01: доказательства из ≥ 2 источников.
+
 ### Сквозные механизмы (реализованы в PHASE 00)
 
 | Механизм           | Где                                                                      | Контракт                                                                                                 |
@@ -282,7 +299,7 @@ worker (по расписанию) ──► стоп-кран ──► кат�
 - **PHASE 03 — Event History:** append-only event store, audit, idempotency.
 - **PHASE 04 — Identity / RBAC / Security:** users, roles, permissions, agent identity, service accounts.
 - **PHASE 05 — Evidence Engine:** sources, snapshots, evidence, claims, provenance, trust.
-- **PHASE 06 — Signals & Pain:** normalization, clustering, pain candidates.
+- **PHASE 06 — Signals & Pain:** normalization, clustering, pain candidates. Реализовано: агент `pain-analyst`, AI-задачи `extract-signal` и `match-pain`, проверка цитат кодом, `/pains`.
 - **PHASE 07 — Opportunity Engine:** opportunity scoring, market context, Business Model Router.
 - **PHASE 08 — Company Brain v0.1:** knowledge, decisions, similar-case retrieval, history.
 - **PHASE 09 — AI Runtime:** provider abstraction, Model Router, costs, retries, schema validation. Реализовано: Claude, GPT, Gemini за `runTask`; порядок моделей по evals; бюджет по дням с долями процессов (D-021, [ADR-0006](ADR/0006-ai-providers-and-runtime.md)).

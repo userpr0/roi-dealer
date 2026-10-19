@@ -1,16 +1,16 @@
 # Current State
 
 ```text
-Current Phase: 09 — AI Runtime
+Current Phase: 06 — Signals & Pain
 Phase Status: PASS
-Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, PR awaiting merge)
+Completed: 00 — Project Bootstrap (PASS), 01 — Core Domain (PASS, accepted D-015), 02 — PostgreSQL Foundation (PASS, accepted D-016), 03 — Event History (PASS, accepted D-017), 13a — Telegram Owner Bot (PASS, owner-approved early step), 13b — Owner Approvals and Kill Switch (PASS, accepted D-018), 04 — Identity / RBAC / Security (PASS, accepted D-019), 05 — Evidence Engine (PASS, PR awaiting merge), 09 — AI Runtime (PASS, PR awaiting merge)
 Level: 1 reached (2026-10-18: bot + cloud PostgreSQL in Railway)
 Approval mode: D-020 — all phases up to full Level 2 approved; order 05 → 09 → 06 → 07 → 08 → 10 → 11 → 12 → 14 → 15 → 16 → 13 → 17; D-021 — three AI providers, daily AI budget
 Playbook: v1.1
 Updated: 2026-10-19
 ```
 
-Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md), [PHASE 01 — Core Domain](phases/01_core_domain.report.md), [PHASE 02 — PostgreSQL Foundation](phases/02_postgresql_foundation.report.md), [PHASE 03 — Event History](phases/03_event_history.report.md), [13b — Одобрения и стоп-кран](phases/13b_owner_approvals.report.md), [PHASE 04 — Identity / RBAC / Security](phases/04_identity_access.report.md), [PHASE 05 — Evidence Engine](phases/05_evidence_engine.report.md), [PHASE 09 — AI Runtime](phases/09_ai_runtime.report.md)
+Отчёты: [PHASE 00](phases/00_project_bootstrap.report.md), [13a — Telegram Owner Bot](phases/13a_telegram_owner_bot.report.md), [PHASE 01 — Core Domain](phases/01_core_domain.report.md), [PHASE 02 — PostgreSQL Foundation](phases/02_postgresql_foundation.report.md), [PHASE 03 — Event History](phases/03_event_history.report.md), [13b — Одобрения и стоп-кран](phases/13b_owner_approvals.report.md), [PHASE 04 — Identity / RBAC / Security](phases/04_identity_access.report.md), [PHASE 05 — Evidence Engine](phases/05_evidence_engine.report.md), [PHASE 09 — AI Runtime](phases/09_ai_runtime.report.md), [PHASE 06 — Signals & Pain](phases/06_signals_pain.report.md)
 
 Решения владельца: [`docs/OWNER_DECISIONS.md`](OWNER_DECISIONS.md) · План до рабочего состояния: [`docs/ROADMAP.md`](ROADMAP.md)
 
@@ -18,7 +18,7 @@ Updated: 2026-10-19
 
 - pnpm monorepo (`apps/*`, `packages/*`), воспроизводимая установка (`pnpm install --frozen-lockfile`).
 - TypeScript 6.0 strict + project references (`tsc -b`), ESLint 10 (type-aware, `no-console`), Prettier.
-- Vitest: 51 test files, 571 tests (398 unit, 173 integration); integration-тесты работают с настоящим PostgreSQL 18.
+- Vitest: 53 test files, 597 tests (413 unit, 184 integration); integration-тесты работают с настоящим PostgreSQL 18.
 - Config validation (Zod), structured JSON logging с редактированием секретов, correlation id, health registry, graceful shutdown.
 - `GET /health` → `{"status":"ok","service":"api"}`; при заданном `DATABASE_URL` — ещё проверка `database` (недоступна → HTTP 503).
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
@@ -62,6 +62,14 @@ Updated: 2026-10-19
   - **Первая задача `redact-names`:** AI находит имена людей, код заменяет их на `[name]` в новых Evidence.
   - **Worker:** ключи провайдеров, обслуживание раз в час.
   - **Пульт:** строка AI в `/status` и в дайджесте.
+- **PHASE 06 — Signals & Pain (D-020):**
+  - **Агент `pain-analyst`** (`@roi-dealer/signals`) разбирает каждое новое Evidence один раз. Доступ выдаёт владелец в `/decisions`; стоп-кран — первым шагом.
+  - **AI-задача `extract-signal`** находит боль, формулирует её одним утверждением и приводит дословную цитату. Код проверяет, что цитата действительно есть в тексте.
+  - **Группировка:** сначала словесное сходство (бесплатно), затем AI-задача `match-pain` по ≤ 10 ближайшим. Похожие сигналы собираются в одного кандидата `Pain`; частота и тяжесть растут; два источника → `validated`.
+  - **Домен:** `addSignalToPain`.
+  - **Миграция `0007_signals_pain`:** журнал `signal_extractions`.
+  - **Пульт:** `/pains`, строка в дайджесте.
+  - **Бюджет:** доли дня 15 % + 5 %.
 - **Фаза 13a (по запросу владельца, [ADR-0003](ADR/0003-early-telegram-owner-bot.md)):** бот-пульт в Telegram — только владелец, `/start` `/status` `/help`, уведомления о запуске / остановке, long polling; пакет `@roi-dealer/telegram`; Docker-образ `apps/bot/Dockerfile` (собирается в CI); инструкция [`docs/deploy/telegram-bot.md`](deploy/telegram-bot.md).
 - **По запросу владельца после PHASE 00:** публикация placeholder miniapp на GitHub Pages (https://userpr0.github.io/roi-dealer/) для открытия в Telegram — [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md), workflow `.github/workflows/miniapp-pages.yml`.
 
@@ -69,7 +77,8 @@ Updated: 2026-10-19
 
 - Бизнес-логика поверх домена и хранения (сервисы, API-эндпоинты); Customer / Product / Revenue и другие сущности поздних фаз.
 - Сервис worker в Railway — создаёт владелец ([инструкция](deploy/worker.md)); staging — после тестового бота (A5).
-- Другие источники данных — после проверки их условий (каталог); извлечение болей и сигналов — PHASE 06.
+- Другие источники данных — после проверки их условий (каталог); пока источник один, боли остаются кандидатами (для подтверждения нужны 2 источника).
+- Оценка возможностей — PHASE 07; ручное слияние и отклонение болей — PHASE 13.
 - Ключи AI в Railway — вписывает владелец ([инструкция](deploy/worker.md#ai-ключи-phase-09)); до этого AI выключен, Evidence чистится правилами.
 - Подключение команды к боту (роль `member` в Telegram) — когда появится команда (D-004); учётные данные сервисных аккаунтов для внешнего API — с первым внешним клиентом; настраиваемая политика одобрений — PHASE 16.
 - Agents / judges (PHASE 10–11); сильные модели OpenAI и Google — с первой `strong`-задачей.
@@ -80,12 +89,12 @@ Updated: 2026-10-19
 
 ## Applications
 
-| App            | Состояние                                                                                                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/api`     | `GET/HEAD /health` (+ проверка `database`, если задан `DATABASE_URL`), 404 / 405 / 500 обработка, correlation id, access log, graceful shutdown                                                                                            |
-| `apps/worker`  | heartbeat, graceful stop; с `DATABASE_URL` — сбор Evidence по расписанию (PHASE 05); с ключами AI — проверка моделей, evals, вычистка имён, расходы AI (PHASE 09); Docker-образ с миграциями; в облаке — после создания сервиса владельцем |
-| `apps/miniapp` | React 19 + Vite 8, placeholder-экран; dev / build / preview работают                                                                                                                                                                       |
-| `apps/bot`     | Бот-пульт (13a–13b, PHASE 04): `/status`, уведомления; с `DATABASE_URL` — решения, стоп-кран, журнал, история, дайджест, `/access`, журнал доступа; работает в Railway (EU West) с облачной PostgreSQL                                     |
+| App            | Состояние                                                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api`     | `GET/HEAD /health` (+ проверка `database`, если задан `DATABASE_URL`), 404 / 405 / 500 обработка, correlation id, access log, graceful shutdown                                                                                                                    |
+| `apps/worker`  | heartbeat, graceful stop; с `DATABASE_URL` — сбор Evidence по расписанию (PHASE 05); с ключами AI — проверка моделей, evals, вычистка имён, расходы AI (PHASE 09), агент болей (PHASE 06); Docker-образ с миграциями; в облаке — после создания сервиса владельцем |
+| `apps/miniapp` | React 19 + Vite 8, placeholder-экран; dev / build / preview работают                                                                                                                                                                                               |
+| `apps/bot`     | Бот-пульт (13a–13b, PHASE 04): `/status`, уведомления; с `DATABASE_URL` — решения, стоп-кран, журнал, история, дайджест, `/access`, журнал доступа; работает в Railway (EU West) с облачной PostgreSQL                                                             |
 
 ## Packages
 
@@ -97,6 +106,7 @@ Updated: 2026-10-19
 | `@roi-dealer/command-center`                         | Реализован (13b, PHASE 04): одобрения, стоп-кран, журнал, история, дайджест, время по Киеву; доступы и журнал доступа                                                                                          |
 | `@roi-dealer/policies`                               | Реализован (PHASE 04): роли и права, проверка доступа                                                                                                                                                          |
 | `@roi-dealer/domain`                                 | Реализован (PHASE 01, 13b, PHASE 04–05, 09): 16 сущностей (с `SystemControl`, `Principal`, `SourceSnapshot`), value objects, lifecycles, правила, приватность Evidence, бюджет AI на день                      |
+| `@roi-dealer/signals`                                | Реализован (PHASE 06): агент болей и сигналов, задачи `extract-signal` и `match-pain`, проверка цитат, группировка, расписание                                                                                 |
 | `@roi-dealer/ai-runtime`                             | Реализован (PHASE 09): `runTask`, адаптеры Claude / GPT / Gemini, порядок по evals, бюджет, evals, задача `redact-names`, обслуживание                                                                         |
 | `@roi-dealer/evidence`                               | Реализован (PHASE 05): каталог источников, коннектор Hacker News, очистка персональных данных, сбор с provenance, расписание                                                                                   |
 | `@roi-dealer/schemas`                                | Реализован (PHASE 01): строгие входные контракты, `parseInput`                                                                                                                                                 |
@@ -108,17 +118,17 @@ Updated: 2026-10-19
 
 - `infra/docker/compose.yaml`: `postgres` (PostgreSQL 18.6, `postgres:18-alpine`) — `pnpm infra:up` / `infra:down` / `infra:logs`.
 - Проверено: healthy, подключение, `timezone = UTC`, `uuidv7()`, сохранение данных после `down`/`up`, порт только на `127.0.0.1`.
-- Схема: миграции `database/migrations/0001_core_domain.sql`, `0002_event_history.sql`, `0003_system_control.sql`, `0004_identity_access.sql`, `0005_evidence_engine.sql`, `0006_ai_runtime.sql` (`pnpm db:migrate`; в образах бота и worker — `migrate-cli.js`, проверено на пустой БД и повторном запуске; в облаке применены 0001–0004 при Уровне 1); integration-тесты создают на сервере временные БД и удаляют их.
+- Схема: миграции `database/migrations/0001_core_domain.sql`, `0002_event_history.sql`, `0003_system_control.sql`, `0004_identity_access.sql`, `0005_evidence_engine.sql`, `0006_ai_runtime.sql`, `0007_signals_pain.sql` (`pnpm db:migrate`; в образах бота и worker — `migrate-cli.js`, проверено на пустой БД и повторном запуске; в облаке применены 0001–0004 при Уровне 1); integration-тесты создают на сервере временные БД и удаляют их.
 - Temporal, object storage — только placeholders.
 
 ## Tests
 
 | Набор       | Файлы | Тесты | Результат |
 | ----------- | ----- | ----- | --------- |
-| unit        | 36    | 398   | pass      |
-| integration | 15    | 173   | pass      |
+| unit        | 37    | 413   | pass      |
+| integration | 16    | 184   | pass      |
 
-Integration-тесты запускают реальные процессы api / worker / bot (SIGTERM, SIGINT, exit codes, некорректная конфигурация), реальный HTTP-сервер, поддельный Telegram Bot API и PostgreSQL 18: миграции, все репозитории, ограничения БД в обход домена, Event History и идемпотентные команды, полный цикл DoD v0.1 с сохранением и полной историей событий; пульт 13b — одобрение, стоп-кран, журнал и дайджест на настоящей БД и в процессе бота через поддельный Bot API с нажатиями кнопок; PHASE 04 — права на каждой записи, отказы в журнале доступа (в том числе после отката), защита БД от записи без личности, выдача и отзыв доступа из пульта, попытки посторонних; PHASE 05 — сбор с фейковым Hacker News: каталог, доступ, стоп-кран, очистка персональных данных, дедупликация, provenance, ограничения БД, процесс worker; PHASE 09 — фейковые API Anthropic, OpenAI и Gemini: evals и их отчёты, порядок по evals, классы сбоев и переход на другого провайдера, бюджет дня и долей, стоп-кран, вычистка имён в Evidence, процесс worker с тремя провайдерами.
+Integration-тесты запускают реальные процессы api / worker / bot (SIGTERM, SIGINT, exit codes, некорректная конфигурация), реальный HTTP-сервер, поддельный Telegram Bot API и PostgreSQL 18: миграции, все репозитории, ограничения БД в обход домена, Event History и идемпотентные команды, полный цикл DoD v0.1 с сохранением и полной историей событий; пульт 13b — одобрение, стоп-кран, журнал и дайджест на настоящей БД и в процессе бота через поддельный Bot API с нажатиями кнопок; PHASE 04 — права на каждой записи, отказы в журнале доступа (в том числе после отката), защита БД от записи без личности, выдача и отзыв доступа из пульта, попытки посторонних; PHASE 05 — сбор с фейковым Hacker News: каталог, доступ, стоп-кран, очистка персональных данных, дедупликация, provenance, ограничения БД, процесс worker; PHASE 09 — фейковые API Anthropic, OpenAI и Gemini: evals и их отчёты, порядок по evals, классы сбоев и переход на другого провайдера, бюджет дня и долей, стоп-кран, вычистка имён в Evidence, процесс worker с тремя провайдерами; PHASE 06 — агент болей на настоящей БД и фейковом AI: доступ, evals, сигналы с проверкой цитат, группировка и подтверждение болей, разбор каждого Evidence один раз, остановки, `/pains`, процесс worker.
 
 ## Этап A — настройка владельцем
 
@@ -142,12 +152,13 @@ Integration-тесты запускают реальные процессы api 
 
 ## Next Allowed Phase
 
-**PHASE 06 — Signals & Pain** (одобрена D-020; порядок 05 → 09 → 06 → 07 → 08 …), затем без остановок по плану [`ROADMAP.md`](ROADMAP.md).
+**PHASE 07 — Opportunity Engine** (одобрена D-020; порядок 05 → 09 → 06 → 07 → 08 …), затем без остановок по плану [`ROADMAP.md`](ROADMAP.md).
 
-Действия владельца для PHASE 05 и 09 ([инструкция](deploy/worker.md)):
+Действия владельца для PHASE 05, 09 и 06 ([инструкция](deploy/worker.md)):
 
 1. Влить PR.
 2. Создать сервис worker.
 3. Одобрить «Доступ: Hacker News» в `/decisions`.
 4. Включить копии БД.
 5. Вписать ключи Claude, GPT и Gemini в Variables worker; лимиты в кабинетах — в сумме ≤ $50/мес.
+6. Одобрить «Доступ: Агент болей и сигналов» в `/decisions`.
