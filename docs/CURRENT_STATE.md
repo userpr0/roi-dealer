@@ -23,7 +23,7 @@ Updated: 2026-10-20
 - `GET /health` → `{"status":"ok","service":"api"}`; при заданном `DATABASE_URL` — ещё проверка `database` (недоступна → HTTP 503); `GET /api/panel` — данные Mini App владельцу по подписи Telegram (PHASE 13).
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
 - GitHub Actions CI: install → typecheck → lint → format check → unit tests → build → миграции → integration tests (сервис PostgreSQL 18) → compose validation; сборка Docker-образов бота, worker и api. Первый запуск на GitHub — success ([run #1](https://github.com/userpr0/roi-dealer/actions/runs/36001981452)).
-- Документация: конституция, архитектура, стек, протокол, ADR (ADR-0001…0009 Accepted), решения владельца (D-001…D-025), план кнопок пульта, phases, runbooks, playbook v1.1.
+- Документация: конституция, архитектура, стек, протокол, ADR (ADR-0001…0009 Accepted), решения владельца (D-001…D-026), план кнопок пульта, phases, runbooks, playbook v1.1.
 - **PHASE 01 — Core Domain:** `@roi-dealer/domain` — 13 сущностей цикла ROI CORE v0.1 (Source → … → Reward, ApprovalRequest), value objects (UUID, UTC, USD в центах, Actor), state machines и 11 правил (решения только владельца, evidence first, 5 разных гипотез, human gate $20, актив по итогам эксперимента, Reward только за проверенный вклад); `@roi-dealer/schemas` — строгие входные контракты; `uuidv7()` в `@roi-dealer/shared`.
 - **PHASE 02 — PostgreSQL Foundation:** пакет `@roi-dealer/database` (postgres.js, [ADR-0005](ADR/0005-postgresql-driver-and-migrations.md)) — пул в UTC, раннер SQL-миграций (SHA-256, блокировка, транзакция на файл), 13 репозиториев с optimistic locking и проверкой прочитанного доменной схемой, транзакции, ошибки без значений; миграция `0001_core_domain` — таблицы 13 сущностей, связи, CHECK / FK для денег, времени и human gates, триггеры защиты истории ([схема](../database/docs/schema.md)); `pnpm db:migrate`; инструкция для облачной БД [`docs/deploy/database.md`](deploy/database.md).
 - **PHASE 03 — Event History:** пакет `@roi-dealer/events` (22 типа событий `<entity>.created` / `.updated`, конверт, correlation id, ключи идемпотентности); миграция `0002_event_history` — таблица `events` (append-only, одна версия — одно событие), проверка при `COMMIT` «нет изменения сущности без события», `idempotency_keys`; репозитории пишут событие на каждую запись в той же транзакции (`update(entity, actor)` с блокировкой строки); `database.events.history` / `list` (журнал за период, постранично); `database.transaction(work, { correlationId })`; `database.command({ idempotencyKey })` — ровно один раз, в том числе при одновременных повторах.
@@ -281,3 +281,7 @@ Integration-тесты запускают реальные процессы api 
 8. Для платного предзаказа — Lemon Squeezy, webhook, `LEMONSQUEEZY_WEBHOOK_SECRET` у `api`, `/checkout` и тестовый платёж.
 
 **Всё по порядку на одной странице — [`deploy/START.md`](deploy/START.md).**
+
+**Запуск завершён 2026-10-20:** worker, api, ключи Gemini (бесплатный первым, D-025), форма заявки, кнопка «Пульт», доступы — бот прислал «✅ Всё настроено».
+
+**Следующая фаза — 05b, новые источники данных (D-026):** [требования](phases/05b_sources.plan.md). Ждёт действия владельца: доступ среды разработки к сайтам условий (список доменов в требованиях), затем новая сессия.
