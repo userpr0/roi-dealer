@@ -27,6 +27,7 @@ import {
   createEvidenceScheduler,
   createHackerNewsConnector,
   createHackerNewsSearchConnector,
+  createLemmyConnector,
   EVIDENCE_ENGINE_ACTOR,
 } from '@roi-dealer/evidence';
 import { MEDIA_TASKS } from '@roi-dealer/media';
@@ -137,7 +138,10 @@ function main(): void {
   const evidence = createEvidenceScheduler({
     database,
     logger,
-    connectors: [createHackerNewsConnector({ baseUrl: config.HACKER_NEWS_API_URL })],
+    connectors: [
+      createHackerNewsConnector({ baseUrl: config.HACKER_NEWS_API_URL }),
+      createLemmyConnector({ baseUrl: config.LEMMY_API_URL }),
+    ],
     ensureAccess: ensureAccessRequest,
     intervalMs: config.EVIDENCE_COLLECT_INTERVAL_MS,
     redactNames: namesPass,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
-import { HACKER_NEWS_API_URL, HACKER_NEWS_SEARCH_URL } from '@roi-dealer/evidence';
+import { HACKER_NEWS_API_URL, HACKER_NEWS_SEARCH_URL, LEMMY_API_URL } from '@roi-dealer/evidence';
 import { LOG_LEVELS } from '@roi-dealer/observability';
 import { loadConfig, nodeEnvSchema, railwayCommitSchema, type EnvSource } from '@roi-dealer/shared';
 
@@ -25,6 +25,8 @@ const workerConfigSchema = z.object({
   HACKER_NEWS_API_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_API_URL),
   /** HN Search (Algolia) for the research agent (PHASE 10); tests point it to a local fake. */
   HACKER_NEWS_SEARCH_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_SEARCH_URL),
+  /** Lemmy API of lemmy.world, the second pain source (05b); tests point it to a local fake. */
+  LEMMY_API_URL: z.url({ protocol: /^https?$/ }).default(LEMMY_API_URL),
   /**
    * AI providers (PHASE 09, ADR-0006, D-021): optional; without a key its models are not used.
    * Secrets.

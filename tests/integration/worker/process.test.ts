@@ -120,6 +120,8 @@ describe('worker process with a database (PHASE 05)', () => {
       DATABASE_URL: test.url,
       EVIDENCE_COLLECT_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
+      // Lemmy (05b) asks for access too; it is never granted here, so nothing is requested.
+      LEMMY_API_URL: 'http://127.0.0.1:9/api/v3',
       RAILWAY_GIT_COMMIT_SHA: 'f00dfeed0123456789abcdef0123456789abcdef',
     });
 
@@ -331,6 +333,8 @@ describe('worker process with AI providers (PHASE 09, 06, 07, 10)', () => {
       RESEARCH_INTERVAL_MS: '200',
       MARKET_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
+      // Lemmy (05b) asks for access too; it is never granted here, so nothing is requested.
+      LEMMY_API_URL: 'http://127.0.0.1:9/api/v3',
       HACKER_NEWS_SEARCH_URL: hn.searchUrl,
       ...keys,
       ANTHROPIC_BASE_URL: claude.baseUrl,
