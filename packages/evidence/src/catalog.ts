@@ -221,24 +221,36 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'api_key',
     },
     terms: {
-      urls: ['https://stackoverflow.com/legal/api-terms-of-use'],
+      urls: [
+        'https://stackoverflow.com/legal/api-terms-of-use',
+        'https://stackoverflow.com/legal/acceptable-use-policy',
+        'https://stackoverflow.com/legal/terms-of-service/public',
+      ],
       summary:
-        'Контент под CC BY-SA с атрибуцией; в 2024 введены ограничения на коммерческое и AI-использование выгрузок.',
-      conditions: ['Подключать только после проверки текущих условий API'],
+        'API бесплатно, с указанием источника. Acceptable Use Policy запрещает автоматический сбор для AI-систем без письменного согласия, а боли в ROI Dealer извлекают AI-агенты.',
+      conditions: [
+        'Не подключать без письменного согласия Stack Exchange (Stack Data Licensing)',
+        'При подключении — указывать Stack Exchange источником, не больше 30 запросов в секунду с IP',
+      ],
     },
-    cost: 'Бесплатно с ключом (квота в сутки)',
-    limits: { provider: 'Дневная квота на ключ', minIntervalMinutes: 60, maxItemsPerRun: 30 },
-    dataFields: { provided: ['вопросы', 'ответы', 'теги'], stored: [] },
+    cost: 'API бесплатно; лицензия данных — по договору',
+    limits: {
+      provider:
+        'До 10 000 запросов в сутки на ключ; больше 30 запросов в секунду с IP — бан; одинаковый запрос — не чаще раза в минуту',
+      minIntervalMinutes: 60,
+      maxItemsPerRun: 30,
+    },
+    dataFields: { provided: ['вопросы', 'ответы', 'теги', 'ники авторов'], stored: [] },
     personalData: { risk: 'medium', notes: 'Ники и ссылки на профили.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'medium',
     review: {
-      verdict: 'needs_review',
+      verdict: 'needs_agreement',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'Официальный текст условий API не получен: stackoverflow.com и stackexchange.com закрыты сетью среды (D-019, повторно 2026-10-20). Аудитория — разработчики.',
+        'AUP, Content Scraping/Bot Policy: сбор запрещён «for the purpose of… Developing, building, training, testing, indexing, benchmarking, or improving any generative AI… tool, model, or platform»; исключение — «express prior written consent… as part of a commercial license agreement». API Terms требуют только атрибуцию. Боли извлекает AI — нужен договор.',
     },
   },
   {
@@ -253,26 +265,42 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
     terms: {
       urls: [
-        'https://docs.bsky.app/docs/support/developer-guidelines',
+        'https://docs.bsky.app/docs/developer-guidelines',
         'https://bsky.social/about/support/tos',
+        'https://docs.bsky.app/docs/bluesky-api',
       ],
       summary:
-        'Открытый протокол AT; поиск постов требует авторизации (app password). Условия для коммерческого анализа не подтверждены.',
-      conditions: ['Подключать только после проверки условий и правил для разработчиков'],
+        'Открытый протокол AT. Условия и Developer Guidelines не запрещают читать публичные посты для анализа; поиск постов — после входа с паролем приложения (app password).',
+      conditions: [
+        "Только чтение: никаких автоматических лайков, подписок, ответов и сообщений (Developer Guidelines: Don't spam)",
+        'До подключения — способ удалить сохранённый фрагмент по просьбе автора',
+        'Публичный контакт с почтой — PUBLIC_CONTACT_EMAIL',
+        'Без хендлов, DID и ссылок на профили; текст — после очистки персональных данных',
+      ],
     },
-    cost: 'Бесплатно',
-    limits: { provider: 'Лимиты по IP и аккаунту', minIntervalMinutes: 60, maxItemsPerRun: 30 },
-    dataFields: { provided: ['посты', 'хендлы', 'DID'], stored: [] },
-    personalData: { risk: 'high', notes: 'Хендлы и DID — идентификаторы людей.' },
+    cost: 'Бесплатно; нужен аккаунт Bluesky и пароль приложения',
+    limits: {
+      provider: 'Лимиты по IP и аккаунту; поиск без входа закрыт (403)',
+      minIntervalMinutes: 60,
+      maxItemsPerRun: 30,
+    },
+    dataFields: {
+      provided: ['посты', 'хендлы', 'DID'],
+      stored: ['текст поста (очищенный)', 'время', 'ссылка на пост'],
+    },
+    personalData: {
+      risk: 'high',
+      notes: 'Хендлы и DID — идентификаторы людей: не сохраняются; имена в тексте вычищаются.',
+    },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'low',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'Проверено по вторичным источникам; docs.bsky.app и bsky.social закрыты сетью среды (повторно 2026-10-20). По выдаче поиска Developer Guidelines требуют удалять контент по запросу пользователя и запрещают массовые автоматические действия.',
+        'Developer Guidelines: «All services must have a method for deleting content a user has requested to be deleted»; «Developers must maintain updated contact information… including an email address». Запретов на чтение публичных постов в Terms of Service и Guidelines нет. Bluesky API: «bots and command-line tools can stick with passwords».',
     },
   },
   {
@@ -287,10 +315,10 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
     terms: {
       urls: ['https://api.producthunt.com/v2/docs'],
-      summary: 'По правилам API коммерческое использование — с разрешения Product Hunt.',
-      conditions: ['Подключать только с разрешением Product Hunt'],
+      summary: 'GraphQL API Product Hunt: по умолчанию только некоммерческое использование.',
+      conditions: ['Не подключать без разрешения Product Hunt (hello@producthunt.com)'],
     },
-    cost: 'Бесплатно для некоммерческого использования',
+    cost: 'Бесплатно для некоммерческого использования; для бизнеса — по договорённости',
     limits: { provider: 'Квота сложности запросов', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
     dataFields: { provided: ['продукты', 'описания', 'голоса', 'комментарии'], stored: [] },
     personalData: { risk: 'medium', notes: 'Имена и профили создателей.' },
@@ -298,11 +326,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     languages: ['en'],
     defaultTrust: 'medium',
     review: {
-      verdict: 'needs_review',
+      verdict: 'needs_agreement',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'Условие о коммерческом использовании — по памяти; не подтверждено официальным текстом: producthunt.com закрыт сетью среды (повторно 2026-10-20).',
+        'Документация API: «The Product Hunt API must not be used for commercial purposes. If you would like to use it for your business, please contact us at hello@producthunt.com». Страница producthunt.com/terms закрыта для автоматических запросов (403).',
     },
   },
   {
@@ -358,7 +386,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     terms: {
       urls: ['https://developers.google.com/search/apis/trends'],
       summary:
-        'Официальный API доступен ограниченно (по заявке); неофициальные библиотеки — скрейпинг.',
+        'Официальный API — альфа-тест по заявке; неофициальные библиотеки и сервисы выгрузки — скрейпинг.',
       conditions: [
         'Не подключать до одобрения заявки Google; неофициальные библиотеки и сервисы выгрузки не использовать',
       ],
@@ -376,7 +404,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'Официальный API — альфа по заявке, то есть доступ только с разрешения Google. Владелец подал заявку 2026-10-20. После одобрения: прочитать условия доступа, затем ключ — в Variables сервиса worker.',
+        "Официальная страница: «We're now accepting applications for alpha testers»; «As we can't open the API for everyone yet, we're prioritizing…». Владелец подал заявку 2026-10-20. После одобрения — прочитать условия доступа, затем ключ — в Variables сервиса worker.",
     },
   },
   {
@@ -441,32 +469,33 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use',
       ],
       summary:
-        'Analytics API: просмотры статей Википедии по дням, без ключа — интерес к теме. Действуют Terms of Use Wikimedia.',
+        'Analytics API: просмотры статей Википедии по дням, без ключа — интерес к теме. Данные под CC0.',
       conditions: [
-        'Подключать только после чтения официальных условий',
-        'User-Agent с названием, версией и контактом; запросы последовательно',
+        'User-Agent с названием, версией и контактом (PUBLIC_CONTACT_EMAIL)',
+        'Запросы последовательно: следующий — после ответа на предыдущий',
+        'Коннектор — после решения о хранении рядов спроса (05b)',
       ],
     },
     cost: 'Бесплатно, без ключа',
     limits: {
-      provider: 'Не проверено: правила частоты — в access policy',
+      provider: 'Зависят от клиента; без User-Agent — блокировка без предупреждения',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 50,
     },
     dataFields: {
       provided: ['статья', 'дата', 'число просмотров', 'тип доступа и агента'],
-      stored: [],
+      stored: ['статья, дата, число просмотров'],
     },
     personalData: { risk: 'low', notes: 'Агрегаты по статьям; людей в данных нет.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'Официальный текст не прочитан: doc.wikimedia.org и foundation.wikimedia.org закрыты сетью среды. Выдача поиска цитирует официальную страницу: «Data provided by the API is available under the CC0 1.0 license». Кандидат на allowed после чтения.',
+        "Access policy: «By using the API, you agree to Wikimedia's terms of use»; «Data provided by the API is available under the CC0 1.0 license»; «wait for each request to finish before sending another request». CC0 не ограничивает коммерческое использование.",
     },
   },
   {
@@ -481,12 +510,16 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
     terms: {
       urls: [
-        'https://docs.pypi.org/api/bigquery/',
-        'https://policies.python.org/pypi.org/Terms-of-Use/',
+        'https://policies.python.org/pypi.org/Terms-of-Service/',
+        'https://github.com/pypi/warehouse/blob/main/docs/user/api/bigquery.md',
       ],
       summary:
-        'Официальный счётчик загрузок PyPI — только публичный набор BigQuery (bigquery-public-data.pypi). pypistats.org — сторонний сервис.',
-      conditions: ['Подключать только после чтения условий PyPI и набора данных'],
+        'Официальный счётчик загрузок PyPI — публичный набор BigQuery bigquery-public-data.pypi под CC BY 4.0. pypistats.org — сторонний сервис, не используем.',
+      conditions: [
+        'Только через BigQuery своего проекта Google Cloud, в пределах бесплатного уровня',
+        'Указывать PyPI источником (CC BY 4.0)',
+        'Коннектор — после решения о хранении рядов спроса (05b)',
+      ],
     },
     cost: 'Бесплатный уровень BigQuery — до 1 ТБ запросов в месяц; нужен проект Google Cloud',
     limits: {
@@ -496,18 +529,18 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
     dataFields: {
       provided: ['пакет', 'дата', 'число загрузок', 'страна', 'установщик'],
-      stored: [],
+      stored: ['пакет, дата, число загрузок'],
     },
     personalData: { risk: 'low', notes: 'Агрегаты по пакетам; людей в данных нет.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'medium',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'pypi.org/policy/terms-of-use/ ведёт на policies.python.org — закрыт сетью среды, как и docs.pypi.org. По выдаче поиска с docs.pypi.org: таблицы под лицензией Creative Commons. Владельцу понадобится проект Google Cloud.',
+        'Документация набора (pypi/warehouse): «The tables and its pertaining data are licensed under the Creative Commons License» (CC BY 4.0). PyPI Terms of Service, API Terms: запрещены злоупотребление частотой и выгрузка «for spamming purposes». docs.pypi.org закрыт сетью среды — прочитан исходник документации на GitHub.',
     },
   },
   {
@@ -526,12 +559,15 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://developers.google.com/google-ads/api/docs/access-levels',
       ],
       summary:
-        'Google Ads API (KeywordPlanIdeaService): средний объём поиска в месяц по словам и странам. Нужны управляющий аккаунт и токен разработчика.',
-      conditions: ['Подключать только после чтения условий API и одобрения токена (Basic)'],
+        'Google Ads API (KeywordPlanIdeaService): объём поиска в месяц по словам и странам. С 09.09.2026 токенов разработчика нет — уровень доступа выдаётся проекту Google Cloud.',
+      conditions: [
+        'Нужен доступ Basic с разрешённым использованием «keyword research» — заявка, рассмотрение около 10 рабочих дней',
+        'Не превышать квоты и не скрывать активность (Usage and Quotas)',
+      ],
     },
-    cost: 'API бесплатно; управляющий аккаунт Google Ads, токен разработчика, OAuth',
+    cost: 'API бесплатно; аккаунт Google Ads, проект Google Cloud, OAuth',
     limits: {
-      provider: 'Basic — до 15 000 операций в сутки (по выдаче поиска)',
+      provider: 'Basic — 15 000 операций в сутки; Explorer — 2 880, но без Keyword Planning',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 50,
     },
@@ -544,11 +580,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     languages: ['en'],
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'needs_agreement',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'developers.google.com закрыт сетью среды. По выдаче поиска: токен без одобрения работает только с тестовыми аккаунтами; Keyword Planner может требовать аккаунт со способом оплаты — проверить. Владелец: управляющий аккаунт и токен разработчика (Basic).',
+        'Access levels: «Developer tokens were sunset on September 9, 2026, and API access levels are now managed per Google Cloud project». Explorer выдаётся автоматически, но «restricts access to the following features… Planning: KeywordPlanIdeaService» — нужен Basic по заявке, то есть одобрение Google.',
     },
   },
   {
@@ -569,15 +605,20 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       summary:
         'Census Data API: число компаний, работников и фонд оплаты по отраслям NAICS и регионам США — размер рынка.',
       conditions: [
-        'Подключать только после чтения условий',
-        'Показывать уведомление, которого требуют условия',
+        'Показывать: «This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.»',
+        'Не изменять данные, оставляя Census источником',
+        'Коннектор — после решения о хранении рядов (05b)',
       ],
     },
     cost: 'Бесплатно, ключ по e-mail',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    limits: {
+      provider: 'Не заявлены; Census вправе ограничить',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
     dataFields: {
       provided: ['отрасль NAICS', 'регион', 'число компаний', 'работники', 'фонд оплаты'],
-      stored: [],
+      stored: ['отрасль, регион, год, показатели'],
     },
     personalData: {
       risk: 'low',
@@ -588,11 +629,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     evidenceMarket: 'US',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'census.gov закрыт сетью среды. По выдаче поиска: ключ обязателен для всех запросов; условия разрешают сервисы, которые ищут, показывают и анализируют данные, с уведомлением в приложении. Владелец: ключ на api.census.gov/data/key_signup.html.',
+        'Terms of Service: «You may use the Census Bureau API to develop a service or service to search, display, analyze, retrieve, view and otherwise "get" information from Census Bureau data». Нужна оговорка о неодобрении Census. Ключ бесплатный: api.census.gov/data/key_signup.html.',
     },
   },
   {
@@ -612,27 +653,31 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       ],
       summary:
         'BLS Public Data API: занятость и зарплаты по профессиям и отраслям США — размер рынка по людям.',
-      conditions: ['Подключать только после чтения условий'],
+      conditions: [
+        'Указывать дату получения данных',
+        'Писать: «BLS.gov cannot vouch for the data or analyses derived from these data after the data have been retrieved from BLS.gov.»',
+        'Без логотипа BLS',
+      ],
     },
     cost: 'Бесплатно, ключ по e-mail; продлевать раз в год',
     limits: {
       provider:
-        'С ключом: 500 запросов в сутки, 50 рядов в запросе, 50 запросов за 10 секунд (FAQ, по выдаче поиска)',
+        'С ключом: 500 запросов в сутки, 50 рядов в запросе, 20 лет; 50 запросов за 10 секунд',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 50,
     },
-    dataFields: { provided: ['ряд', 'период', 'значение'], stored: [] },
+    dataFields: { provided: ['ряд', 'период', 'значение'], stored: ['ряд, период, значение'] },
     personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
     markets: ['US'],
     languages: ['en'],
     evidenceMarket: 'US',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'bls.gov закрыт сетью среды; текст условий не прочитан. Владелец: ключ на data.bls.gov/registrationEngine/.',
+        'Terms of Service: «Data accessed through BLS.gov do not, and should not, include controls over its end use». Условия — дата получения и оговорка о достоверности. Ключ v2 бесплатный: data.bls.gov/registrationEngine/.',
     },
   },
   {
@@ -651,23 +696,30 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/',
       ],
       summary:
-        'ONS API (бета): наборы статистики Великобритании — компании и занятость по отраслям.',
-      conditions: ['Подключать только после проверки лицензии данных'],
+        'ONS API (бета): наборы статистики Великобритании — компании и занятость по отраслям. Open Government Licence v3.0.',
+      conditions: [
+        'Указывать: «Contains public sector information licensed under the Open Government Licence v3.0.»',
+        'API в бете: возможны несовместимые изменения',
+        'Коннектор — после решения о хранении рядов (05b)',
+      ],
     },
     cost: 'Бесплатно, без ключа',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
-    dataFields: { provided: ['набор данных', 'измерения', 'значения'], stored: [] },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['набор данных', 'измерения', 'значения'],
+      stored: ['набор данных, измерения, значения'],
+    },
     personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
     markets: ['GB'],
     languages: ['en'],
     evidenceMarket: 'GB',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'developer.ons.gov.uk закрыт сетью среды. По выдаче поиска: API открыт, без ключа, в бете. Лицензию данных проверить (ожидается Open Government Licence v3).',
+        'developer.ons.gov.uk: «The API is open and unrestricted - no API keys are required»; «All content is available under the Open Government Licence v3.0». OGL: можно «exploit the Information commercially and non-commercially… including it in your own product or application» с указанием источника.',
     },
   },
   {
@@ -688,13 +740,13 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       summary:
         'Public Data API реестра компаний Великобритании: поиск по коду отрасли SIC — число компаний для размера рынка.',
       conditions: [
-        'Подключать только после чтения условий',
+        'Подключать только после проверки лицензии данных',
         'Не запрашивать должностных лиц; хранить только счётчики по SIC',
       ],
     },
     cost: 'Бесплатно, ключ после регистрации',
     limits: {
-      provider: '600 запросов за 5 минут на приложение (developer guidelines, по выдаче поиска)',
+      provider: '600 запросов за 5 минут на приложение; за обход — бан без предупреждения',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 50,
     },
@@ -715,7 +767,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'developer.company-information.service.gov.uk закрыт сетью среды. Владелец: аккаунт разработчика Companies House и ключ (бесплатно).',
+        'Developer guidelines прочитаны: «You can make up to 600 requests within a 5 minute period». Лицензию данных на сайтах Companies House не нашёл; на их форуме — разные мнения (OGL или публикация по закону). Проверить при следующем запуске.',
     },
   },
   {
@@ -729,31 +781,32 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: [
-        'https://statcan.gc.ca/reference/licence',
-        'https://statcan.gc.ca/eng/reference/licence-faq',
-      ],
+      urls: ['https://statcan.gc.ca/reference/licence'],
       summary:
-        'Web Data Service: таблицы Statistics Canada — компании и занятость по отраслям Канады. Данные — под Statistics Canada Open Licence.',
+        'Web Data Service: таблицы Statistics Canada — компании и занятость по отраслям Канады. Statistics Canada Open Licence.',
       conditions: [
-        'Подключать только после чтения лицензии',
         'Указывать «Source: Statistics Canada, название, дата»',
+        'Не связывать данные с другими базами, чтобы узнать конкретного человека или компанию',
+        'Коннектор — после решения о хранении рядов (05b)',
       ],
     },
     cost: 'Бесплатно, без ключа',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
-    dataFields: { provided: ['таблица', 'измерения', 'значения'], stored: [] },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['таблица', 'измерения', 'значения'],
+      stored: ['таблица, измерения, значения'],
+    },
     personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
     markets: ['CA'],
     languages: ['en'],
     evidenceMarket: 'CA',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'statcan.gc.ca закрыт сетью среды. По выдаче поиска с официальной страницы лицензии: всемирная бесплатная лицензия, в том числе для коммерческого использования, с указанием источника. Кандидат на allowed после чтения.',
+        'Statistics Canada Open Licence: «grants you a worldwide, royalty-free, non-exclusive licence to: use, reproduce, publish, freely distribute, or sell the Information». Условия — точность, указание источника, без намёка на одобрение Statistics Canada.',
     },
   },
   {
@@ -771,23 +824,29 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://www.abs.gov.au/about/data-services/application-programming-interfaces-apis/data-api-user-guide',
         'https://www.abs.gov.au/website-privacy-copyright-and-disclaimer',
       ],
-      summary: 'ABS Data API: статистика Австралии — компании и занятость по отраслям.',
-      conditions: ['Подключать только после чтения условий и лицензии'],
+      summary: 'ABS Data API: статистика Австралии — компании и занятость по отраслям. CC BY 4.0.',
+      conditions: [
+        'Указывать ABS источником (CC BY 4.0)',
+        'Коннектор — после решения о хранении рядов (05b)',
+      ],
     },
-    cost: 'Бесплатно',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
-    dataFields: { provided: ['набор данных', 'измерения', 'значения'], stored: [] },
+    cost: 'Бесплатно, без ключа',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['набор данных', 'измерения', 'значения'],
+      stored: ['набор данных, измерения, значения'],
+    },
     personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
     markets: ['AU'],
     languages: ['en'],
     evidenceMarket: 'AU',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'abs.gov.au закрыт сетью среды. По выдаче поиска: наборы ABS на data.gov.au помечены CC BY 3.0 AU; лицензия самого Data API не подтверждена.',
+        'Copyright: «All material presented on this website is provided under a Creative Commons Attribution 4.0 International licence» (кроме герба, логотипа, микроданных и материалов третьих лиц). Data API user guide: «The Data API is freely accessible without the need for an API key».',
     },
   },
   {
@@ -804,29 +863,29 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       urls: ['https://www.gdeltproject.org/about.html'],
       summary: 'GDELT DOC API: новости мира по запросу — контекст рынка.',
       conditions: [
-        'Подключать только после чтения условий',
-        'Указывать GDELT как источник со ссылкой',
+        'Указывать GDELT Project со ссылкой на gdeltproject.org',
+        'Заголовки — после очистки персональных данных',
       ],
     },
     cost: 'Бесплатно, без ключа',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 360, maxItemsPerRun: 30 },
     dataFields: {
       provided: ['заголовок', 'ссылка', 'домен', 'дата', 'язык', 'страна источника'],
-      stored: [],
+      stored: ['заголовок (очищенный)', 'домен', 'дата', 'ссылка'],
     },
     personalData: {
       risk: 'low',
-      notes: 'В заголовках бывают имена людей — вычищать до записи, как у Evidence.',
+      notes: 'В заголовках бывают имена людей — вычищаются до записи, как у Evidence.',
     },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'medium',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'gdeltproject.org закрыт сетью среды. Сторонний блог цитирует условия: «all datasets released by the GDELT Project are available for unlimited and unrestricted use» — с указанием источника и ссылкой. Кандидат на allowed после чтения.',
+        'About, Terms of Use: «all datasets released by the GDELT Project are available for unlimited and unrestricted use for any academic, commercial, or governmental use of any kind without fee»; «any use or redistribution of the data must include a citation to the GDELT Project and a link to this website».',
     },
   },
   {
@@ -840,23 +899,23 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: [
-        'https://www.federalregister.gov/reader-aids/developer-resources/rest-api',
-        'https://www.federalregister.gov/developers/documentation/api/v1',
-      ],
+      urls: ['https://www.federalregister.gov/reader-aids/developer-resources/rest-api'],
       summary:
         'Federal Register API: новые правила и уведомления федеральных агентств США — регуляторный контекст.',
-      conditions: ['Подключать только после чтения условий'],
+      conditions: [
+        'Только API: страницы сайта закрыты для программ',
+        'User-Agent с названием и контактом',
+      ],
     },
     cost: 'Бесплатно, без ключа',
     limits: {
-      provider: 'Не проверено; выдача — первые 2 000 результатов запроса',
+      provider: 'Выдача — первые 2 000 результатов запроса',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 30,
     },
     dataFields: {
       provided: ['заголовок', 'агентство', 'тип документа', 'дата', 'аннотация', 'ссылка'],
-      stored: [],
+      stored: ['заголовок', 'агентство', 'тип документа', 'дата', 'ссылка'],
     },
     personalData: { risk: 'low', notes: 'Официальные документы; имена должностных лиц не берём.' },
     markets: ['US'],
@@ -864,11 +923,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     evidenceMarket: 'US',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'federalregister.gov закрыт сетью среды. По выдаче поиска с официальной страницы: ключ не нужен, ответы в JSON и CSV.',
+        'Сайт отвечает программам: «programmatic access to these sites is limited to access to our extensive developer APIs». API работает без ключа (проверено 2026-10-20). Документы Federal Register — официальные публикации правительства США.',
     },
   },
   {
@@ -882,32 +941,39 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: ['https://www.sec.gov/os/accessing-edgar-data'],
+      urls: [
+        'https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data',
+        'https://www.sec.gov/privacy',
+      ],
       summary:
         'EDGAR API: отчётность публичных компаний США (выручка, сегменты) — контекст и размер рынка.',
       conditions: [
-        'Подключать только после чтения условий',
-        'User-Agent с названием и контактным e-mail; только нужные документы',
+        'User-Agent: название и контактная почта (PUBLIC_CONTACT_EMAIL)',
+        'Не больше 10 запросов в секунду, только нужные документы',
+        'Указывать SEC источником',
       ],
     },
     cost: 'Бесплатно, без ключа',
     limits: {
-      provider: '10 запросов в секунду (официальная страница, по выдаче поиска)',
+      provider: '10 запросов в секунду; без заявленного User-Agent — блокировка',
       minIntervalMinutes: 1_440,
       maxItemsPerRun: 30,
     },
-    dataFields: { provided: ['компания', 'форма отчёта', 'дата', 'показатели XBRL'], stored: [] },
+    dataFields: {
+      provided: ['компания', 'форма отчёта', 'дата', 'показатели XBRL'],
+      stored: ['компания', 'форма отчёта', 'дата', 'показатели'],
+    },
     personalData: { risk: 'low', notes: 'Отчёты компаний; имена руководителей не берём.' },
     markets: ['US'],
     languages: ['en'],
     evidenceMarket: 'US',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'sec.gov закрыт сетью среды. По выдаче поиска с официальной страницы: до 10 запросов в секунду, заголовок с контактом, «download only what you need». Контакт в User-Agent — PUBLIC_CONTACT_EMAIL.',
+        "Accessing EDGAR Data: «Anyone can access and download this information for free»; «Current max request rate: 10 requests/second»; «Please declare your user agent». Privacy: «Information presented on sec.gov is considered public information and may be copied or further distributed… without the SEC's permission».",
     },
   },
   {
@@ -926,8 +992,8 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://developers.google.com/youtube/terms/developer-policies',
       ],
       summary:
-        'YouTube Data API: комментарии под видео о проблемах — боли. Developer Policies ограничивают хранение и агрегирование данных API.',
-      conditions: ['Подключать только после чтения условий и правил разработчика'],
+        'YouTube Data API: комментарии под видео. Developer Policies запрещают агрегировать данные API и строить из них производные данные.',
+      conditions: ['Не подключать: извлечение болей из комментариев — производные данные'],
     },
     cost: 'Бесплатно в пределах дневной квоты проекта Google Cloud',
     limits: {
@@ -941,11 +1007,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     languages: ['en'],
     defaultTrust: 'low',
     review: {
-      verdict: 'needs_review',
+      verdict: 'rejected',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'developers.google.com закрыт сетью среды. По выдаче поиска: правила требуют ограничивать срок хранения, запрещают некоторые виды агрегирования и содержат раздел о коммерческом использовании с формой одобрения. Проверить, разрешён ли анализ комментариев.',
+        'Developer Policies: «Do not aggregate API Data»; «Your API Clients must not… access or use API Data to create new or derived data or metrics»; данные без авторизации — не дольше 30 дней. Извлечение болей из комментариев — производные данные.',
     },
   },
   {
@@ -959,23 +1025,24 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: ['https://dev.to/terms', 'https://developers.forem.com/api/v1'],
-      summary: 'Forem API: статьи и комментарии DEV Community — боли разработчиков.',
-      conditions: ['Подключать только после чтения условий'],
+      urls: ['https://dev.to/terms'],
+      summary:
+        'Forem API: статьи и комментарии DEV Community. Условия сайта разрешают только личный некоммерческий просмотр.',
+      conditions: ['Не подключать без письменного разрешения DEV'],
     },
     cost: 'Бесплатно; чтение без ключа',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 60, maxItemsPerRun: 30 },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 60, maxItemsPerRun: 30 },
     dataFields: { provided: ['статьи', 'комментарии', 'теги', 'имена авторов'], stored: [] },
     personalData: { risk: 'medium', notes: 'Имена и профили авторов.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'medium',
     review: {
-      verdict: 'needs_review',
+      verdict: 'rejected',
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'dev.to и developers.forem.com закрыты сетью среды. По выдаче поиска: публичное чтение статей и комментариев — без ключа. Аудитория — разработчики, как у Hacker News.',
+        'Terms, Use License: только «for personal, non-commercial transitory viewing only»; нельзя «use the materials for any commercial purpose». Отдельных условий для API (Forem) нет.',
     },
   },
   {
@@ -989,15 +1056,16 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: ['https://mastodon.social/terms'],
-      summary:
-        'Флагманский сервер Mastodon. У каждого сервера федерации свои условия; эта запись — только о mastodon.social.',
-      conditions: [
-        'Не подключать до чтения условий: по сообщениям прессы, с 01.07.2025 условия запрещают автоматический сбор данных',
+      urls: [
+        'https://mastodon.social/terms',
+        'https://blog.joinmastodon.org/2026/07/announcing-new-terms-of-service-for-our-servers/',
       ],
+      summary:
+        'Флагманский сервер Mastodon. Условия с 31.08.2026 — только для зарегистрированных пользователей; правила использования обещаны в декабре 2026.',
+      conditions: ['Не подключать до публикации правил использования (декабрь 2026)'],
     },
     cost: 'Бесплатно',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 60, maxItemsPerRun: 30 },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 60, maxItemsPerRun: 30 },
     dataFields: { provided: ['посты', 'хэштеги', 'имена и аккаунты авторов'], stored: [] },
     personalData: { risk: 'high', notes: 'Имена и аккаунты авторов.' },
     markets: ['US', 'GB', 'CA', 'AU'],
@@ -1008,7 +1076,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'mastodon.social закрыт сетью среды. TechCrunch (17.06.2025): новые условия запрещают сбор данных скрейперами и data miners, кроме поисковиков и людей. Вероятно rejected; другие серверы — каждый по своим условиям.',
+        'Условия (ред. 31.08.2026, через API сервера) запретов на чтение не содержат: «Anyone, or any computer, might access your Content via RSS aggregators… or index and store your Content in search engines and databases». Правила использования обещаны в декабре 2026; условия 2025 года запрещали автоматический сбор. Перепроверить в январе 2027.',
     },
   },
   {
@@ -1024,13 +1092,307 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     terms: {
       urls: ['https://www.apple.com/legal/internet-services/itunes/'],
       summary:
-        'RSS-лента отзывов о приложениях App Store по странам — боли пользователей. Официальных условий для ленты отзывов не найдено.',
-      conditions: ['Не подключать, пока не найдены официальные условия ленты'],
+        'Лента отзывов о приложениях App Store. Условия Apple Media Services запрещают автоматический анализ контента.',
+      conditions: ['Не подключать'],
     },
     cost: 'Бесплатно',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
     dataFields: { provided: ['оценка', 'заголовок', 'текст отзыва', 'имя автора'], stored: [] },
     personalData: { risk: 'medium', notes: 'Имена авторов отзывов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Apple Media Services Terms: «You may not use any software, device, automated process… to scrape, copy, or perform measurement, analysis, or monitoring of, any portion of the Content or Services»; Services — «only for personal, noncommercial purposes». App Store Connect API даёт отзывы только о своих приложениях.',
+    },
+  },
+  {
+    key: 'world-bank',
+    name: 'World Bank: показатели',
+    siteUrl: 'https://data.worldbank.org',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.worldbank.org/v2',
+      authentication: 'none',
+    },
+    terms: {
+      urls: [
+        'https://datacatalog.worldbank.org/public-licenses',
+        'https://www.worldbank.org/en/about/legal/terms-and-conditions',
+      ],
+      summary:
+        'Indicators API: экономические показатели по странам. Наборы по умолчанию под CC BY 4.0; у части — свои лицензии.',
+      conditions: [
+        'Указывать World Bank источником; лицензию проверять по каждому набору',
+        'Роль слабая: показатели по странам целиком, размер ниши из них не посчитать',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['страна', 'показатель', 'год', 'значение'],
+      stored: ['страна, показатель, год, значение'],
+    },
+    personalData: { risk: 'low', notes: 'Агрегаты по странам; людей в данных нет.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Data Catalog, Public licenses: «licenses datasets under the Creative Commons Attribution 4.0 International license (CC-BY 4.0)»; CC BY 4.0 «allows users to copy, modify and distribute data in any format for any purpose, including commercial use». Наборы с другой лицензией помечены отдельно.',
+    },
+  },
+  {
+    key: 'eurostat',
+    name: 'Eurostat',
+    siteUrl: 'https://ec.europa.eu/eurostat',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://ec.europa.eu/eurostat/api/dissemination',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://ec.europa.eu/eurostat/help/copyright-notice'],
+      summary:
+        'Статистика ЕС: компании и занятость по отраслям. Коммерческое использование разрешено с указанием источника.',
+      conditions: [
+        'Указывать Eurostat источником и отмечать изменения',
+        'Коммерчески не использовать данные не Eurostat — например, по США, Японии, Китаю',
+        'Рынки ЕС вне D-008: подключать при расширении рынков',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['набор данных', 'измерения', 'значения'],
+      stored: ['набор данных, измерения, значения'],
+    },
+    personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
+    markets: ['DE', 'FR', 'IT', 'ES', 'NL', 'IE', 'SE', 'PL'],
+    languages: ['en'],
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Copyright notice: «Reuse of statistical data, metadata, publications, and other dissemination tools published on this website for commercial or non-commercial purposes is authorised provided the source is acknowledged». Исключения — данные из других источников, например по США.',
+    },
+  },
+  {
+    key: 'arxiv',
+    name: 'arXiv: метаданные статей',
+    siteUrl: 'https://arxiv.org',
+    sourceKind: 'other',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://export.arxiv.org/api/query',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://info.arxiv.org/help/api/tou.html'],
+      summary:
+        'API arXiv: метаданные научных препринтов — контекст: новые технологии по теме. Метаданные под CC0.',
+      conditions: [
+        'Только метаданные: полные тексты — с разрешения правообладателя',
+        'Соблюдать лимиты частоты из условий API',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Лимиты частоты — в разделе Rate limits условий API',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 30,
+    },
+    dataFields: {
+      provided: ['заголовок', 'аннотация', 'авторы', 'категория', 'дата'],
+      stored: ['заголовок', 'аннотация', 'категория', 'дата', 'ссылка'],
+    },
+    personalData: { risk: 'low', notes: 'Имена авторов не сохраняются.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms of Use for arXiv APIs: «You are free to use descriptive metadata about arXiv e-prints under the terms of the Creative Commons Universal (CC0 1.0) Public Domain Declaration»; «The redistribution of e-prints requires permission from the copyright holder». Роль слабая — контекст.',
+    },
+  },
+  {
+    key: 'openalex',
+    name: 'OpenAlex: исследования',
+    siteUrl: 'https://openalex.org',
+    sourceKind: 'other',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.openalex.org',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://help.openalex.org/access/pricing/'],
+      summary:
+        'Индекс научных работ: темы, организации, рост числа публикаций — контекст. Данные под CC0.',
+      conditions: ['Только бесплатный дневной бюджет API ($1 в день)'],
+    },
+    cost: 'Бесплатно до $1 использования API в день; ключ бесплатный',
+    limits: {
+      provider: '$1 использования в день на бесплатном ключе',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: {
+      provided: ['работы', 'темы', 'организации', 'авторы', 'цитирования'],
+      stored: ['тема, год, число работ'],
+    },
+    personalData: { risk: 'low', notes: 'Имена авторов не сохраняются.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Pricing: «the data is a public good, released under a CC0 public-domain license with no "personal use only" carve-out and no permission to ask»; «every account gets $1 of API usage per day for free». Роль слабая — контекст.',
+    },
+  },
+  {
+    key: 'crossref',
+    name: 'Crossref: метаданные публикаций',
+    siteUrl: 'https://www.crossref.org',
+    sourceKind: 'other',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.crossref.org',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.crossref.org/documentation/retrieve-metadata/rest-api/'],
+      summary: 'REST API Crossref: метаданные научных публикаций — контекст.',
+      conditions: [
+        'Передавать mailto в запросе (polite pool)',
+        'Аннотации могут быть под авторским правом — не сохранять',
+      ],
+    },
+    cost: 'Бесплатно, без регистрации',
+    limits: {
+      provider: 'Не заявлены; polite pool с mailto',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: {
+      provided: ['работы', 'журналы', 'издатели', 'аннотации'],
+      stored: ['тема, год, число работ'],
+    },
+    personalData: { risk: 'low', notes: 'Имена авторов не сохраняются.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'REST API: «No sign-up is required to use the REST API, and almost none of the metadata is subject to copyright, and you may use it for any purpose. Some abstracts contained in the metadata may be subject to copyright». Роль слабая — контекст.',
+    },
+  },
+  {
+    key: 'x-api',
+    name: 'X (Twitter)',
+    siteUrl: 'https://x.com',
+    sourceKind: 'social',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.x.com/2',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: [
+        'https://developer.x.com/en/developer-terms/agreement-and-policy',
+        'https://docs.x.com/x-api/introduction',
+      ],
+      summary:
+        'X API v2: посты по запросу — боли. Оплата за использование: кредиты покупаются заранее.',
+      conditions: [
+        'Каждая покупка кредитов — трата, одобряемая владельцем (D-007, порог $20)',
+        'Удалять пост в течение 24 часов после его удаления на X',
+      ],
+    },
+    cost: 'Оплата за использование, кредиты заранее',
+    limits: { provider: 'По купленным кредитам', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    dataFields: { provided: ['посты', 'имена и аккаунты авторов', 'метрики'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена, аккаунты и идентификаторы людей.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Developer Policy: планы Free, Basic, Pro «are designed for hobbyists, commercial prototyping, early-stage X product integrations»; хранимый контент — удалять «within 24 hours after receiving a request». Документация: «The X API uses pay-per-usage pricing». Нужна оплата — решение владельца.',
+    },
+  },
+  {
+    key: 'quora',
+    name: 'Quora',
+    siteUrl: 'https://www.quora.com',
+    sourceKind: 'forum',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.quora.com',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.quora.com/about/tos'],
+      summary: 'Вопросы и ответы — боли. Официального API для чтения не найдено.',
+      conditions: ['Не подключать: без API остаётся только скрейпинг'],
+    },
+    cost: 'Не применимо',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['вопросы', 'ответы', 'имена авторов'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена и профили авторов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'quora.com отвечает 403 на автоматические запросы — условия не прочитаны. Официального API для чтения не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+    },
+  },
+  {
+    key: 'indie-hackers',
+    name: 'Indie Hackers',
+    siteUrl: 'https://www.indiehackers.com',
+    sourceKind: 'forum',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.indiehackers.com',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.indiehackers.com/terms'],
+      summary: 'Форум основателей — боли и выручка малых продуктов. Официального API не найдено.',
+      conditions: ['Не подключать: без API остаётся только скрейпинг'],
+    },
+    cost: 'Не применимо',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['посты', 'комментарии', 'имена авторов'], stored: [] },
+    personalData: { risk: 'medium', notes: 'Имена и профили авторов.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'medium',
@@ -1039,7 +1401,514 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedBy: 'Claude (source scout, D-026)',
       checkedOn: '2026-10-20',
       notes:
-        'apple.com закрыт сетью среды; поиск не нашёл официальных условий ленты отзывов. App Store Connect API даёт отзывы только о своих приложениях.',
+        'indiehackers.com отвечает 403 на автоматические запросы — условия не прочитаны. Официального API не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+    },
+  },
+  {
+    key: 'g2',
+    name: 'G2: отзывы о софте',
+    siteUrl: 'https://www.g2.com',
+    sourceKind: 'review_site',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.g2.com',
+      authentication: 'agreement',
+    },
+    terms: {
+      urls: ['https://legal.g2.com/terms-of-use'],
+      summary: 'Отзывы о B2B-софте — боли бизнеса. Сбор данных — только с письменного согласия G2.',
+      conditions: ['Не подключать без договора с G2'],
+    },
+    cost: 'По договору',
+    limits: { provider: 'По договору', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['отзывы', 'оценки', 'имена и должности авторов'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена, должности и компании авторов отзывов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms of Use §9: без «express prior written consent» нельзя «access, collect, copy, scrape, harvest, cache, index, store, archive, or otherwise extract any content or data from the Site, including user reviews». Только по договору с G2.',
+    },
+  },
+  {
+    key: 'capterra',
+    name: 'Capterra: отзывы о софте',
+    siteUrl: 'https://www.capterra.com',
+    sourceKind: 'review_site',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.capterra.com',
+      authentication: 'agreement',
+    },
+    terms: {
+      urls: ['https://www.capterra.com/legal/terms-of-use/'],
+      summary:
+        'Отзывы о софте для малого бизнеса — боли. Сбор данных — только с письменного согласия.',
+      conditions: ['Не подключать без договора с Capterra (Gartner Digital Markets)'],
+    },
+    cost: 'По договору',
+    limits: { provider: 'По договору', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['отзывы', 'оценки', 'имена и должности авторов'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена, должности и компании авторов отзывов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms of Use §10: без «express prior written consent» нельзя «access, collect, copy, scrape, harvest, cache, index, store, archive, or otherwise extract any content or data from the Service, including user reviews». Только по договору.',
+    },
+  },
+  {
+    key: 'trustpilot',
+    name: 'Trustpilot: отзывы',
+    siteUrl: 'https://www.trustpilot.com',
+    sourceKind: 'review_site',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.trustpilot.com/v1',
+      authentication: 'agreement',
+    },
+    terms: {
+      urls: [
+        'https://legal.trustpilot.com/for-reviewers/end-user-terms-and-conditions',
+        'https://developers.trustpilot.com/',
+      ],
+      summary:
+        'Отзывы о компаниях — боли клиентов. Сбор контента — только с разрешения Trustpilot.',
+      conditions: ['Не подключать без разрешения Trustpilot'],
+    },
+    cost: 'По договору',
+    limits: { provider: 'По договору', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['отзывы', 'оценки', 'имена авторов'], stored: [] },
+    personalData: { risk: 'medium', notes: 'Имена авторов отзывов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms: «You must not access, search or collect content from our platform by any means (automated or otherwise) except as provided on our platform or specifically approved by us»; text mining и scraping — только «with our express permission». Только с разрешения Trustpilot.',
+    },
+  },
+  {
+    key: 'google-play-reviews',
+    name: 'Google Play: отзывы',
+    siteUrl: 'https://play.google.com',
+    sourceKind: 'review_site',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://androidpublisher.googleapis.com',
+      authentication: 'oauth',
+    },
+    terms: {
+      urls: ['https://developers.google.com/android-publisher/reply-to-reviews'],
+      summary:
+        'Официальный API отдаёт отзывы только о своих приложениях; отзывы о чужих — только скрейпингом.',
+      conditions: ['Не подключать'],
+    },
+    cost: 'Бесплатно',
+    limits: {
+      provider: 'Квоты Google Play Developer API',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: { provided: ['отзывы о своих приложениях', 'оценки', 'имена авторов'], stored: [] },
+    personalData: { risk: 'medium', notes: 'Имена авторов отзывов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Reply to Reviews API: «allows developers to view and reply to user feedback for their production apps» — только свои приложения. Отзывы о чужих приложениях официально не отдаются; сторонние библиотеки — скрейпинг.',
+    },
+  },
+  {
+    key: 'lemmy-world',
+    name: 'Lemmy (lemmy.world)',
+    siteUrl: 'https://lemmy.world',
+    sourceKind: 'forum',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://lemmy.world/api/v3',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://legal.lemmy.world/tos/'],
+      summary:
+        'Крупнейший сервер Lemmy: сообщества по темам, похоже на Reddit — боли. Условия распространяются на API и не запрещают чтение.',
+      conditions: [
+        'Только чтение публичных постов: без ботов, голосов и сообщений',
+        'Без ников и ссылок на профили; текст — после очистки персональных данных',
+        'Только посты, созданные на lemmy.world: копии с других серверов Lemmy — под их собственными условиями',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: { provider: 'Не заявлены', minIntervalMinutes: 60, maxItemsPerRun: 30 },
+    dataFields: {
+      provided: ['посты', 'комментарии', 'сообщества', 'ники авторов'],
+      stored: ['заголовок + текст (очищенные)', 'время', 'ссылка на пост'],
+    },
+    personalData: {
+      risk: 'medium',
+      notes: 'Ники не сохраняются; контакты и имена в тексте вычищаются.',
+    },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        "Terms of Service: «applies to your access to and active use of https://lemmy.world, it's API's»; «Users are allowed to use any provided method to interact with Lemmy.World, as long as it is in good faith». Правила для ботов касаются публикаций. Запрета на чтение и анализ нет.",
+    },
+  },
+  {
+    key: 'threads',
+    name: 'Threads (Meta)',
+    siteUrl: 'https://www.threads.com',
+    sourceKind: 'social',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://graph.threads.net',
+      authentication: 'oauth',
+    },
+    terms: {
+      urls: [
+        'https://developers.facebook.com/docs/threads/keyword-search',
+        'https://developers.facebook.com/terms/',
+      ],
+      summary:
+        'Threads API: поиск постов по словам — боли. Условия Meta Platform Terms не прочитаны.',
+      conditions: ['Подключать только после чтения условий'],
+    },
+    cost: 'Не проверено',
+    limits: { provider: 'Не проверено', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    dataFields: { provided: ['посты', 'имена и аккаунты авторов'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена и аккаунты авторов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'developers.facebook.com отвечает 400 на автоматические запросы — условия и правила поиска по словам не прочитаны. Проверить: нужна ли проверка приложения Meta и разрешён ли анализ чужих постов.',
+    },
+  },
+  {
+    key: 'tumblr',
+    name: 'Tumblr',
+    siteUrl: 'https://www.tumblr.com',
+    sourceKind: 'social',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.tumblr.com/v2',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://www.tumblr.com/docs/api_agreement'],
+      summary: 'Tumblr API: посты по тегам. Хранить контент можно не дольше трёх дней.',
+      conditions: ['Не подключать: доказательства в ROI Dealer хранятся бессрочно'],
+    },
+    cost: 'Бесплатно с ключом',
+    limits: { provider: 'Лимиты API Tumblr', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    dataFields: { provided: ['посты', 'теги', 'имена блогов'], stored: [] },
+    personalData: { risk: 'high', notes: 'Имена блогов и личные истории.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'API Agreement: «Under no circumstances will you or your Licensee Applications store or cache Content for longer than three (3) days». Evidence в ROI Dealer — постоянная запись с историей, условие несовместимо.',
+    },
+  },
+  {
+    key: 'fred',
+    name: 'FRED (ФРС Сент-Луиса)',
+    siteUrl: 'https://fred.stlouisfed.org',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.stlouisfed.org/fred',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://fred.stlouisfed.org/docs/api/terms_of_use.html'],
+      summary: 'FRED API: экономические ряды США — контекст рынка.',
+      conditions: ['Подключать только после чтения условий'],
+    },
+    cost: 'Бесплатно, ключ после регистрации',
+    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: { provided: ['ряд', 'дата', 'значение'], stored: [] },
+    personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes: 'fred.stlouisfed.org закрыт сетью среды — условия не прочитаны.',
+    },
+  },
+  {
+    key: 'us-bea',
+    name: 'US BEA: экономика по отраслям',
+    siteUrl: 'https://www.bea.gov',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://apps.bea.gov/api/data',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://apps.bea.gov/API/_pdf/bea_api_tos.pdf'],
+      summary: 'BEA API: ВВП и расходы по отраслям и штатам США — размер рынка.',
+      conditions: [
+        'Показывать: «This product uses the Bureau of Economic Analysis (BEA) Data API but is not endorsed or certified by BEA.»',
+        'Не изменять данные, оставляя BEA источником',
+        'Коннектор — после решения о хранении рядов (05b)',
+      ],
+    },
+    cost: 'Бесплатно, ключ по e-mail',
+    limits: {
+      provider: 'Не заявлены; BEA вправе ограничить',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: {
+      provided: ['таблица', 'отрасль', 'регион', 'год', 'значение'],
+      stored: ['таблица, отрасль, регион, год, значение'],
+    },
+    personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms of Service: «You may use the BEA API to develop a service or service to search, display, analyze, retrieve, view and otherwise "get" information from BEA data». Нужна оговорка о неодобрении BEA. Ключ бесплатный: apps.bea.gov/API/signup/.',
+    },
+  },
+  {
+    key: 'uk-nomis',
+    name: 'UK Nomis: рынок труда',
+    siteUrl: 'https://www.nomisweb.co.uk',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://www.nomisweb.co.uk/api/v01',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.nomisweb.co.uk/api/v01/help'],
+      summary: 'Nomis API (ONS): занятость и компании по отраслям и районам Великобритании.',
+      conditions: ['Подключать только после проверки лицензии данных'],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Число одновременных запросов ограничено; до 25 000 ячеек в выгрузке',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: { provided: ['набор данных', 'район', 'отрасль', 'значение'], stored: [] },
+    personalData: { risk: 'low', notes: 'Агрегаты; людей в данных нет.' },
+    markets: ['GB'],
+    languages: ['en'],
+    evidenceMarket: 'GB',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Справка API прочитана: «The number of concurrently running requests to the API is limited»; «You have a 25000 cell limit». Лицензию данных не нашёл: страница условий отвечает 404. Проверить при следующем запуске.',
+    },
+  },
+  {
+    key: 'regulations-gov',
+    name: 'Regulations.gov',
+    siteUrl: 'https://www.regulations.gov',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.regulations.gov/v4',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://open.gsa.gov/api/regulationsgov/'],
+      summary:
+        'Regulations.gov API: проекты правил США и публичные комментарии к ним — регуляторный контекст и жалобы компаний.',
+      conditions: [
+        'Только чтение (GET); Comment API для отправки комментариев не используем',
+        'Комментарии — только после очистки персональных данных: в них имена',
+      ],
+    },
+    cost: 'Бесплатно, ключ api.data.gov',
+    limits: {
+      provider: 'Лимиты ключа api.data.gov',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 30,
+    },
+    dataFields: {
+      provided: ['документы', 'досье', 'комментарии', 'имена комментаторов'],
+      stored: ['текст комментария (очищенный)', 'дата', 'ссылка'],
+    },
+    personalData: {
+      risk: 'medium',
+      notes: 'Имена комментаторов не сохраняются; имена и контакты в тексте вычищаются.',
+    },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms of Participation касаются только отправки комментариев через Comment API. Для чтения ограничений нет: «Regulations.gov offers a GET API for documents, comments, dockets»; «The APIs allow for users to find creative ways to present regulatory data». Ключ бесплатный: api.data.gov.',
+    },
+  },
+  {
+    key: 'guardian',
+    name: 'The Guardian: Open Platform',
+    siteUrl: 'https://www.theguardian.com',
+    sourceKind: 'news',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://content.guardianapis.com',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://www.theguardian.com/open-platform/terms-and-conditions'],
+      summary: 'Статьи Guardian. Условия запрещают обработку AI и хранение дольше 24 часов.',
+      conditions: ['Не подключать'],
+    },
+    cost: 'Бесплатный ключ для некоммерческого использования',
+    limits: { provider: 'Лимиты ключа', minIntervalMinutes: 1_440, maxItemsPerRun: 30 },
+    dataFields: { provided: ['статьи', 'заголовки', 'разделы', 'авторы'], stored: [] },
+    personalData: { risk: 'low', notes: 'Имена авторов и героев статей.' },
+    markets: ['GB', 'US', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'high',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Open Platform Terms: нельзя использовать контент «with any machine learning and/or artificial intelligence technologies to generate any data or content»; «you must not keep any OP Content for longer than 24 hours». Разбор в ROI Dealer — AI, доказательства хранятся бессрочно.',
+    },
+  },
+  {
+    key: 'newsapi',
+    name: 'NewsAPI',
+    siteUrl: 'https://newsapi.org',
+    sourceKind: 'news',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://newsapi.org/v2',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://newsapi.org/terms', 'https://newsapi.org/pricing'],
+      summary:
+        'Агрегатор новостей. Бесплатный план — только для разработки; для работы — подписка от $449 в месяц.',
+      conditions: ['Не подключать: подписка дороже лимитов D-007'],
+    },
+    cost: 'Подписка от $449 в месяц',
+    limits: { provider: 'По подписке', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    dataFields: { provided: ['заголовок', 'описание', 'источник', 'ссылка', 'дата'], stored: [] },
+    personalData: { risk: 'low', notes: 'В заголовках бывают имена людей.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Terms: Developer plan «may be used for development and testing in a development environment only, and cannot be used in a staging or production environment». Pricing: подписки $449 и $1749 в месяц — выше лимитов D-007. Для контекста есть бесплатный GDELT.',
+    },
+  },
+  {
+    key: 'microsoft-ads-keywords',
+    name: 'Microsoft Advertising: объёмы поиска',
+    siteUrl: 'https://ads.microsoft.com',
+    sourceKind: 'search_trends',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://adinsight.api.bingads.microsoft.com',
+      authentication: 'oauth',
+    },
+    terms: {
+      urls: ['https://learn.microsoft.com/en-us/advertising/guides/get-started'],
+      summary: 'Ad Insight API: оценки объёма поиска Bing по словам — спрос.',
+      conditions: ['Подключать только после чтения условий доступа'],
+    },
+    cost: 'Не проверено',
+    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: { provided: ['ключевое слово', 'объём поиска', 'конкуренция'], stored: [] },
+    personalData: { risk: 'low', notes: 'Агрегаты по запросам; людей в данных нет.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Страницы learn.microsoft.com собираются скриптом — текст условий API не получен. Проверить, что нужно для доступа к Ad Insight API и разрешено ли использовать оценки для исследования рынка.',
+    },
+  },
+  {
+    key: 'oecd',
+    name: 'OECD: статистика',
+    siteUrl: 'https://www.oecd.org',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://sdmx.oecd.org/public/rest',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.oecd.org/en/about/terms-conditions.html'],
+      summary: 'OECD Data API: экономика и занятость по странам — контекст.',
+      conditions: ['Подключать только после чтения условий'],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: { provided: ['страна', 'показатель', 'период', 'значение'], stored: [] },
+    personalData: { risk: 'low', notes: 'Агрегаты по странам; людей в данных нет.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-10-20',
+      notes: 'oecd.org отвечает 403 на автоматические запросы — условия не прочитаны.',
     },
   },
 ];
