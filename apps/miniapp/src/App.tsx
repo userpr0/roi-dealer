@@ -61,23 +61,22 @@ function Body({ result }: { readonly result: PanelResult }) {
       return <PanelView panel={result.panel} />;
     case 'not_configured':
       return (
-        <Notice title="Адрес API не задан">
-          Откройте пульт кнопкой «Пульт» слева от поля ввода в чате с ботом. Бот ставит её сам,
-          когда у него задан <code>PUBLIC_API_URL</code> — адрес сервиса api (docs/deploy/START.md).
+        <Notice title="Пульт не подключён">
+          Откройте его кнопкой «Пульт» слева от поля ввода в чате с ботом. Если не помогло, /status
+          в боте покажет, что настроить.
         </Notice>
       );
     case 'outside_telegram':
       return (
-        <Notice title="Откройте пульт из бота">
-          Данные видны только в Telegram: кнопка меню бота слева от поля ввода. Telegram подписывает
-          запрос, и API проверяет, что это владелец.
+        <Notice title="Пульт открывается только в Telegram">
+          Это закрытый пульт: данные видит только владелец, внутри Telegram.
         </Notice>
       );
     case 'refused':
       return <Notice title={REFUSALS[result.status].title}>{REFUSALS[result.status].text}</Notice>;
     case 'failed':
       return (
-        <Notice title="API не отвечает">
+        <Notice title="Сервер не отвечает">
           Попробуйте «Обновить» через минуту. Бот работает и без пульта: /status, /economics.
         </Notice>
       );
@@ -95,7 +94,7 @@ const REFUSALS = {
   },
   503: {
     title: 'Пульт ещё не подключён',
-    text: 'У сервиса api нет базы данных или токена бота (docs/deploy/api.md).',
+    text: '/status в боте покажет, что настроить.',
   },
 } as const;
 
