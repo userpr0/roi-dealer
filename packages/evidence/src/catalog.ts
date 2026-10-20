@@ -1555,7 +1555,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       ],
     },
     cost: 'Бесплатно, без ключа',
-    limits: { provider: 'Не заявлены', minIntervalMinutes: 60, maxItemsPerRun: 30 },
+    limits: {
+      provider: 'Явных лимитов нет; robots.txt — Crawl-delay: 60, API не закрыт',
+      minIntervalMinutes: 60,
+      maxItemsPerRun: 30,
+    },
     dataFields: {
       provided: ['посты', 'комментарии', 'сообщества', 'ники авторов'],
       stored: ['заголовок + текст (очищенные)', 'время', 'ссылка на пост'],

@@ -46,6 +46,13 @@ export {
 } from './hacker-news-search.js';
 export { htmlToText } from './html.js';
 export {
+  createLemmyConnector,
+  LEMMY_API_URL,
+  LEMMY_CATALOG_KEY,
+  LEMMY_COMMUNITIES,
+  type LemmyOptions,
+} from './lemmy.js';
+export {
   REDACTION_KINDS,
   redactionTotal,
   redactPersonalData,
