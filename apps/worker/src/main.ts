@@ -21,7 +21,7 @@ import {
 } from '@roi-dealer/ai-runtime';
 import { ensureAccessRequest } from '@roi-dealer/command-center';
 import { JUDGE_TASKS, judgesAgent } from '@roi-dealer/judges';
-import { createDatabase } from '@roi-dealer/database';
+import { createDatabase, createServiceHeartbeat } from '@roi-dealer/database';
 import { createSpendGuard } from '@roi-dealer/economics';
 import {
   createEvidenceScheduler,
@@ -31,7 +31,12 @@ import {
 } from '@roi-dealer/evidence';
 import { MEDIA_TASKS } from '@roi-dealer/media';
 import { createLogger } from '@roi-dealer/observability';
-import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
+import {
+  createShutdownManager,
+  exitProcess,
+  installProcessHandlers,
+  serviceVersion,
+} from '@roi-dealer/shared';
 import { OPPORTUNITY_TASKS } from '@roi-dealer/opportunities';
 import { SIGNAL_TASKS } from '@roi-dealer/signals';
 import { loadWorkerConfig } from './config.js';
@@ -164,6 +169,16 @@ function main(): void {
     logger,
     intervalMs: config.LEAD_RETENTION_INTERVAL_MS,
   });
+  // The bot's watchdog (13c): the worker marks that it runs and which AI providers it has.
+  const heartbeat = createServiceHeartbeat({
+    watch: database.services,
+    service: SERVICE,
+    version: serviceVersion(config),
+    setup: { ai: providers.map((provider) => provider.provider) },
+    logger,
+    intervalMs: config.WORKER_HEARTBEAT_INTERVAL_MS,
+  });
+  heartbeat.start();
   maintenance.start();
   evidence.start();
   agents.start();
@@ -175,6 +190,7 @@ function main(): void {
   shutdown.register('agents', () => agents.stop());
   shutdown.register('spend-guard', () => spendGuard.stop());
   shutdown.register('lead-retention', () => retention.stop());
+  shutdown.register('heartbeat', () => heartbeat.stop());
 }
 
 try {

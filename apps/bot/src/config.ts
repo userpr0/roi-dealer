@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
 import { LOG_LEVELS } from '@roi-dealer/observability';
-import { loadConfig, nodeEnvSchema, type EnvSource } from '@roi-dealer/shared';
+import { loadConfig, nodeEnvSchema, railwayCommitSchema, type EnvSource } from '@roi-dealer/shared';
 import {
   DEFAULT_TELEGRAM_API_BASE_URL,
   telegramApiBaseUrlSchema,
@@ -30,6 +30,8 @@ const botConfigSchema = z.object({
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   /** Shown in /status; set to the git commit SHA at deploy time. */
   APP_VERSION: z.string().min(1).max(64).default('dev'),
+  /** The commit Railway deployed: the version when `APP_VERSION` is not set (13c). */
+  RAILWAY_GIT_COMMIT_SHA: railwayCommitSchema,
   TELEGRAM_BOT_TOKEN: telegramBotTokenSchema,
   /** The only Telegram user the bot answers to. */
   TELEGRAM_OWNER_USER_ID: telegramUserIdSchema,
@@ -57,6 +59,8 @@ const botConfigSchema = z.object({
     .url()
     .refine((value) => value.startsWith('https://'), { error: 'an https address' })
     .default(DEFAULT_MINIAPP_URL),
+  /** How often the watchdog reads the services' marks (13c). Default: one minute. */
+  WATCHDOG_INTERVAL_MS: z.coerce.number().int().min(100).default(60_000),
   /** How often the bot looks for opportunities to send for a decision (PHASE 12). Default: 5 min. */
   DECISION_CARDS_INTERVAL_MS: z.coerce
     .number()

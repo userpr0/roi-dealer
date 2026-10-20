@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
 import { LOG_LEVELS } from '@roi-dealer/observability';
-import { loadConfig, nodeEnvSchema, portSchema, type EnvSource } from '@roi-dealer/shared';
+import {
+  loadConfig,
+  nodeEnvSchema,
+  portSchema,
+  railwayCommitSchema,
+  type EnvSource,
+} from '@roi-dealer/shared';
 import { telegramBotTokenSchema, telegramUserIdSchema } from '@roi-dealer/telegram';
 
 /** The Mini App on GitHub Pages (ADR-0002); several origins are separated by commas. */
@@ -28,6 +34,9 @@ const originsSchema = z
 const apiConfigSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+  /** The version the watchdog compares (13c); default: the commit Railway deployed. */
+  APP_VERSION: z.string().trim().min(1).max(64).optional(),
+  RAILWAY_GIT_COMMIT_SHA: railwayCommitSchema,
   /** Loopback by default; bind to 0.0.0.0 explicitly when running inside a container. */
   API_HOST: z.string().min(1).default('127.0.0.1'),
   API_PORT: portSchema.default(3000),

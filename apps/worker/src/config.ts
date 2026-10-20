@@ -2,11 +2,14 @@ import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
 import { HACKER_NEWS_API_URL, HACKER_NEWS_SEARCH_URL } from '@roi-dealer/evidence';
 import { LOG_LEVELS } from '@roi-dealer/observability';
-import { loadConfig, nodeEnvSchema, type EnvSource } from '@roi-dealer/shared';
+import { loadConfig, nodeEnvSchema, railwayCommitSchema, type EnvSource } from '@roi-dealer/shared';
 
 const workerConfigSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+  /** The version the watchdog compares (13c); default: the commit Railway deployed. */
+  APP_VERSION: z.string().trim().min(1).max(64).optional(),
+  RAILWAY_GIT_COMMIT_SHA: railwayCommitSchema,
   WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().min(100).default(60_000),
   /** Optional: without it the worker only keeps its heartbeat (no evidence collection). */
   DATABASE_URL: databaseConfigShape.DATABASE_URL.optional(),

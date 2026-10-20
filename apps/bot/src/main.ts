@@ -1,7 +1,17 @@
 import { createCommandCenter } from '@roi-dealer/command-center';
-import { createDatabase, createDatabaseHealthCheck, type Database } from '@roi-dealer/database';
+import {
+  createDatabase,
+  createDatabaseHealthCheck,
+  createServiceHeartbeat,
+  type Database,
+} from '@roi-dealer/database';
 import { createHealthRegistry, createLogger } from '@roi-dealer/observability';
-import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
+import {
+  createShutdownManager,
+  exitProcess,
+  installProcessHandlers,
+  serviceVersion,
+} from '@roi-dealer/shared';
 import {
   createLongPoller,
   createOwnerCommandRouter,
@@ -37,7 +47,8 @@ async function main(): Promise<void> {
   logger.info('telegram bot authenticated', { bot_id: me.id, bot_username: me.username });
 
   const ownerUserId = config.TELEGRAM_OWNER_USER_ID;
-  const runtime = { version: config.APP_VERSION, environment: config.NODE_ENV };
+  const startedAt = Date.now();
+  const runtime = { version: serviceVersion(config), environment: config.NODE_ENV };
   const health = createHealthRegistry({
     service: SERVICE,
     onCheckError: (check, error) => logger.warn('health check failed', { check, error }),
@@ -66,14 +77,32 @@ async function main(): Promise<void> {
     deliverCard: (text, keyboard) => client.sendMessage({ chatId: ownerUserId, text, keyboard }),
     cardIntervalMs: config.DECISION_CARDS_INTERVAL_MS,
     publicApiUrl: config.PUBLIC_API_URL,
+    watchdog: {
+      version: runtime.version,
+      startedAtMs: startedAt,
+      intervalMs: config.WATCHDOG_INTERVAL_MS,
+    },
   });
   shutdown.register('daily-digest', () => commandCenter.stopDigest());
   shutdown.register('decision-cards', () => commandCenter.stopCards());
+  shutdown.register('watchdog', () => commandCenter.stopWatchdog());
+  if (database !== undefined) {
+    // The watchdog compares versions (13c): the bot marks itself like the other services.
+    const heartbeat = createServiceHeartbeat({
+      watch: database.services,
+      service: SERVICE,
+      version: runtime.version,
+      setup: { api_url: config.PUBLIC_API_URL !== undefined },
+      logger,
+    });
+    heartbeat.start();
+    shutdown.register('heartbeat', () => heartbeat.stop());
+  }
 
   const commands = createBotCommands({
     ...runtime,
     health,
-    startedAt: Date.now(),
+    startedAt,
     panel: commandCenter.commands,
     statusLines: (request) => commandCenter.statusLines(request),
   });
@@ -128,6 +157,7 @@ async function main(): Promise<void> {
   await notifier.notify(startedText(runtime));
   commandCenter.startDigest();
   commandCenter.startCards();
+  commandCenter.startWatchdog();
   logger.info('bot started', {
     node_env: config.NODE_ENV,
     version: config.APP_VERSION,

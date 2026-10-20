@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   designHypothesesTask,
   HYPOTHESIS_DESIGNER,
@@ -120,10 +120,17 @@ describe('worker process with a database (PHASE 05)', () => {
       DATABASE_URL: test.url,
       EVIDENCE_COLLECT_INTERVAL_MS: '200',
       HACKER_NEWS_API_URL: hn.baseUrl,
+      RAILWAY_GIT_COMMIT_SHA: 'f00dfeed0123456789abcdef0123456789abcdef',
     });
 
     try {
       await service.waitForLog((line) => line['message'] === 'evidence collection scheduled');
+      // The watchdog's mark (13c): the version Railway deployed, no AI providers without keys.
+      await vi.waitFor(async () => {
+        expect(await test.database.services.heartbeats()).toEqual([
+          expect.objectContaining({ service: 'worker', version: 'f00dfee', setup: { ai: [] } }),
+        ]);
+      });
       // Nothing is fetched before the grant.
       await grantHackerNews(test, service, () => expect(hn.requests).toEqual([]));
 

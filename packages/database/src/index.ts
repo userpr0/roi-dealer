@@ -153,3 +153,18 @@ export {
   type PaymentEventLog,
   type RecordedPaymentEvent,
 } from './payments.js';
+export {
+  createServiceHeartbeat,
+  createServiceWatch,
+  INCIDENT_KINDS,
+  SERVICES,
+  serviceSetupSchema,
+  type IncidentKind,
+  type ServiceHeartbeat,
+  type ServiceHeartbeatOptions,
+  type ServiceHeartbeatTimer,
+  type ServiceIncident,
+  type ServiceName,
+  type ServiceSetup,
+  type ServiceWatch,
+} from './services.js';

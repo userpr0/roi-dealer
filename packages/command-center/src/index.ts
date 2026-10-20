@@ -272,3 +272,21 @@ export {
   type CheckoutFlow,
   type PaymentFlowDeps,
 } from './payments.js';
+export {
+  aiKeyFixedText,
+  aiKeyText,
+  AI_PROVIDER_SETUP,
+  createServiceWatchdog,
+  recoveredText,
+  SETUP_COMPLETE_TEXT,
+  setupStatus,
+  SILENT_AFTER_MS,
+  silentText,
+  VERSION_GRACE_MS,
+  versionFixedText,
+  versionText,
+  type ServiceWatchdog,
+  type ServiceWatchdogOptions,
+  type SetupFacts,
+  type SetupStatus,
+} from './watchdog.js';

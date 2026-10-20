@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ConfigValidationError, loadConfig, nodeEnvSchema, portSchema } from '@roi-dealer/shared';
+import {
+  ConfigValidationError,
+  loadConfig,
+  nodeEnvSchema,
+  portSchema,
+  railwayCommitSchema,
+  serviceVersion,
+} from '@roi-dealer/shared';
 
 const schema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
@@ -56,5 +63,22 @@ describe('portSchema', () => {
 
   it.each(['-1', '65536', '3000.5', 'abc'])('rejects %s', (value) => {
     expect(portSchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe('serviceVersion (13c)', () => {
+  const SHA = '0123456789abcdef0123456789abcdef01234567';
+
+  it('takes APP_VERSION, else the commit Railway deployed, else dev', () => {
+    expect(serviceVersion({ APP_VERSION: 'v1.2.3', RAILWAY_GIT_COMMIT_SHA: SHA })).toBe('v1.2.3');
+    expect(serviceVersion({ APP_VERSION: 'dev', RAILWAY_GIT_COMMIT_SHA: SHA })).toBe('0123456');
+    expect(serviceVersion({ RAILWAY_GIT_COMMIT_SHA: SHA })).toBe('0123456');
+    expect(serviceVersion({})).toBe('dev');
+  });
+
+  it('keeps only letters, digits and ._- and never fails on a strange commit value', () => {
+    expect(serviceVersion({ APP_VERSION: 'release 7/main' })).toBe('release-7-main');
+    expect(railwayCommitSchema.parse('not a sha')).toBeUndefined();
+    expect(railwayCommitSchema.parse(SHA)).toBe(SHA);
   });
 });

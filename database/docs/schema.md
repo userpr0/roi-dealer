@@ -277,6 +277,12 @@ rewards ─< reward_contributions >── contributions
 - **`payment_events`** — журнал, только добавление: вид (`order`, `test_order`, `refund`), номер заказа, тест, сумма без налога, созданная строка выручки или возврата; `payment_events_once` — провайдер + ключ события, повтор доставки не проходит. Данных покупателя нет.
 - **`revenue_entries_integration_provider`** — выручка от интеграции только от `integration:lemonsqueezy`.
 
+## Сторож сервисов (13c)
+
+- **`service_heartbeats`** (миграция `0019`) — последняя отметка каждого сервиса (`bot`, `worker`, `api`): версия, запуск, время отметки, `setup` — что настроено, только переключатели и названия (JSON до 1 КБ). Без событий: служебные данные.
+- **`service_incidents`** — что сторож сообщил владельцу (`silent`, `version`, `ai_key`) и когда это закончилось; `service_incidents_one_open` — одно открытое на вид и предмет, `service_incidents_once` — каждое событие один раз.
+- Доступ — только `database.services` (бот, `worker`, `api`); персональных данных и секретов нет.
+
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.

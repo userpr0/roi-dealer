@@ -301,6 +301,14 @@ describe('🛑 kill switch', () => {
     expect(await center.statusLines()).toEqual([
       '▶️ Автоматизации: работают',
       '🤖 AI: вызовов ещё не было',
+      // 13c: nothing is set up in this database yet; every line says where to fix it.
+      '🧭 Запуск — осталось 5:',
+      '⚠️ worker не запущен — START.md, шаг 2',
+      '⚠️ ключи AI не заданы у worker — START.md, шаг 2.3',
+      '⚠️ api не запущен — START.md, шаг 3',
+      '⚠️ нет PUBLIC_CONTACT_EMAIL у api — START.md, шаг 3.3',
+      '⚠️ нет PUBLIC_API_URL у бота — START.md, шаг 4',
+      '✅ доступы решены',
     ]);
   });
 });
