@@ -23,6 +23,11 @@ export interface AiTask<Input, Output, Expected = Output> {
   readonly name: string;
   readonly version: number;
   readonly tier: TaskTier;
+  /**
+   * The input may hold personal data (names, contacts): it never goes to a free quota whose
+   * terms let the provider use the content (D-025).
+   */
+  readonly privateInput?: boolean | undefined;
   /** System instructions; the input is rendered into the user message. */
   readonly instructions: string;
   readonly input: z.ZodType<Input>;

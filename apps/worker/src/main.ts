@@ -88,9 +88,20 @@ function main(): void {
   }
   if (config.GEMINI_API_KEY !== undefined) {
     providers.push(
-      createGoogleProvider({ apiKey: config.GEMINI_API_KEY, baseUrl: config.GEMINI_BASE_URL }),
+      createGoogleProvider({
+        apiKey: config.GEMINI_API_KEY,
+        freeApiKey: config.GEMINIFREE_API_KEY,
+        baseUrl: config.GEMINI_BASE_URL,
+      }),
     );
+  } else if (config.GEMINIFREE_API_KEY !== undefined) {
+    logger.warn('GEMINIFREE_API_KEY is used only together with GEMINI_API_KEY');
   }
+  // The free Gemini quota (D-025): simple tasks try it first.
+  const freeTier =
+    config.GEMINI_API_KEY !== undefined && config.GEMINIFREE_API_KEY !== undefined
+      ? ['google']
+      : [];
   const ai = createAiRuntime({
     database,
     logger,
@@ -102,6 +113,7 @@ function main(): void {
   });
   logger.info('ai providers configured', {
     providers: providers.map((provider) => provider.provider),
+    free_tier: freeTier,
   });
   const maintenance = createAiMaintenance({
     runtime: ai,
@@ -174,7 +186,7 @@ function main(): void {
     watch: database.services,
     service: SERVICE,
     version: serviceVersion(config),
-    setup: { ai: providers.map((provider) => provider.provider) },
+    setup: { ai: providers.map((provider) => provider.provider), ai_free: freeTier },
     logger,
     intervalMs: config.WORKER_HEARTBEAT_INTERVAL_MS,
   });

@@ -128,7 +128,11 @@ describe('worker process with a database (PHASE 05)', () => {
       // The watchdog's mark (13c): the version Railway deployed, no AI providers without keys.
       await vi.waitFor(async () => {
         expect(await test.database.services.heartbeats()).toEqual([
-          expect.objectContaining({ service: 'worker', version: 'f00dfee', setup: { ai: [] } }),
+          expect.objectContaining({
+            service: 'worker',
+            version: 'f00dfee',
+            setup: { ai: [], ai_free: [] },
+          }),
         ]);
       });
       // Nothing is fetched before the grant.

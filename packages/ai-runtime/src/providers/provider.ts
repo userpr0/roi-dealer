@@ -13,6 +13,11 @@ export interface CompletionRequest<Output> {
   readonly effort: 'low' | 'high';
   readonly timeoutMs: number;
   readonly signal?: AbortSignal | undefined;
+  /**
+   * The call may go to the provider's free quota first (D-025). Its terms let the provider use
+   * the content, so it is never set for input that may hold personal data (`privateInput`).
+   */
+  readonly freeTier?: boolean | undefined;
 }
 
 export interface Completion<Output> {
@@ -20,6 +25,8 @@ export interface Completion<Output> {
   readonly output: Output;
   readonly inputTokens: number;
   readonly outputTokens: number;
+  /** Served by the free quota (D-025): it costs nothing. */
+  readonly free?: boolean | undefined;
 }
 
 /** A failed attempt with its class; tokens are known when the model answered. */
@@ -28,12 +35,18 @@ export class ProviderFailure extends Error {
   readonly failure: AiFailure;
   readonly inputTokens: number;
   readonly outputTokens: number;
+  /** The failed attempt ran on the free quota (D-025): its tokens cost nothing. */
+  readonly free: boolean;
 
-  constructor(failure: AiFailure, usage: { inputTokens?: number; outputTokens?: number } = {}) {
+  constructor(
+    failure: AiFailure,
+    usage: { inputTokens?: number; outputTokens?: number; free?: boolean } = {},
+  ) {
     super(`AI provider call failed: ${failure}`);
     this.failure = failure;
     this.inputTokens = usage.inputTokens ?? 0;
     this.outputTokens = usage.outputTokens ?? 0;
+    this.free = usage.free ?? false;
   }
 }
 
