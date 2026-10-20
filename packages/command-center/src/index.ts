@@ -91,6 +91,7 @@ export {
   opportunitiesText,
 } from './opportunities.js';
 export { agentsText, NO_AGENTS_TEXT } from './agents.js';
+export { sourcesText } from './sources.js';
 export {
   adUrl,
   costPerApprovedLanding,

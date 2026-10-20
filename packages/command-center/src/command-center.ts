@@ -32,6 +32,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { agentsText } from './agents.js';
+import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
   EXPERIMENT_PREFIX,
@@ -100,7 +101,7 @@ export interface CommandCenter {
   /**
    * /decisions, /stop, /resume, /journal, /history, /digest, /access, /pains, /opportunities,
    * /search, /ask, /note, /hypotheses, /experiments, /funnel, /economics, /cost, /portfolio,
-   * /stats, /review, /agents
+   * /stats, /review, /agents, /sources
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
@@ -152,6 +153,7 @@ const DESCRIPTIONS = {
   stats: 'Статистика цикла и метрики системы',
   review: 'Недельный разбор сейчас',
   agents: 'Агенты: доступ, работа, AI за сутки',
+  sources: 'Источники данных: разрешены, ждут проверки, отклонены',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -403,6 +405,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('agents', 'status.read', async (context) =>
         context.reply(await agentsText(database, nowMs())),
+      ),
+      command('sources', 'status.read', async (context) =>
+        context.reply(await sourcesText(database)),
       ),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),

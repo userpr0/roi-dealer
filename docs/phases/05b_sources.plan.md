@@ -34,7 +34,8 @@
 - **Reddit** — только по договору.
 - **CFPB** — `rejected`: CFPB снимает тексты жалоб с публикации.
 - **GitHub** — `rejected`, §6–7 Acceptable Use Policies.
-- **Google Trends без официального API** — `rejected`: неофициальные библиотеки и сервисы выгрузки результатов Google нарушают его условия.
+- **Google Trends без официального API** — неофициальные библиотеки и сервисы выгрузки результатов Google нарушают его условия. Официальный API — `needs_agreement`: владелец подал заявку 20.10.2026.
+- **npm, загрузки пакетов** — `allowed` по официальным условиям (разведчик, 20.10.2026). Подключение — после решения о хранении рядов спроса.
 
 ## Решить в спецификации
 
@@ -44,7 +45,7 @@
 
 ## Что нужно от владельца
 
-1. **Доступ среды разработки к сайтам условий**, чтобы проверить официальные тексты:
+1. **Доступ среды разработки к сайтам условий**, чтобы проверить официальные тексты. Полный список и шаги — в [отчёте разведчика от 20.10.2026](../sources/scout-2026-10-20.md#домены-для-доступа); первые источники:
    - Wikimedia: `meta.wikimedia.org`, `foundation.wikimedia.org`, `doc.wikimedia.org`, `www.mediawiki.org`, `wikimedia.org`;
    - Stack Exchange: `stackoverflow.com`, `stackexchange.com`, `api.stackexchange.com`, `stackapps.com`;
    - Bluesky: `bsky.social`, `bsky.app`, `docs.bsky.app`, `blueskyweb.xyz`, `public.api.bsky.app`;

@@ -24,6 +24,7 @@
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/economics": "workspace:*",
     "@roi-dealer/events": "workspace:*",
+    "@roi-dealer/evidence": "workspace:*",
     "@roi-dealer/media": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/policies": "workspace:*",
