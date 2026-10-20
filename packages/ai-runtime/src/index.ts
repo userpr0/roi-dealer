@@ -27,7 +27,11 @@ export {
   type TaskTier,
 } from './models.js';
 export { createAnthropicProvider, type AnthropicProviderOptions } from './providers/anthropic.js';
-export { createGoogleProvider, type GoogleProviderOptions } from './providers/google.js';
+export {
+  createGoogleProvider,
+  FREE_TIER_COOLDOWN_MS,
+  type GoogleProviderOptions,
+} from './providers/google.js';
 export { createOpenAiProvider, type OpenAiProviderOptions } from './providers/openai.js';
 export {
   classifyError,

@@ -287,11 +287,13 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
     const started = now();
     const record = async (
       outcome: 'ok' | 'failed',
-      usage: { inputTokens: number; outputTokens: number },
+      usage: { inputTokens: number; outputTokens: number; free?: boolean | undefined },
       failure?: AiFailure,
     ) => {
-      const costMicroUsd = callCostMicroUsd(model, usage.inputTokens, usage.outputTokens);
-      if (tally !== undefined) tally.micro += costMicroUsd;
+      const listCost = callCostMicroUsd(model, usage.inputTokens, usage.outputTokens);
+      // An eval compares models at their prices, even when the free quota served it (D-025).
+      if (tally !== undefined) tally.micro += listCost;
+      const costMicroUsd = usage.free === true ? 0 : listCost;
       await database.aiCalls.record({
         task: task.name,
         taskVersion: task.version,
@@ -320,6 +322,8 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
         effort: task.tier === 'bulk' ? 'low' : 'high',
         timeoutMs,
         signal: context.signal,
+        // D-025: simple tasks may use a free quota; judgement and personal data never do.
+        freeTier: task.tier === 'bulk' && task.privateInput !== true,
       });
       await record('ok', completion);
       return completion.output;

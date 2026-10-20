@@ -311,6 +311,9 @@ export async function setupStatus(
         Object.hasOwn(AI_PROVIDER_SETUP, name) ? [AI_PROVIDER_SETUP[name as AiProvider].name] : [],
       )
     : [];
+  const free = of('worker')?.setup['ai_free'];
+  const freeNote =
+    Array.isArray(free) && free.includes('google') ? ' · бесплатный ключ Gemini — первым' : '';
   const form = of('api')?.setup['form'] === true;
   const access = requests.filter((request) => request.kind === 'access_grant').length;
 
@@ -320,7 +323,7 @@ export async function setupStatus(
       ok: providers.length > 0,
       line:
         providers.length > 0
-          ? `✅ AI: ${providers.join(', ')}`
+          ? `✅ AI: ${providers.join(', ')}${freeNote}`
           : '⚠️ ключи AI не заданы у worker — START.md, шаг 2.3',
     },
     api,

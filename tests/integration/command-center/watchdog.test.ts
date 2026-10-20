@@ -360,6 +360,12 @@ describe('the setup checklist of /status (D-023)', () => {
     expect(await dog.runOnce()).toBe(0);
   });
 
+  it('shows that the free Gemini key goes first (D-025)', async () => {
+    await mark('worker', 1, { setup: { ai: ['google'], ai_free: ['google'] } });
+    const { lines } = await setupStatus(db, { publicApiUrl: false }, clock);
+    expect(lines).toContain('✅ AI: Google (Gemini) · бесплатный ключ Gemini — первым');
+  });
+
   it('shows a silent service in the checklist', async () => {
     await mark('worker', 30, { setup: { ai: ['openai'] } });
     const { lines } = await setupStatus(db, { publicApiUrl: false }, clock);

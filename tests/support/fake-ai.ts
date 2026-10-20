@@ -9,6 +9,8 @@ export interface FakeAiRequest {
   readonly model: string;
   readonly instructions: string;
   readonly prompt: string;
+  /** The API key the call came with (free or paid Gemini key, D-025). */
+  readonly key?: string | undefined;
 }
 
 /**
@@ -212,7 +214,10 @@ export async function startFakeAi(provider: FakeAiProvider): Promise<FakeAi> {
       respond(res, 404, errorBody(provider, 404));
       return;
     }
-    const request: FakeAiRequest = readRequest(provider, await readBody(req), match[1]);
+    const request: FakeAiRequest = {
+      ...readRequest(provider, await readBody(req), match[1]),
+      key: typeof key === 'string' ? key : undefined,
+    };
     const { model } = request;
     calls.push(request);
     const answer = answerFn(request);

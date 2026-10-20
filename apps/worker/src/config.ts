@@ -32,6 +32,11 @@ const workerConfigSchema = z.object({
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   GEMINI_API_KEY: z.string().trim().min(1).optional(),
+  /**
+   * A Gemini key of a project without billing (D-025): simple tasks try it first and fall back
+   * to `GEMINI_API_KEY` when its free quota ends. Used only together with `GEMINI_API_KEY`.
+   */
+  GEMINIFREE_API_KEY: z.string().trim().min(1).optional(),
   /** Official APIs by default; tests point them to local fakes. */
   ANTHROPIC_BASE_URL: z.url({ protocol: /^https?$/ }).optional(),
   OPENAI_BASE_URL: z.url({ protocol: /^https?$/ }).optional(),

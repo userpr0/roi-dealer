@@ -91,6 +91,8 @@ export const redactNamesTask: AiTask<RedactNamesInput, RedactNamesOutput, readon
   name: 'redact-names',
   version: 1,
   tier: 'bulk',
+  // The text still holds the names this task finds: never on a free quota (D-025).
+  privateInput: true,
   instructions: [
     'You find the names of people in a short text from a public forum.',
     'Return every name of a person (first name, last name or full name) exactly as written in the text.',
