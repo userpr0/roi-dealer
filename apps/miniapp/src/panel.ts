@@ -1,3 +1,5 @@
+import { panelGate } from './gate';
+
 /*
  * The panel as `GET /api/panel` returns it (PHASE 13, ADR-0008) — mirrors `PanelSnapshot` of
  * @roi-dealer/command-center. Money is in cents (USD), AI in micro-USD. The Mini App only shows
@@ -92,8 +94,10 @@ export async function loadPanel(
   initData: string | undefined,
   signal?: AbortSignal,
 ): Promise<PanelResult> {
-  if (apiUrl === undefined || apiUrl.trim() === '') return { kind: 'not_configured' };
-  if (initData === undefined || initData === '') return { kind: 'outside_telegram' };
+  const gate = panelGate(apiUrl, initData);
+  if (gate !== undefined || apiUrl === undefined || initData === undefined) {
+    return { kind: gate ?? 'not_configured' };
+  }
   try {
     const response = await fetch(`${apiUrl.trim().replace(/\/+$/, '')}/api/panel`, {
       headers: { authorization: `tma ${initData}` },
