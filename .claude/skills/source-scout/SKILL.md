@@ -10,8 +10,9 @@ You find data sources for ROI Dealer that may be used **legally** and record the
 ## Read first
 
 1. `docs/phases/05b_sources.plan.md` — the order, the open design questions, the domains this environment needs.
-2. `packages/evidence/src/catalog.ts` — `SOURCE_CATALOG`: what is already checked and its verdict.
-3. `docs/OWNER_DECISIONS.md` — D-008 (markets), D-019, D-024, D-026.
+2. `packages/evidence/src/catalog.ts` — `SOURCE_CATALOG`: the archive of every checked source and its verdict. The owner sees it in Telegram with `/sources`.
+3. The latest `docs/sources/scout-*.md` — candidates already considered and set aside, with the reason.
+4. `docs/OWNER_DECISIONS.md` — D-008 (markets), D-019, D-024, D-026.
 
 ## What to look for
 
@@ -28,9 +29,9 @@ Markets: the US first, then the English-speaking Tier-1 markets (D-008).
 
 ## For every candidate
 
-1. **Skip** it when `SOURCE_CATALOG` already has it with a verdict — unless its `checkedOn` is older than 6 months.
+1. **Skip** it when `SOURCE_CATALOG` already has it with a final verdict (`allowed`, `needs_agreement`, `rejected`) — unless its `checkedOn` is older than 6 months. Re-check every `needs_review` entry on each run: that is the queue. Skip a candidate the latest report set aside, unless its reason has changed.
 2. **Find the official terms:** the provider's own terms of service, API terms, developer policy or data licence. Third-party blogs are only pointers to them.
-3. **Read the official text** (WebFetch or `curl`). If this environment's network blocks the host, do not guess: record `needs_review` and add the host to the report's list «домены для доступа».
+3. **Read the official text** (WebFetch or `curl`). Some providers keep their policies in a public GitHub repository (npm: `npm/documentation`); `raw.githubusercontent.com` may be open when the provider's site is not. If this environment's network blocks the host, do not guess: record `needs_review`, put what search results say in `review.notes` marked as such («по выдаче поиска»), and add the host to the report's list «домены для доступа».
 4. **Decide the verdict** from the text, quoting the clause in `review.notes`:
    - `allowed` — commercial analysis of the data through the official access is permitted;
    - `needs_agreement` — a contract, a paid plan or written permission is required;
@@ -56,6 +57,7 @@ Markets: the US first, then the English-speaking Tier-1 markets (D-008).
 1. Update `packages/evidence/src/catalog.ts` and `tests/unit/evidence/catalog.test.ts` (the verdict table).
 2. Write `docs/sources/scout-YYYY-MM-DD.md` in Russian, with these sections:
    - что проверено и вердикты с цитатами;
+   - отложено без записи в каталог: кандидаты без роли или вне рынков D-008, с причиной;
    - что подключено;
    - что нужно от владельца: регистрации, ключи, переменные Railway;
    - домены для доступа: hosts the environment still blocks.

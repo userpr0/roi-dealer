@@ -321,6 +321,9 @@ importers:
       '@roi-dealer/events':
         specifier: workspace:*
         version: link:../events
+      '@roi-dealer/evidence':
+        specifier: workspace:*
+        version: link:../evidence
       '@roi-dealer/media':
         specifier: workspace:*
         version: link:../media

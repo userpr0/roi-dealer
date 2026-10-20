@@ -26,16 +26,34 @@ describe('source catalog (D-014 п.5)', () => {
       bluesky: 'needs_review',
       'product-hunt': 'needs_review',
       github: 'rejected',
-      'google-trends': 'rejected',
+      'google-trends': 'needs_agreement',
+      'npm-downloads': 'allowed',
+      'wikimedia-pageviews': 'needs_review',
+      'pypi-downloads': 'needs_review',
+      'google-ads-keyword-planner': 'needs_review',
+      'us-census': 'needs_review',
+      'us-bls': 'needs_review',
+      'uk-ons': 'needs_review',
+      'uk-companies-house': 'needs_review',
+      'statistics-canada': 'needs_review',
+      'abs-australia': 'needs_review',
+      gdelt: 'needs_review',
+      'federal-register': 'needs_review',
+      'sec-edgar': 'needs_review',
+      youtube: 'needs_review',
+      'dev-to': 'needs_review',
+      'mastodon-social': 'needs_review',
+      'app-store-reviews': 'needs_review',
     });
   });
 
   it('lets connectors work only with allowed entries', () => {
     expect(connectableEntry('hacker-news').key).toBe('hacker-news');
+    expect(connectableEntry('npm-downloads').key).toBe('npm-downloads');
     expect(() => connectableEntry('unknown-forum')).toThrow(
       expect.objectContaining({ code: 'not_cataloged' }),
     );
-    for (const key of ['reddit', 'cfpb-complaints', 'stack-exchange']) {
+    for (const key of ['reddit', 'cfpb-complaints', 'stack-exchange', 'google-trends', 'gdelt']) {
       expect(() => connectableEntry(key)).toThrow(expect.objectContaining({ code: 'not_allowed' }));
     }
   });

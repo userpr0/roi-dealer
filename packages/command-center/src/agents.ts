@@ -10,7 +10,7 @@ import { formatTime } from './texts.js';
 
 const DAY_MS = 24 * 3_600_000;
 
-const ACCESS_LABELS: Readonly<Record<PrincipalStatus, string>> = {
+export const ACCESS_LABELS: Readonly<Record<PrincipalStatus, string>> = {
   active: '✅ работает',
   pending: '⏳ ждёт вашего решения в /decisions',
   suspended: '⏸ приостановлен (/access)',

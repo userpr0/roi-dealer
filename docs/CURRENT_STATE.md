@@ -18,7 +18,7 @@ Updated: 2026-10-20
 
 - pnpm monorepo (`apps/*`, `packages/*`), воспроизводимая установка (`pnpm install --frozen-lockfile`).
 - TypeScript 6.0 strict + project references (`tsc -b`), ESLint 10 (type-aware, `no-console`), Prettier.
-- Vitest: 86 test files, 885 tests (575 unit, 310 integration); integration-тесты работают с настоящим PostgreSQL 18.
+- Vitest: 88 test files, 888 tests; integration-тесты работают с настоящим PostgreSQL 18.
 - Config validation (Zod), structured JSON logging с редактированием секретов, correlation id, health registry, graceful shutdown.
 - `GET /health` → `{"status":"ok","service":"api"}`; при заданном `DATABASE_URL` — ещё проверка `database` (недоступна → HTTP 503); `GET /api/panel` — данные Mini App владельцу по подписи Telegram (PHASE 13).
 - Docker Compose: PostgreSQL 18 (healthcheck, volume, loopback-only, UTC).
@@ -174,6 +174,12 @@ Updated: 2026-10-20
   - сторож в боте сообщает по одному разу: сервис молчит 10 минут, версии разошлись после деплоя, ключ AI не принят — и когда это закончилось; работает и при стоп-кране;
   - `/status` — чек-лист «🧭 Запуск» с шагами START.md; «✅ Всё настроено» приходит один раз; дайджест — строка «🛠 Сторож за сутки»;
   - каталог: GitHub Issues — `rejected` по Acceptable Use Policies §6–7.
+- **Разведчик источников (D-026), первый запуск 2026-10-20** — [отчёт](sources/scout-2026-10-20.md):
+  - каталог — архив всех проверенных источников: 25 записей, из них 17 новых; повторно разведчик проверяет только ждущие проверки и записи старше полугода;
+  - npm (загрузки пакетов) — `allowed` по официальным условиям; подключение — после решения о хранении рядов спроса (05b);
+  - Google Trends — `needs_agreement`: официальный API по заявке, владелец её подал;
+  - 15 новых источников ждут чтения условий: сайты условий закрыты сетью среды разработки;
+  - `/sources` в боте — каталог по вердиктам и подключены ли разрешённые источники.
 - **Бесплатный ключ Gemini первым (D-025, поправка ADR-0006):** простые задачи сначала идут на ключ проекта без оплаты (`GEMINIFREE_API_KEY`), после конца его квоты — на платный; вычистка имён (`privateInput`) и судьи — только платный ключ; бесплатные вызовы — $0 в `ai_calls`, эталоны сравнивают модели по прайсу.
 - **Фаза 13a (по запросу владельца, [ADR-0003](ADR/0003-early-telegram-owner-bot.md)):** бот-пульт в Telegram — только владелец, `/start` `/status` `/help`, уведомления о запуске / остановке, long polling; пакет `@roi-dealer/telegram`; Docker-образ `apps/bot/Dockerfile` (собирается в CI); инструкция [`docs/deploy/telegram-bot.md`](deploy/telegram-bot.md).
 - **По запросу владельца после PHASE 00:** публикация placeholder miniapp на GitHub Pages (https://userpr0.github.io/roi-dealer/) для открытия в Telegram — [ADR-0002](ADR/0002-miniapp-hosting-github-pages.md), workflow `.github/workflows/miniapp-pages.yml`.
@@ -284,4 +290,4 @@ Integration-тесты запускают реальные процессы api 
 
 **Запуск завершён 2026-10-20:** worker, api, ключи Gemini (бесплатный первым, D-025), форма заявки, кнопка «Пульт», доступы — бот прислал «✅ Всё настроено».
 
-**Следующая фаза — 05b, новые источники данных (D-026):** [требования](phases/05b_sources.plan.md). Ждёт действия владельца: доступ среды разработки к сайтам условий (список доменов в требованиях), затем новая сессия.
+**Следующая фаза — 05b, новые источники данных (D-026):** [требования](phases/05b_sources.plan.md). Ждёт действия владельца: доступ среды разработки к сайтам условий — список доменов и шаги в [отчёте разведчика](sources/scout-2026-10-20.md#как-открыть-доступ). Изменение действует в открытой сессии примерно через минуту.
