@@ -297,6 +297,46 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
   },
   {
+    key: 'github',
+    name: 'GitHub Issues',
+    siteUrl: 'https://github.com',
+    sourceKind: 'forum',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.github.com',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: [
+        'https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies',
+        'https://docs.github.com/en/site-policy/github-terms/github-terms-of-service',
+      ],
+      summary:
+        'Acceptable Use Policies §7: информацию сервиса — через API или иначе — можно использовать только исследователям (публикации в открытом доступе) и архивистам.',
+      conditions: [
+        'Не подключать: коммерческий поиск болей не входит в разрешённые цели §7; §6 запрещает использовать сервис без письменного разрешения GitHub',
+      ],
+    },
+    cost: 'Бесплатно (лимиты API)',
+    limits: {
+      provider: '5 000 запросов в час с токеном',
+      minIntervalMinutes: 60,
+      maxItemsPerRun: 30,
+    },
+    dataFields: { provided: ['issues', 'discussions', 'комментарии', 'логины'], stored: [] },
+    personalData: { risk: 'medium', notes: 'Логины и ссылки на профили авторов.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (13c, D-023)',
+      checkedOn: '2026-10-20',
+      notes:
+        'Проверено по официальному тексту (репозиторий github/site-policy). Вернуться только с письменным разрешением GitHub.',
+    },
+  },
+  {
     key: 'google-trends',
     name: 'Google Trends',
     siteUrl: 'https://trends.google.com',

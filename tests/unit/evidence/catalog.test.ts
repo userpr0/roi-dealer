@@ -25,6 +25,7 @@ describe('source catalog (D-014 п.5)', () => {
       'stack-exchange': 'needs_review',
       bluesky: 'needs_review',
       'product-hunt': 'needs_review',
+      github: 'rejected',
       'google-trends': 'rejected',
     });
   });

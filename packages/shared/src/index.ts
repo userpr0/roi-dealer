@@ -3,6 +3,8 @@ export {
   loadConfig,
   nodeEnvSchema,
   portSchema,
+  railwayCommitSchema,
+  serviceVersion,
   type ConfigIssue,
   type EnvSource,
   type NodeEnv,

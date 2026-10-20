@@ -209,6 +209,14 @@ describe('owner bot process with a database (13b)', () => {
     const reply = await telegram.waitForSent((message) => message.text.includes('database: '));
     expect(reply.text).toContain('🟢 database: ok');
     expect(reply.text).toContain('▶️ Автоматизации: работают');
+    // 13c: the checklist of what is left to set up, and the bot's own mark for the watchdog.
+    expect(reply.text).toContain('🧭 Запуск — осталось 4:');
+    expect(reply.text).toContain('✅ кнопка «Пульт»');
+    await vi.waitFor(async () => {
+      expect(await database.database.services.heartbeats()).toEqual([
+        expect.objectContaining({ service: 'bot', version: 'test-sha', setup: { api_url: true } }),
+      ]);
+    });
   });
 
   it('pauses automation from Telegram after a confirmation, once', async () => {

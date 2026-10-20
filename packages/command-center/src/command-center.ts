@@ -67,6 +67,7 @@ import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
+import { createServiceWatchdog, setupStatus } from './watchdog.js';
 
 export interface CommandCenterOptions {
   /** Without a database the panel commands explain that it is not connected. */
@@ -80,6 +81,18 @@ export interface CommandCenterOptions {
   readonly cardIntervalMs?: number | undefined;
   /** The api's public address (`PUBLIC_API_URL`): preview links of landings (PHASE 19a). */
   readonly publicApiUrl?: string | undefined;
+  /**
+   * The bot's version and start (13c): the watchdog compares the services' versions with it.
+   * Without them the watchdog does not run.
+   */
+  readonly watchdog?:
+    | {
+        readonly version: string;
+        readonly startedAtMs: number;
+        /** Default: one minute. */
+        readonly intervalMs?: number | undefined;
+      }
+    | undefined;
   readonly now?: () => number;
 }
 
@@ -104,6 +117,9 @@ export interface CommandCenter {
   /** Sends the cards of opportunities under review as they arrive (no-op without a database). */
   startCards(): void;
   stopCards(): Promise<void>;
+  /** Watches the worker and the api and tells the owner about incidents (13c). */
+  startWatchdog(): void;
+  stopWatchdog(): Promise<void>;
 }
 
 /**
@@ -204,6 +220,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       stopDigest: () => Promise.resolve(),
       startCards: () => undefined,
       stopCards: () => Promise.resolve(),
+      startWatchdog: () => undefined,
+      stopWatchdog: () => Promise.resolve(),
     };
   }
 
@@ -297,6 +315,20 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
           now: nowMs,
           intervalMs: options.cardIntervalMs,
           publicApiUrl: options.publicApiUrl,
+        });
+  const setup = { publicApiUrl: options.publicApiUrl !== undefined };
+  const watchdog =
+    options.watchdog === undefined
+      ? undefined
+      : createServiceWatchdog({
+          database,
+          logger,
+          deliver: options.deliverDigest,
+          version: options.watchdog.version,
+          startedAtMs: options.watchdog.startedAtMs,
+          intervalMs: options.watchdog.intervalMs,
+          now: nowMs,
+          setup,
         });
 
   return {
@@ -416,6 +448,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       return [
         await killSwitchStatus(database.repositories, database.events),
         await aiStatusLine(database.aiCalls, nowMs()),
+        ...(await setupStatus(database, setup, nowMs())).lines,
       ];
     },
     refused: (attempt) => audit.refused(attempt),
@@ -423,5 +456,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
     stopDigest: () => scheduler.stop(),
     startCards: () => cards?.start(),
     stopCards: () => cards?.stop() ?? Promise.resolve(),
+    startWatchdog: () => watchdog?.start(),
+    stopWatchdog: () => watchdog?.stop() ?? Promise.resolve(),
   };
 }

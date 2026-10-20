@@ -54,6 +54,7 @@ const PROJECT_MIGRATIONS = [
   '0016_release',
   '0017_leads',
   '0018_payments',
+  '0019_service_watch',
 ];
 
 describe('runMigrations with the project migrations', () => {

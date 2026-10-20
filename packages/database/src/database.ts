@@ -13,6 +13,7 @@ import { createBrainQueries, type BrainQueries } from './brain.js';
 import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
 import { createLeadContacts, type LeadContacts } from './lead-contacts.js';
 import { createPaymentEventLog, type PaymentEventLog } from './payments.js';
+import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
 import { createJudgementLog, type JudgementLog } from './judgements.js';
@@ -60,6 +61,8 @@ export interface TransactionScope {
   readonly leadContacts: LeadContacts;
   /** Payment events, recorded with the revenue or refund they create (PHASE 20b). */
   readonly payments: PaymentEventLog;
+  /** The watchdog's incidents, opened in the same transaction as the notice to the owner (13c). */
+  readonly services: ServiceWatch;
 }
 
 export interface TransactionOptions {
@@ -113,6 +116,8 @@ export interface Database {
   readonly leadContacts: LeadContacts;
   /** What the payment provider reported, once per event (PHASE 20b). */
   readonly payments: PaymentEventLog;
+  /** Heartbeats of the services and the watchdog's incidents (13c). */
+  readonly services: ServiceWatch;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -160,6 +165,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     economics: createEconomicsQueries(tx),
     leadContacts: createLeadContacts(tx),
     payments: createPaymentEventLog(tx),
+    services: createServiceWatch(tx),
   };
 }
 
@@ -225,6 +231,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     stats: createStatsQueries(sql),
     leadContacts: createLeadContacts(sql),
     payments: createPaymentEventLog(sql),
+    services: createServiceWatch(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

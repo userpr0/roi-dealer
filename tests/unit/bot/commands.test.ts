@@ -145,6 +145,7 @@ describe('bot config', () => {
       DATABASE_POOL_MAX: 5,
       DATABASE_CONNECT_TIMEOUT_SECONDS: 10,
       MINIAPP_URL: 'https://userpr0.github.io/roi-dealer/',
+      WATCHDOG_INTERVAL_MS: 60_000,
       DECISION_CARDS_INTERVAL_MS: 300_000,
     });
   });

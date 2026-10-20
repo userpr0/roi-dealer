@@ -1,9 +1,19 @@
 import { ensureAccessRequest } from '@roi-dealer/command-center';
-import { createDatabase, createDatabaseHealthCheck, type Database } from '@roi-dealer/database';
+import {
+  createDatabase,
+  createDatabaseHealthCheck,
+  createServiceHeartbeat,
+  type Database,
+} from '@roi-dealer/database';
 import { toTimestamp, type NewPrincipal } from '@roi-dealer/domain';
 import { handleLemonSqueezyWebhook, PAYMENTS_ACCESS } from '@roi-dealer/payments';
 import { createHealthRegistry, createLogger, type Logger } from '@roi-dealer/observability';
-import { createShutdownManager, exitProcess, installProcessHandlers } from '@roi-dealer/shared';
+import {
+  createShutdownManager,
+  exitProcess,
+  installProcessHandlers,
+  serviceVersion,
+} from '@roi-dealer/shared';
 import {
   createSiteTracker,
   createSubmissionLimiter,
@@ -121,6 +131,20 @@ async function main(): Promise<void> {
         logger,
       });
     }
+    // The bot's watchdog (13c): the api marks that it runs and what it serves, without values.
+    const heartbeat = createServiceHeartbeat({
+      watch: database.services,
+      service: SERVICE,
+      version: serviceVersion(config),
+      setup: {
+        panel: panel !== undefined,
+        form: contactEmail !== undefined,
+        payments: payments !== undefined,
+      },
+      logger,
+    });
+    heartbeat.start();
+    shutdown.register('heartbeat', () => heartbeat.stop());
   }
   logger.info('mini app panel', { enabled: panel !== undefined, origins: config.MINIAPP_ORIGINS });
 

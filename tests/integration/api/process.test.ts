@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { startService, type ServiceProcess } from '../../support/service-process.js';
 
@@ -115,6 +115,16 @@ describe('api process with a database', () => {
     );
     const [request] = await database.database.repositories.approvalRequests.listByStatus('pending');
     expect(request?.title).toBe('Доступ: Сайт тестов');
+    // The watchdog's mark (13c): what the api serves, switches only.
+    await vi.waitFor(async () => {
+      expect(await database.database.services.heartbeats()).toEqual([
+        expect.objectContaining({
+          service: 'api',
+          version: 'dev',
+          setup: { panel: false, form: false, payments: false },
+        }),
+      ]);
+    });
   });
 
   it('answers 503 when the database is unreachable', async () => {

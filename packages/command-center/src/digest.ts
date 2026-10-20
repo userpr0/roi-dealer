@@ -6,7 +6,7 @@ import {
   toTimestamp,
   type CostEntry,
 } from '@roi-dealer/domain';
-import type { Database } from '@roi-dealer/database';
+import type { Database, ServiceIncident } from '@roi-dealer/database';
 import type { Logger } from '@roi-dealer/observability';
 import { aiDigestLine } from './ai-status.js';
 import { decidableRequests } from './approvals.js';
@@ -26,7 +26,10 @@ export const DIGEST_RETRY_MS = 5 * 60_000;
 
 /** The morning summary, from the database only (§2.13). */
 export async function buildDigest(
-  database: Pick<Database, 'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns'>,
+  database: Pick<
+    Database,
+    'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns' | 'services'
+  >,
   nowMs: number,
 ): Promise<string> {
   const now = toTimestamp(new Date(nowMs));
@@ -44,6 +47,10 @@ export async function buildDigest(
     to: toTimestamp(new Date(nowMs + 1)),
     decision: 'denied',
   });
+  // The watchdog's notices of the day (13c): what stopped and whether it is back.
+  const incidents = await database.services.incidentsSince(
+    toTimestamp(new Date(nowMs - PERIODS.day.ms)),
+  );
   const requests = await decidableRequests(database.repositories, now);
   const review = await reviewCount(database.repositories);
   const nearest = requests[0];
@@ -95,6 +102,16 @@ export async function buildDigest(
     ...(overdue === 0 ? [] : [`⏰ Просроченных тестов: ${String(overdue)} → /experiments`]),
     ...(rewards === undefined ? [] : [rewards]),
     ...(refused === 0 ? [] : [`🔐 Отклонённых попыток доступа за сутки: ${refused} → /access`]),
+    ...(incidents.length === 0
+      ? []
+      : [
+          `🛠 Сторож за сутки: ${String(incidents.length)} (${incidents
+            .map(
+              (incident) =>
+                `${incidentLabel(incident)}${incident.resolvedAt === undefined ? ' — не решено' : ''}`,
+            )
+            .join('; ')}) → /status`,
+        ]),
     await killSwitchStatus(database.repositories, database.events),
   ].join('\n');
 }
@@ -199,4 +216,14 @@ export async function sendDailyDigest(
     },
   );
   return outcome === 'executed' ? 'sent' : 'already_sent';
+}
+
+const INCIDENT_LABELS = {
+  silent: (subject: string) => `${subject} молчал`,
+  version: (subject: string) => `${subject} на другой версии`,
+  ai_key: (subject: string) => `ключ ${subject} не принят`,
+} as const;
+
+function incidentLabel(incident: Pick<ServiceIncident, 'kind' | 'subject'>): string {
+  return INCIDENT_LABELS[incident.kind](incident.subject);
 }
