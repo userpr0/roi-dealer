@@ -22,38 +22,63 @@ describe('source catalog (D-014 п.5)', () => {
       'hacker-news': 'allowed',
       reddit: 'needs_agreement',
       'cfpb-complaints': 'rejected',
-      'stack-exchange': 'needs_review',
-      bluesky: 'needs_review',
-      'product-hunt': 'needs_review',
+      'stack-exchange': 'needs_agreement',
+      bluesky: 'allowed',
+      'product-hunt': 'needs_agreement',
       github: 'rejected',
       'google-trends': 'needs_agreement',
       'npm-downloads': 'allowed',
-      'wikimedia-pageviews': 'needs_review',
-      'pypi-downloads': 'needs_review',
-      'google-ads-keyword-planner': 'needs_review',
-      'us-census': 'needs_review',
-      'us-bls': 'needs_review',
-      'uk-ons': 'needs_review',
+      'wikimedia-pageviews': 'allowed',
+      'pypi-downloads': 'allowed',
+      'google-ads-keyword-planner': 'needs_agreement',
+      'us-census': 'allowed',
+      'us-bls': 'allowed',
+      'uk-ons': 'allowed',
       'uk-companies-house': 'needs_review',
-      'statistics-canada': 'needs_review',
-      'abs-australia': 'needs_review',
-      gdelt: 'needs_review',
-      'federal-register': 'needs_review',
-      'sec-edgar': 'needs_review',
-      youtube: 'needs_review',
-      'dev-to': 'needs_review',
+      'statistics-canada': 'allowed',
+      'abs-australia': 'allowed',
+      gdelt: 'allowed',
+      'federal-register': 'allowed',
+      'sec-edgar': 'allowed',
+      youtube: 'rejected',
+      'dev-to': 'rejected',
       'mastodon-social': 'needs_review',
-      'app-store-reviews': 'needs_review',
+      'app-store-reviews': 'rejected',
+      'world-bank': 'allowed',
+      eurostat: 'allowed',
+      arxiv: 'allowed',
+      openalex: 'allowed',
+      crossref: 'allowed',
+      'x-api': 'needs_agreement',
+      quora: 'needs_review',
+      'indie-hackers': 'needs_review',
+      g2: 'needs_agreement',
+      capterra: 'needs_agreement',
+      trustpilot: 'needs_agreement',
+      'google-play-reviews': 'rejected',
+      'lemmy-world': 'allowed',
+      threads: 'needs_review',
+      tumblr: 'rejected',
+      fred: 'needs_review',
+      'us-bea': 'allowed',
+      'uk-nomis': 'needs_review',
+      'regulations-gov': 'allowed',
+      guardian: 'rejected',
+      newsapi: 'needs_agreement',
+      'microsoft-ads-keywords': 'needs_review',
+      oecd: 'needs_review',
     });
   });
 
   it('lets connectors work only with allowed entries', () => {
     expect(connectableEntry('hacker-news').key).toBe('hacker-news');
-    expect(connectableEntry('npm-downloads').key).toBe('npm-downloads');
+    for (const key of ['npm-downloads', 'bluesky', 'gdelt', 'sec-edgar']) {
+      expect(connectableEntry(key).key).toBe(key);
+    }
     expect(() => connectableEntry('unknown-forum')).toThrow(
       expect.objectContaining({ code: 'not_cataloged' }),
     );
-    for (const key of ['reddit', 'cfpb-complaints', 'stack-exchange', 'google-trends', 'gdelt']) {
+    for (const key of ['reddit', 'cfpb-complaints', 'stack-exchange', 'youtube', 'quora']) {
       expect(() => connectableEntry(key)).toThrow(expect.objectContaining({ code: 'not_allowed' }));
     }
   });
