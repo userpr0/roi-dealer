@@ -42,7 +42,7 @@ function minutes(fromMs: number, toMs: number): string {
 export function silentText(service: ServiceName, lastSeen: Timestamp, nowMs: number): string {
   return [
     `🔴 ${service} молчит ${minutes(timestampMs(lastSeen), nowMs)}: последняя отметка ${formatTime(lastSeen)} (Киев).`,
-    `Hetzner → сервер → Power → Reboot перезапустит сервисы, данные сохранятся (deploy/hetzner.md). Когда ${service} заработает, я напишу.`,
+    `Railway → ${service} → Deploy Logs: последние строки покажут причину. Бот и данные в порядке; когда ${service} заработает, я напишу.`,
   ].join('\n');
 }
 
@@ -53,7 +53,7 @@ export function recoveredText(service: ServiceName, lastSeen: Timestamp, nowMs: 
 export function versionText(service: ServiceName, serviceVersion: string, bot: string): string {
   return [
     `⚠️ Версии разошлись: бот — ${bot}, ${service} — ${serviceVersion}. Последний деплой одного из них не прошёл.`,
-    'Сервер обновляется сам раз в 5 минут. Если версии не сойдутся за час — Hetzner → сервер → Power → Reboot.',
+    `Railway → ${service} → Deployments: у нового деплоя будет ошибка сборки или запуска.`,
   ].join('\n');
 }
 
@@ -65,7 +65,7 @@ export function aiKeyText(provider: AiProvider, rejected: number): string {
   const { name, variable } = AI_PROVIDER_SETUP[provider];
   return [
     `🔑 Ключ ${name} не принят: ${String(rejected)} вызовов за час с ошибкой доступа.`,
-    `Замените ${variable} — deploy/hetzner.md, «Заменить ключ» — и проверьте баланс в кабинете провайдера. Пока работают другие провайдеры.`,
+    `Railway → worker → Variables → ${variable}: вставьте действующий ключ и проверьте баланс в кабинете провайдера. Пока работают другие провайдеры.`,
   ].join('\n');
 }
 
@@ -289,22 +289,22 @@ export async function setupStatus(
   ]);
   const of = (service: ServiceName): ServiceHeartbeat | undefined =>
     heartbeats.find((item) => item.service === service);
-  const state = (service: ServiceName): { ok: boolean; line: string } => {
+  const state = (service: ServiceName, step: string): { ok: boolean; line: string } => {
     const heartbeat = of(service);
     if (heartbeat === undefined) {
-      return { ok: false, line: `⚠️ ${service} не запущен — deploy/hetzner.md` };
+      return { ok: false, line: `⚠️ ${service} не запущен — START.md, шаг ${step}` };
     }
     if (nowMs - timestampMs(heartbeat.seenAt) > SILENT_AFTER_MS) {
       return {
         ok: false,
-        line: `🔴 ${service} молчит с ${formatTime(heartbeat.seenAt)} — Hetzner → сервер → Reboot`,
+        line: `🔴 ${service} молчит с ${formatTime(heartbeat.seenAt)} — Railway → ${service} → Deploy Logs`,
       };
     }
     return { ok: true, line: `✅ ${service} работает · ${heartbeat.version}` };
   };
 
-  const worker = state('worker');
-  const api = state('api');
+  const worker = state('worker', '2');
+  const api = state('api', '3');
   const ai = of('worker')?.setup['ai'];
   const providers = Array.isArray(ai)
     ? ai.flatMap((name) =>
@@ -324,20 +324,20 @@ export async function setupStatus(
       line:
         providers.length > 0
           ? `✅ AI: ${providers.join(', ')}${freeNote}`
-          : '⚠️ ключи AI не заданы у worker — deploy/hetzner.md, «Заменить ключ»',
+          : '⚠️ ключи AI не заданы у worker — START.md, шаг 2.3',
     },
     api,
     {
       ok: form,
       line: form
         ? '✅ форма заявки на страницах тестов'
-        : '⚠️ нет PUBLIC_CONTACT_EMAIL у api — deploy/hetzner.md, «Заменить ключ»',
+        : '⚠️ нет PUBLIC_CONTACT_EMAIL у api — START.md, шаг 3.3',
     },
     {
       ok: facts.publicApiUrl,
       line: facts.publicApiUrl
         ? '✅ кнопка «Пульт»'
-        : '⚠️ нет PUBLIC_API_URL у бота — deploy/hetzner.md',
+        : '⚠️ нет PUBLIC_API_URL у бота — START.md, шаг 4',
     },
     {
       ok: access === 0,
