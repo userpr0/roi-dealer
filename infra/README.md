@@ -1,6 +1,9 @@
 # infra
 
-Инфраструктура. **PHASE 00: только локальная среда разработки.** Production cloud resources не создаются без отдельного approval владельца.
+Инфраструктура.
+
+- **Локальная среда разработки** — `docker/compose.yaml`.
+- **Production — один сервер Hetzner** (D-027, [ADR-0010](../docs/ADR/0010-hosting-hetzner.md)) — `hetzner/`: `compose.yaml`, `Caddyfile`, установка `install.sh` из `cloud-init.yaml`, автообновление `update.sh`, копии `backup.sh`, замена ключа `set-key.sh`. Инструкция владельца — [`docs/deploy/hetzner.md`](../docs/deploy/hetzner.md).
 
 ## Локальная среда — `docker/compose.yaml`
 
