@@ -1,0 +1,5 @@
+# HTTPS in front of the api (ADR-0010). The api sets its own security headers.
+{$PUBLIC_HOST} {
+	encode gzip
+	reverse_proxy api:8080
+}

@@ -76,7 +76,14 @@ jobs:
         run: pnpm test:integration
 
       - name: Validate Docker Compose config
-        run: docker compose -f infra/docker/compose.yaml config --quiet
+        run: |
+          docker compose -f infra/docker/compose.yaml config --quiet
+          printf 'POSTGRES_PASSWORD=ci\nPUBLIC_HOST=ci.example\nENV_DIR=%s\n' "$RUNNER_TEMP/env" > "$RUNNER_TEMP/compose.env"
+          mkdir -p "$RUNNER_TEMP/env" && touch "$RUNNER_TEMP"/env/{database,bot,worker,api}.env
+          docker compose -f infra/hetzner/compose.yaml --env-file "$RUNNER_TEMP/compose.env" config --quiet
+
+      - name: Check server scripts
+        run: shellcheck infra/hetzner/*.sh
 
   bot-image:
     name: Build bot Docker image
@@ -116,3 +123,39 @@ jobs:
 
       - name: Build image
         run: docker build -f apps/api/Dockerfile --build-arg APP_VERSION=${{ github.sha }} -t roi-dealer-api:ci .
+
+  # ADR-0010: after green checks on main, publish the images the Hetzner server pulls.
+  publish:
+    name: Publish ${{ matrix.service }} image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [verify, bot-image, worker-image, api-image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [bot, worker, api]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          version="${GITHUB_SHA::7}"
+          image="ghcr.io/userpr0/roi-dealer-$SERVICE"
+          docker build -f "apps/$SERVICE/Dockerfile" \
+            --build-arg APP_VERSION="$version" \
+            --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+            --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            -t "$image:main" -t "$image:$version" .
+          docker push "$image:$version"
+          docker push "$image:main"

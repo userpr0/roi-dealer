@@ -1,0 +1,97 @@
+# ROI Dealer — production on one Hetzner Cloud server (ADR-0010).
+#
+# Installed and kept up to date by infra/hetzner/install.sh and update.sh; never edited by hand
+# on the server. Secrets live in /opt/roi-dealer/env/*.env (one file per service, mode 600) and
+# never in this file or the images. Images come from CI after green checks on main.
+#
+# Variables used here (from /opt/roi-dealer/compose.env):
+#   POSTGRES_PASSWORD — generated at install
+#   PUBLIC_HOST       — the api's host name for HTTPS, e.g. 203-0-113-7.sslip.io
+#   IMAGE_TAG         — image tag to run (default: main)
+#   ENV_DIR           — directory with the per-service env files
+
+name: roi-dealer
+
+x-app: &app
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '5'
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: roi_dealer
+      POSTGRES_USER: roi_dealer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set by install.sh}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U roi_dealer -d roi_dealer']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    # Not published: only the containers on this network reach the database.
+
+  # Applies database/migrations before the services start (Railway: Pre-deploy Command).
+  migrate:
+    image: ghcr.io/userpr0/roi-dealer-bot:${IMAGE_TAG:-main}
+    restart: 'no'
+    command: ['node', '/app/node_modules/@roi-dealer/database/dist/migrate-cli.js']
+    env_file: ${ENV_DIR:-/opt/roi-dealer/env}/database.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bot:
+    <<: *app
+    image: ghcr.io/userpr0/roi-dealer-bot:${IMAGE_TAG:-main}
+    env_file: ${ENV_DIR:-/opt/roi-dealer/env}/bot.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *app
+    image: ghcr.io/userpr0/roi-dealer-worker:${IMAGE_TAG:-main}
+    env_file: ${ENV_DIR:-/opt/roi-dealer/env}/worker.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    <<: *app
+    image: ghcr.io/userpr0/roi-dealer-api:${IMAGE_TAG:-main}
+    env_file: ${ENV_DIR:-/opt/roi-dealer/env}/api.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # HTTPS for the api: a Let's Encrypt certificate for PUBLIC_HOST, renewed by Caddy.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?set by install.sh}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:

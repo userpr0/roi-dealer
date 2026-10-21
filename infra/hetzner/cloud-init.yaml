@@ -1,0 +1,20 @@
+#cloud-config
+# ROI Dealer on Hetzner Cloud (ADR-0010). Fill in the values after "=", then paste the whole
+# text into "Cloud config" when you create the server. Leave a line empty if you have no value.
+write_files:
+  - path: /opt/roi-dealer/secrets.env
+    permissions: '0600'
+    owner: root:root
+    content: |
+      TELEGRAM_BOT_TOKEN=
+      TELEGRAM_OWNER_USER_ID=
+      PUBLIC_CONTACT_EMAIL=
+      GEMINIFREE_API_KEY=
+      GEMINI_API_KEY=
+      OPENAI_API_KEY=
+      ANTHROPIC_API_KEY=
+      LEMONSQUEEZY_WEBHOOK_SECRET=
+runcmd:
+  - - bash
+    - -c
+    - curl -fsSL https://raw.githubusercontent.com/userpr0/roi-dealer/main/infra/hetzner/install.sh -o /root/roi-dealer-install.sh && bash /root/roi-dealer-install.sh > /var/log/roi-dealer-install.log 2>&1
