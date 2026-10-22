@@ -303,11 +303,11 @@ describe('🛑 kill switch', () => {
       '🤖 AI: вызовов ещё не было',
       // 13c: nothing is set up in this database yet; every line says where to fix it.
       '🧭 Запуск — осталось 5:',
-      '⚠️ worker не запущен — deploy/hetzner.md',
-      '⚠️ ключи AI не заданы у worker — deploy/hetzner.md, «Заменить ключ»',
-      '⚠️ api не запущен — deploy/hetzner.md',
-      '⚠️ нет PUBLIC_CONTACT_EMAIL у api — deploy/hetzner.md, «Заменить ключ»',
-      '⚠️ нет PUBLIC_API_URL у бота — deploy/hetzner.md',
+      '⚠️ worker не запущен — START.md, шаг 2',
+      '⚠️ ключи AI не заданы у worker — START.md, шаг 2.3',
+      '⚠️ api не запущен — START.md, шаг 3',
+      '⚠️ нет PUBLIC_CONTACT_EMAIL у api — START.md, шаг 3.3',
+      '⚠️ нет PUBLIC_API_URL у бота — START.md, шаг 4',
       '✅ доступы решены',
     ]);
   });

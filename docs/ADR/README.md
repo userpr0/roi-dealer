@@ -34,4 +34,4 @@ ADR фиксирует значимое архитектурное решени�
 | [0007](0007-experiment-funnel-in-postgresql.md)           | Воронка экспериментов — в собственной PostgreSQL                                       | Accepted | 2026-10-19 |
 | [0008](0008-miniapp-data-through-api.md)                  | Данные Mini App — через `api` с проверкой подписи Telegram                             | Accepted | 2026-10-19 |
 | [0009](0009-payments-merchant-of-record.md)               | Приём оплат — merchant of record Lemon Squeezy, ссылка на оплату и подписанный webhook | Accepted | 2026-10-19 |
-| [0010](0010-hosting-hetzner.md)                           | Хостинг — сервер Hetzner вместо Railway                                                | Accepted | 2026-10-21 |
+| [0010](0010-hosting-hetzner.md)                           | Хостинг — сервер Hetzner вместо Railway (запасной план, D-028)                         | Deferred | 2026-10-21 |

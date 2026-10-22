@@ -371,7 +371,7 @@ describe('the setup checklist of /status (D-023)', () => {
     const { lines } = await setupStatus(db, { publicApiUrl: false }, clock);
     expect(lines).toContainEqual(
       expect.stringMatching(
-        /^🔴 worker молчит с \d\d\.\d\d \d\d:\d\d — Hetzner → сервер → Reboot$/,
+        /^🔴 worker молчит с \d\d\.\d\d \d\d:\d\d — Railway → worker → Deploy Logs$/,
       ),
     );
   });
