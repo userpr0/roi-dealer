@@ -3,7 +3,7 @@
 Инфраструктура.
 
 - **Локальная среда разработки** — `docker/compose.yaml`.
-- **Production — Railway.** Запасной план — один сервер Hetzner (D-028, [ADR-0010](../docs/ADR/0010-hosting-hetzner.md)) — `hetzner/`: `compose.yaml`, `Caddyfile`, установка `install.sh` из `cloud-init.yaml`, автообновление `update.sh`, копии `backup.sh`, замена ключа `set-key.sh`. Инструкция владельца — [`docs/deploy/hetzner.md`](../docs/deploy/hetzner.md).
+- **Production — один сервер Hetzner, Railway — тёплый резерв** (D-029, [ADR-0010](../docs/ADR/0010-hosting-hetzner.md)) — `hetzner/`: `compose.yaml`, `Caddyfile`, установка `install.sh` из `cloud-init.yaml`, автообновление `update.sh`, копии `backup.sh`, замена ключа `set-key.sh`. Инструкция владельца — [`docs/deploy/hetzner.md`](../docs/deploy/hetzner.md).
 
 ## Локальная среда — `docker/compose.yaml`
 

@@ -4,7 +4,9 @@
 # Run by cloud-init (infra/hetzner/cloud-init.yaml) as root on a fresh Ubuntu 24.04 server.
 # Reads the owner's keys from /opt/roi-dealer/secrets.env, gives every service only its own
 # variables, installs Docker, the firewall, security updates, the update and backup timers,
-# and starts the system. Safe to run again: the database password and env files are kept.
+# takes over the data of the reserve database (Railway, D-029) when it is given and the local
+# database is still empty, and starts the system. Safe to run again: the database password,
+# env files and data are kept.
 set -euo pipefail
 
 ROOT=/opt/roi-dealer
@@ -34,6 +36,7 @@ main() {
   install_timers
   configure_firewall
   configure_updates
+  import_from_reserve
 
   systemctl start roi-dealer-update.service
   echo "ROI Dealer is installed: https://$(compose_value PUBLIC_HOST)"
@@ -110,6 +113,10 @@ EOF
     put "$ENV_DIR/worker.env" "$key" "$(secret "$key")"
   done
 
+  # The reserve database (Railway, D-029): read once at install, written every night.
+  : >"$ENV_DIR/reserve.env"
+  put "$ENV_DIR/reserve.env" RESERVE_DATABASE_URL "$(secret RESERVE_DATABASE_URL)"
+
   put "$ENV_DIR/api.env" DATABASE_URL "$database_url"
   for key in TELEGRAM_BOT_TOKEN TELEGRAM_OWNER_USER_ID PUBLIC_CONTACT_EMAIL \
     LEMONSQUEEZY_WEBHOOK_SECRET; do
@@ -119,6 +126,30 @@ EOF
   chmod 600 "$ROOT/compose.env" "$ENV_DIR"/*.env
   # The keys now live only in the per-service files.
   shred -u "$SECRETS" 2>/dev/null || rm -f "$SECRETS"
+}
+
+compose() {
+  docker compose -f "$APP/infra/hetzner/compose.yaml" --env-file "$ROOT/compose.env" "$@"
+}
+
+# The first start takes over the reserve's data (Railway), so accesses, evidence and decisions
+# carry over. Runs only while the local database has no tables: never overwrites local data.
+import_from_reserve() {
+  local reserve
+  reserve=$(sed -n 's/^RESERVE_DATABASE_URL=//p' "$ENV_DIR/reserve.env" 2>/dev/null | head -n 1)
+  [[ -n "$reserve" ]] || return 0
+  compose up -d --wait postgres
+  local tables
+  tables=$(compose exec -T postgres psql -U roi_dealer -d roi_dealer -tAc \
+    "select count(*) from information_schema.tables where table_schema = 'public'")
+  if [[ "${tables//[[:space:]]/}" != "0" ]]; then
+    echo 'Local database already has data: no import.'
+    return 0
+  fi
+  echo 'Importing the data of the reserve database...'
+  # shellcheck disable=SC2016 # expanded by the shell inside the postgres container
+  compose exec -T -e RESERVE_DATABASE_URL="$reserve" postgres sh -c \
+    'pg_dump --format=custom --no-owner --no-acl "$RESERVE_DATABASE_URL" | pg_restore --no-owner --no-acl --exit-on-error -U roi_dealer -d roi_dealer'
 }
 
 install_timers() {

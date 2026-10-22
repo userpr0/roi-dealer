@@ -19,6 +19,7 @@ declare -A SERVICES=(
   [ANTHROPIC_API_KEY]="worker"
   [AI_MONTHLY_LIMIT_USD]="worker"
   [AI_DAILY_LIMIT_USD]="worker"
+  [RESERVE_DATABASE_URL]="reserve"
 )
 
 main() {
@@ -38,6 +39,11 @@ main() {
     mv "$file.new" "$file"
   done
 
+  # The reserve address is read by the nightly backup only: nothing to restart.
+  if [[ "${SERVICES[$key]}" == reserve ]]; then
+    echo "Done: $key updated."
+    return 0
+  fi
   # shellcheck disable=SC2086 # the list of services is meant to split into words
   docker compose -f "$ROOT/app/infra/hetzner/compose.yaml" --env-file "$ROOT/compose.env" \
     up -d --force-recreate ${SERVICES[$key]}
