@@ -264,10 +264,46 @@ describe('/portfolio (PHASE 13)', () => {
   });
 });
 
+describe('confirming a pain in /pains (D-030)', () => {
+  it('shows ✅ and ✖️ for each pain, asks, then confirms it as the owner', async () => {
+    const [reply] = await run('pains');
+    expect(reply?.text).toContain('✅ N — подтвердить');
+    const data = buttons(reply);
+    expect(data.filter((item) => item.startsWith('pn:ok:'))).toHaveLength(
+      data.filter((item) => item.startsWith('pn:x:')).length,
+    );
+    const confirm = data.find(
+      (item) => item.startsWith('pn:ok:') && item.includes(invoicesPain.id),
+    );
+    if (confirm === undefined) throw new Error('no ✅ button');
+    const asked = await press(confirm);
+    expect(asked.text).toContain('❓ Подтвердить эту боль?');
+    expect(asked.text).toContain('во втором источнике');
+    const done = await press(confirm.replace('pn:ok:', 'pn:yok:'));
+    expect(done.text).toContain('👍 Боль подтверждена');
+    expect(done.text).toContain('👍 вы подтвердили');
+
+    const pain = await db.repositories.pains.getById(invoicesPain.id);
+    expect(pain?.ownerConfirmedAt).toBeDefined();
+    expect(pain?.version).toBe(invoicesPain.version + 1);
+    // The owner's confirmation does not make it a favorite: that needs two sources (§2.5).
+    expect(pain?.status).toBe(invoicesPain.status);
+    const history = await db.events.history({ type: 'pain', id: invoicesPain.id });
+    expect(history.at(-1)?.actor).toEqual({ type: 'owner', id: `telegram:${String(OWNER_TG)}` });
+
+    // The old button carries the old version: it changes nothing.
+    const stale = await press(confirm.replace('pn:ok:', 'pn:yok:'));
+    expect(stale.text).toContain('⚠️');
+    expect((await db.repositories.pains.getById(invoicesPain.id))?.version).toBe(pain?.version);
+  });
+});
+
 describe('rejecting a pain in /pains (PHASE 13)', () => {
   it('asks, then rejects it as the owner; it leaves the list', async () => {
     const [reply] = await run('pains');
-    const reject = buttons(reply).find((data) => data.includes(invoicesPain.id));
+    const reject = buttons(reply).find(
+      (data) => data.startsWith('pn:x:') && data.includes(invoicesPain.id),
+    );
     if (reject === undefined) throw new Error('no ✖️ button');
     const asked = await press(reject);
     expect(asked.text).toContain('❓ Отклонить эту боль?');

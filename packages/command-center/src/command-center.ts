@@ -364,7 +364,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         sendAccessOverview(deps, (text, keyboard) => context.reply(text, keyboard)),
       ),
       command('pains', 'research.read', async (context) => {
-        const reply = await painsReply(database.repositories);
+        const reply = await painsReply(database);
         await context.reply(reply.text, reply.keyboard);
       }),
       command('opportunities', 'research.read', async (context) =>

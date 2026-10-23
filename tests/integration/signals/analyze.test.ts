@@ -23,6 +23,7 @@ import {
   matchPainTask,
   PAIN_ANALYST,
   SIGNAL_TASKS,
+  translatePainsTask,
   type ExtractSignalOutput,
 } from '@roi-dealer/signals';
 import { uuidv7 } from '@roi-dealer/shared';
@@ -86,8 +87,22 @@ function oracle(request: FakeAiRequest) {
     const match = GOLDEN_MATCH.get(request.prompt) ?? matchAnswer(request.prompt);
     return { text: JSON.stringify({ match }) };
   }
+  if (request.instructions === translatePainsTask.instructions) {
+    if (failTranslation) return { status: 500 };
+    return { text: JSON.stringify({ pains: russianPains(request.prompt) }) };
+  }
   return { status: 400 };
 }
+
+/** The fake `translate-pains` answer: each `P<n>: <title> (audience: <who>)` line in "Russian". */
+function russianPains(prompt: string) {
+  return [...prompt.matchAll(/^(P\d+): (.*) \(audience: (.*)\)$/gm)].map(([, key, title, who]) => ({
+    key,
+    title_ru: `Боль: ${title ?? ''}`.slice(0, 200),
+    audience_ru: `Аудитория ${who ?? ''}`,
+  }));
+}
+let failTranslation = false;
 
 const calls = (instructions: string) =>
   claude.calls.filter((call) => call.instructions === instructions).length;
@@ -197,11 +212,12 @@ describe('the pain analyst needs the owner’s grant (PHASE 04)', () => {
     );
   });
 
-  it('runs both tasks only after their evals passed', async () => {
+  it('runs its tasks only after their evals passed', async () => {
     const reports = await runtime.evaluateMissing(SIGNAL_TASKS);
     expect(reports.map((report) => [report.task, report.score.passed])).toEqual([
       ['extract-signal', true],
       ['match-pain', true],
+      ['translate-pains', true],
     ]);
   });
 });
@@ -266,6 +282,7 @@ describe('from evidence to pain candidates (PHASE 06)', () => {
       signals: 3,
       newPains: 2,
       validated: 0,
+      translated: 2,
       stoppedBy: undefined,
     });
     // Only the second invoice signal had a similar pain to compare with.
@@ -297,6 +314,16 @@ describe('from evidence to pain candidates (PHASE 06)', () => {
       createdBy: PAIN_ANALYST,
     });
     expect(signal?.summary).toContain('Quote: "clients pay invoices after 90 days"');
+
+    // D-030: both pains got a Russian title apart from the pain: no new pain version.
+    expect(invoices?.version).toBe(2);
+    expect(
+      (await db.painReview.translations([invoices?.id as never])).get(invoices?.id as never),
+    ).toEqual({
+      titleRu: 'Боль: Freelancers struggle to get clients to pay invoices on time',
+      audienceRu: 'Аудитория Freelancers',
+    });
+    expect(await db.painReview.pendingTranslations()).toEqual([]);
 
     // Everything is analyzed: the next run spends nothing.
     const before = claude.calls.length;
@@ -346,6 +373,26 @@ describe('from evidence to pain candidates (PHASE 06)', () => {
     matchAnswer = () => 'P7';
     await expect(analyzeEvidence(deps())).resolves.toMatchObject({ signals: 1, newPains: 1 });
   });
+
+  it('translates pains on a later run when the translation fails (D-030)', async () => {
+    await db.sql`delete from pain_translations`;
+    failTranslation = true;
+    try {
+      await expect(analyzeEvidence(deps())).resolves.toEqual({
+        status: 'skipped',
+        reason: 'nothing_new',
+      });
+    } finally {
+      failTranslation = false;
+    }
+    expect((await db.painReview.pendingTranslations()).length).toBeGreaterThan(0);
+    await expect(analyzeEvidence(deps())).resolves.toMatchObject({
+      status: 'analyzed',
+      analyzed: 0,
+      translated: 3,
+    });
+    expect(await db.painReview.pendingTranslations()).toEqual([]);
+  });
 });
 
 describe('stops without wasting budget', () => {
@@ -390,12 +437,14 @@ describe('stops without wasting budget', () => {
 });
 
 describe('the owner sees what was found', () => {
-  it('/pains lists open pains with signals, sources and status; the digest counts them', async () => {
-    const text = await painsText(db.repositories);
-    expect(text).toMatch(/^🧩 Боли · открытых: 3/);
-    expect(text).toContain('1. Freelancers struggle to get clients to pay invoices on time');
-    expect(text).toContain('Сигналов 3 · источников 2 · ✅ подтверждена · иногда · тяжесть 3/5');
-    expect(text).toContain('Кто: Online sellers');
+  it('/pains lists open pains in Russian by rating, favorites first; the digest counts them', async () => {
+    const text = await painsText(db);
+    expect(text).toMatch(/^🧩 Боли · открытых: 3 · ⭐ фаворитов: 1/);
+    expect(text).toContain(
+      '1. ⭐ Боль: Freelancers struggle to get clients to pay invoices on time',
+    );
+    expect(text).toContain('Рейтинг 37 · источников 2 · сигналов 3 · иногда · тяжесть 3/5');
+    expect(text).toContain('Кто: Аудитория Online sellers');
 
     const digest = await buildDigest(db, Date.now());
     expect(digest).toContain('🧩 За сутки: сигналов 5, новых болей 3 → /pains');

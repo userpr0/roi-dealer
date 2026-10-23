@@ -286,3 +286,8 @@ rewards ─< reward_contributions >── contributions
 ## Ошибки
 
 `@roi-dealer/database` переводит отказы PostgreSQL в `ConstraintViolationError` с полями `kind` (`unique`, `foreign_key`, `check`, `not_null`, `forbidden_change`, `invalid_value`, `missing_event`, `access_denied`), `constraint`, `table` и `sqlState`. Значения строк в ошибки не попадают.
+
+## Разбор болей владельцем (D-030)
+
+- **`pains.owner_confirmed_at`** (миграция `0020`) — когда владелец подтвердил боль в `/pains` (новая версия боли с событием `pain.updated` от `owner`); `pains_confirmed_after_created`. Статус не меняет: `validated` — только по двум источникам.
+- **`pain_translations`** — заголовок (`title_ru`, до 200) и аудитория (`audience_ru`, до 1000) боли по-русски, версия задачи `translate-pains`, время перевода; одна строка на боль. Служебные данные без событий: перевод не создаёт новую версию боли. Доступ — только `database.painReview`.

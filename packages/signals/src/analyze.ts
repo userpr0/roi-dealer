@@ -33,6 +33,11 @@ import { uuidv7 } from '@roi-dealer/shared';
 import { closestPains } from './similarity.js';
 import { extractSignalTask, toSignalDraft, type SignalDraft } from './tasks/extract-signal.js';
 import { matchedKey, matchPainTask, NO_MATCH } from './tasks/match-pain.js';
+import {
+  MAX_TRANSLATE_PAINS,
+  toPainTranslations,
+  translatePainsTask,
+} from './tasks/translate-pains.js';
 
 /** The agent identity the analysis runs as (PHASE 04): the owner grants it in /decisions. */
 export const PAIN_ANALYST: Actor = { type: 'agent', id: 'pain-analyst' };
@@ -48,6 +53,8 @@ export const PAIN_ANALYST_ACCESS: NewPrincipal = {
 
 const DEFAULT_BATCH = 20;
 const TITLE_LENGTH = 200;
+/** Translation calls per run (D-030): new pains and, a few at a time, the earlier ones. */
+const TRANSLATE_CALLS = 2;
 
 export interface SignalsDeps {
   readonly database: Database;
@@ -67,6 +74,8 @@ export type AnalysisOutcome =
       readonly signals: number;
       readonly newPains: number;
       readonly validated: number;
+      /** Open pains translated into Russian for the owner (D-030). */
+      readonly translated: number;
       readonly stoppedBy?: AnalysisStop | undefined;
     }
   | {
@@ -159,10 +168,66 @@ async function storeSignal(
 }
 
 /**
+ * D-030: open pains without a Russian title get one from `translate-pains`, a few per call.
+ * Stored apart from the pain (display data), so no pain version changes. Best effort: stops at
+ * the first call that fails or brings nothing new, the rest waits for the next run, and the
+ * analysis outcome does not change (the owner sees the original text meanwhile).
+ */
+async function translateOpenPains(
+  deps: SignalsDeps,
+  signal: AbortSignal | undefined,
+): Promise<{ readonly translated: number; readonly stoppedBy?: AnalysisStop | undefined }> {
+  const { database, runtime } = deps;
+  let translated = 0;
+  for (let call = 0; call < TRANSLATE_CALLS; call += 1) {
+    if (signal?.aborted === true) break;
+    const pains = await database.painReview.pendingTranslations({ limit: MAX_TRANSLATE_PAINS });
+    if (pains.length === 0) break;
+    const request = {
+      pains: pains.map((pain, index) => ({
+        key: `P${String(index + 1)}`,
+        title: clip(pain.title, 200),
+        audience: clip(pain.audience, 200),
+      })),
+    };
+    let drafts: ReturnType<typeof toPainTranslations>;
+    try {
+      const answer = await runtime.runTask(translatePainsTask, request, {
+        actor: PAIN_ANALYST,
+        correlationId: `translate-pains-${pains[0]?.id ?? 'none'}`,
+        signal,
+      });
+      drafts = toPainTranslations(request, answer);
+    } catch (error) {
+      if (!(error instanceof AiTaskError)) throw error;
+      return { translated, stoppedBy: stopOf(error) };
+    }
+    const entries = drafts.flatMap((draft) => {
+      const pain = pains[Number(draft.key.slice(1)) - 1];
+      return pain === undefined
+        ? []
+        : [
+            {
+              painId: pain.id,
+              titleRu: draft.titleRu,
+              audienceRu: draft.audienceRu,
+              taskVersion: translatePainsTask.version,
+            },
+          ];
+    });
+    await database.painReview.saveTranslations(entries);
+    translated += entries.length;
+    if (entries.length < pains.length) break;
+  }
+  return { translated };
+}
+
+/**
  * One run of the pain analyst (PHASE 06): kill switch → active identity → up to `batchSize`
  * Evidence not analyzed yet → for each: the AI finds a pain, code checks the quote, the closest
  * open pains are compared (words first, then the AI) and the signal starts or joins a pain.
  * Every Evidence is recorded once. No budget or no model stops the run; the rest waits.
+ * Then open pains are translated into Russian for the owner (D-030).
  */
 export async function analyzeEvidence(
   deps: SignalsDeps,
@@ -181,7 +246,22 @@ export async function analyzeEvidence(
   const batch = await database.signalExtractions.pending({
     limit: options.batchSize ?? DEFAULT_BATCH,
   });
-  if (batch.length === 0) return { status: 'skipped', reason: 'nothing_new' };
+  if (batch.length === 0) {
+    const translation = await translateOpenPains(deps, options.signal);
+    logger.info('pain translation', {
+      translated: translation.translated,
+      stopped_by: translation.stoppedBy,
+    });
+    if (translation.translated === 0) return { status: 'skipped', reason: 'nothing_new' };
+    return {
+      status: 'analyzed',
+      analyzed: 0,
+      signals: 0,
+      newPains: 0,
+      validated: 0,
+      translated: translation.translated,
+    };
+  }
 
   const pains = new Map<PainId, Pain>();
   for (const status of ['validated', 'candidate'] as const) {
@@ -304,12 +384,22 @@ export async function analyzeEvidence(
     if (stored.validated) validated += 1;
   }
 
+  let translated = 0;
+  let translationStoppedBy: AnalysisStop | undefined;
+  if (stoppedBy === undefined && options.signal?.aborted !== true) {
+    const translation = await translateOpenPains(deps, options.signal);
+    translated = translation.translated;
+    translationStoppedBy = translation.stoppedBy;
+  }
+
   logger.info('pain analysis', {
     analyzed,
     signals,
     new_pains: newPains,
     validated,
+    translated,
     stopped_by: stoppedBy,
+    translation_stopped_by: translationStoppedBy,
   });
-  return { status: 'analyzed', analyzed, signals, newPains, validated, stoppedBy };
+  return { status: 'analyzed', analyzed, signals, newPains, validated, translated, stoppedBy };
 }

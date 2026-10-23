@@ -31,7 +31,11 @@ export function painAnalystAgent(options: { readonly batchSize?: number } = {}):
         signal: context.signal,
       });
       if (outcome.status === 'skipped') return skipped(outcome);
-      return { outcome: 'done', processed: outcome.analyzed, stoppedBy: outcome.stoppedBy };
+      return {
+        outcome: 'done',
+        processed: outcome.analyzed + outcome.translated,
+        stoppedBy: outcome.stoppedBy,
+      };
     },
   };
 }

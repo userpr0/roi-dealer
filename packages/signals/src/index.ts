@@ -5,11 +5,13 @@
  * a pain and normalizes it into one statement; code keeps it only when the quote is really in
  * the text. Similar statements are grouped — word similarity first, then the AI (`match-pain`)
  * on the closest few — into pain candidates with their evidence. The agent writes through its
- * own identity granted by the owner; it proposes and never decides (§2.3).
+ * own identity granted by the owner; it proposes and never decides (§2.3). After each run it
+ * translates open pains into Russian for the owner (`translate-pains`, D-030).
  */
 import type { AnyAiTask } from '@roi-dealer/ai-runtime';
 import { extractSignalTask } from './tasks/extract-signal.js';
 import { matchPainTask } from './tasks/match-pain.js';
+import { translatePainsTask } from './tasks/translate-pains.js';
 
 export {
   analyzeEvidence,
@@ -46,8 +48,23 @@ export {
   type MatchPainInput,
   type MatchPainOutput,
 } from './tasks/match-pain.js';
+export {
+  AUDIENCE_RU_LENGTH,
+  MAX_TRANSLATE_PAINS,
+  scoreTranslatePains,
+  TITLE_RU_LENGTH,
+  toPainTranslations,
+  translatePainsTask,
+  type PainTranslationDraft,
+  type TranslatePainsInput,
+  type TranslatePainsOutput,
+} from './tasks/translate-pains.js';
 
 /** The AI tasks of this package; the worker evaluates them with the others. */
-export const SIGNAL_TASKS: readonly AnyAiTask[] = [extractSignalTask, matchPainTask];
+export const SIGNAL_TASKS: readonly AnyAiTask[] = [
+  extractSignalTask,
+  matchPainTask,
+  translatePainsTask,
+];
 
 export const PACKAGE_NAME = '@roi-dealer/signals';

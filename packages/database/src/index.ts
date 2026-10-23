@@ -136,6 +136,12 @@ export {
   type ScoreComponents,
 } from './opportunity-assessments.js';
 export {
+  createPainReviewQueries,
+  type PainReviewQueries,
+  type PainTranslation,
+  type PainTranslationEntry,
+} from './pain-review.js';
+export {
   createSignalExtractionLog,
   SIGNAL_EXTRACTION_OUTCOMES,
   type SignalExtractionCounts,

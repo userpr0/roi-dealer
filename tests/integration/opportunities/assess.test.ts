@@ -10,6 +10,7 @@ import {
 import type { Database } from '@roi-dealer/database';
 import {
   addSignalToPain,
+  confirmPainByOwner,
   approvePrincipal,
   AUTOMATION_CONTROL_ID,
   createEvidence,
@@ -362,5 +363,26 @@ describe('the owner sees what was found', () => {
   it('keeps the texts of the posts out of the logs', () => {
     const logs = JSON.stringify(records);
     for (const secret of ['$400 a month', 'pickup app']) expect(logs).not.toContain(secret);
+  });
+});
+
+describe('the owner’s confirmed pains go first (D-030)', () => {
+  it('puts a confirmed pain before older ones in the queue', async () => {
+    const older = await painOf('Agencies lose weekends to manual reports', [
+      'Ask HN: we lose every weekend building client reports by hand.',
+      'Our agency spends weekends on manual client reports.',
+    ]);
+    const newer = await painOf('Agencies chase approvals by email', [
+      'Ask HN: client approvals take us weeks of email.',
+      'We chase client approvals by email for weeks.',
+    ]);
+    const confirmed = confirmPainByOwner(newer, { actor: OWNER, at: now() });
+    await db.repositories.pains.update(confirmed, OWNER);
+
+    const queue = await db.opportunityAssessments.pending({ minSignals: 2, limit: 100 });
+    const ids = queue.map((pain) => pain.id);
+    expect(ids).toContain(older.id);
+    expect(ids.indexOf(newer.id)).toBeLessThan(ids.indexOf(older.id));
+    expect(ids[0]).toBe(newer.id);
   });
 });

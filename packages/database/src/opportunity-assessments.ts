@@ -84,7 +84,8 @@ export function createOpportunityAssessmentLog(executor: Executor): OpportunityA
               select 1 from opportunity_assessments a
               where a.pain_id = p.id and (a.pain_version = p.version or a.outcome = 'opportunity')
             )
-          order by p.updated_at, p.id
+          -- D-030: pains the owner confirmed first, then favorites (≥ 2 sources), oldest first.
+          order by (p.owner_confirmed_at is null), (p.status <> 'validated'), p.updated_at, p.id
           limit ${limit}
         `;
         return readRows(executor, painsTable, rows);

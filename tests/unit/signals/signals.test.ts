@@ -9,11 +9,14 @@ import {
 import {
   addSignalToPain,
   changePainStatus,
+  confirmPainByOwner,
   createPain,
   createSignal,
   evidenceIdSchema,
   frequencyForSignals,
+  isFavoritePain,
   painIdSchema,
+  painRating,
   signalIdSchema,
   type NewPain,
   type Pain,
@@ -31,11 +34,14 @@ import {
   scoreMatchPain,
   SIGNAL_TASKS,
   termSimilarity,
+  toPainTranslations,
   toSignalDraft,
+  translatePainsTask,
+  scoreTranslatePains,
   type ExtractSignalOutput,
 } from '@roi-dealer/signals';
 import { uuidv7 } from '@roi-dealer/shared';
-import { AGENT, at, createCtx, ctx } from '../../support/domain.js';
+import { AGENT, at, createCtx, ctx, OWNER } from '../../support/domain.js';
 
 const answer = (overrides: Partial<ExtractSignalOutput> = {}): ExtractSignalOutput => ({
   pain: true,
@@ -191,6 +197,34 @@ describe('golden sets of the PHASE 06 tasks (D-014 п.7)', () => {
     expect(scoreMatchPain(lazy).passed).toBe(false);
   });
 
+  it('translate-pains: 20+ cases; full Russian answers pass, English or missing ones fail', () => {
+    const { evalCases } = translatePainsTask;
+    expect(evalCases.length).toBeGreaterThanOrEqual(MIN_EVAL_CASES);
+    for (const testCase of evalCases) {
+      expect(translatePainsTask.input.safeParse(testCase.input).success).toBe(true);
+    }
+    const russian = (keys: readonly string[]) => ({
+      pains: keys.map((key) => ({ key, title_ru: 'Боль по-русски', audience_ru: 'Кто-то' })),
+    });
+    const perfect = evalCases.map((c) => ({ expected: c.expected, output: russian(c.expected) }));
+    expect(scoreTranslatePains(perfect)).toEqual({
+      passed: true,
+      metrics: { complete: 1, answered: 1 },
+    });
+    const english = evalCases.map((c) => ({
+      expected: c.expected,
+      output: {
+        pains: c.expected.map((key) => ({ key, title_ru: 'A pain', audience_ru: 'Someone' })),
+      },
+    }));
+    expect(scoreTranslatePains(english).passed).toBe(false);
+    const partial = evalCases.map((c) => ({
+      expected: c.expected,
+      output: russian(c.expected.slice(0, 1)),
+    }));
+    expect(scoreTranslatePains(partial).passed).toBe(false);
+  });
+
   it('all AI tasks together keep their shares of the day within 1 (D-021)', () => {
     const tasks = [...AI_TASKS, ...SIGNAL_TASKS];
     expect(new Set(tasks.map((task) => task.name)).size).toBe(tasks.length);
@@ -202,8 +236,9 @@ describe('golden sets of the PHASE 06 tasks (D-014 п.7)', () => {
     const worstInput = {
       'extract-signal': extractSignalTask.instructions.length + 1_200 + 100,
       'match-pain': matchPainTask.instructions.length + 11 * 520 + 200,
+      'translate-pains': translatePainsTask.instructions.length + 5 * 430 + 100,
     };
-    for (const task of [extractSignalTask, matchPainTask]) {
+    for (const task of [extractSignalTask, matchPainTask, translatePainsTask]) {
       for (const model of MODEL_REGISTRY.filter((item) => item.tier === task.tier)) {
         expect(
           callCostMicroUsd(
@@ -274,5 +309,87 @@ describe('addSignalToPain (PHASE 06)', () => {
       'constant',
       'constant',
     ]);
+  });
+});
+
+describe('code checks the Russian translation (D-030)', () => {
+  const request = {
+    pains: [
+      { key: 'P1', title: 'Freelancers wait for payments', audience: 'Freelancers' },
+      { key: 'P2', title: 'Shops oversell', audience: 'Online sellers' },
+    ],
+  };
+
+  it('keeps known keys once, in Cyrillic, within the limits', () => {
+    expect(
+      toPainTranslations(request, {
+        pains: [
+          { key: ' p1 ', title_ru: '  Фрилансеры  ждут оплаты ', audience_ru: 'Фрилансеры' },
+          { key: 'P1', title_ru: 'Повтор', audience_ru: 'Повтор' },
+          { key: 'P3', title_ru: 'Чужой ключ', audience_ru: 'Кто-то' },
+          { key: 'P2', title_ru: 'Shops oversell', audience_ru: 'Продавцы' },
+        ],
+      }),
+    ).toEqual([{ key: 'P1', titleRu: 'Фрилансеры ждут оплаты', audienceRu: 'Фрилансеры' }]);
+  });
+
+  it('drops empty and too long texts', () => {
+    expect(
+      toPainTranslations(request, {
+        pains: [
+          { key: 'P1', title_ru: 'Я'.repeat(201), audience_ru: 'Фрилансеры' },
+          { key: 'P2', title_ru: 'Магазины продают лишнее', audience_ru: '  ' },
+        ],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('the rating of a pain (D-030)', () => {
+  const evidence = () => evidenceIdSchema.parse(uuidv7());
+  const signals = (count: number) =>
+    Array.from({ length: count }, () => signalIdSchema.parse(uuidv7()));
+
+  it('grows with distinct sources more than with signals from one source', () => {
+    const one = pain({ signalIds: signals(1), evidenceIds: [evidence()] });
+    expect(painRating(one, 2)).toBeGreaterThan(painRating(one, 1));
+    expect(painRating(one, 3)).toBeGreaterThan(painRating(one, 2));
+    const loud = pain({ signalIds: signals(15), evidenceIds: [evidence()] });
+    // At equal severity one more source outweighs any number of signals.
+    expect(painRating(one, 2)).toBeGreaterThan(painRating(loud, 1));
+  });
+
+  it('stays within 0–100, adds the owner’s confirmation and caps sources at five', () => {
+    const top = confirmPainByOwner(pain({ severity: 5, signalIds: signals(15) }), ctx(OWNER, 1));
+    expect(painRating(top, 9)).toBe(100);
+    expect(painRating(top, 5)).toBe(100);
+    const low = pain({ severity: 1 });
+    expect(painRating(low, 0)).toBeGreaterThanOrEqual(0);
+    expect(painRating(top, 1) - painRating({ ...top, ownerConfirmedAt: undefined }, 1)).toBe(10);
+  });
+
+  it('calls a pain a favorite only from two sources (§2.5)', () => {
+    expect(isFavoritePain(1)).toBe(false);
+    expect(isFavoritePain(2)).toBe(true);
+  });
+});
+
+describe('the owner confirms a pain (D-030)', () => {
+  it('marks it once, as a new version, without validating it', () => {
+    const start = pain();
+    const confirmed = confirmPainByOwner(start, ctx(OWNER, 3));
+    expect(confirmed).toMatchObject({
+      status: 'candidate',
+      ownerConfirmedAt: at(3),
+      updatedAt: at(3),
+      version: start.version + 1,
+    });
+    expect(() => confirmPainByOwner(confirmed, ctx(OWNER, 4))).toThrow(/already confirmed/);
+  });
+
+  it('only the owner, only an open pain', () => {
+    expect(() => confirmPainByOwner(pain(), ctx(AGENT, 3))).toThrow(/Only the owner/);
+    const rejected = changePainStatus(pain(), 'rejected', ctx(OWNER, 2));
+    expect(() => confirmPainByOwner(rejected, ctx(OWNER, 3))).toThrow(/closed/);
   });
 });

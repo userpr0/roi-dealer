@@ -219,9 +219,11 @@ export const painsTable: TableSpec<Pain> = {
     frequency: pain.frequency,
     markets: pain.markets,
     status: pain.status,
+    owner_confirmed_at: pain.ownerConfirmedAt ?? null,
     ...mutableMetaColumns(pain),
   }),
   fromRow: (row, links) => ({
+    ...withoutNulls({ ownerConfirmedAt: instant(row['owner_confirmed_at']) }),
     id: row['id'],
     title: row['title'],
     description: row['description'],

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  assertOwner,
   mutableMeta,
   mutableMetaShape,
   parseEntity,
@@ -14,6 +15,7 @@ import {
   painIdSchema,
   signalIdSchema,
   text,
+  timestampSchema,
   titleSchema,
   uniqueList,
   type PainId,
@@ -58,6 +60,8 @@ export const painSchema = z.object({
   ...newPainShape,
   id: painIdSchema,
   status: z.enum(PAIN_STATUSES),
+  /** The owner confirmed the pain in /pains (D-030): it goes first to the opportunity engine. */
+  ownerConfirmedAt: timestampSchema.optional(),
   ...mutableMetaShape,
 });
 export type Pain = z.infer<typeof painSchema>;
@@ -162,4 +166,64 @@ export function changePainStatus(
   context: DomainContext,
 ): Pain {
   return transition(pain, painLifecycle, painSchema, to, context);
+}
+
+function assertOpen(pain: Pain): void {
+  if (pain.status !== 'candidate' && pain.status !== 'validated') {
+    throw new DomainError('invalid_transition', 'The pain is closed', {
+      pain_id: pain.id,
+      status: pain.status,
+    });
+  }
+}
+
+/**
+ * The owner confirms an open pain (D-030): «беру в работу». It does not validate the pain —
+ * that needs evidence from {@link MIN_SOURCES_FOR_VALIDATED_PAIN} sources (§2.5).
+ */
+export function confirmPainByOwner(pain: Pain, context: DomainContext): Pain {
+  assertOwner(context.actor, 'confirm a pain');
+  assertOpen(pain);
+  if (pain.ownerConfirmedAt !== undefined) {
+    throw new DomainError('invalid_transition', 'The pain is already confirmed', {
+      pain_id: pain.id,
+    });
+  }
+  return parseEntity(painSchema, 'pain', {
+    ...pain,
+    ownerConfirmedAt: context.at,
+    updatedAt: context.at,
+    version: pain.version + 1,
+  });
+}
+
+/** Rating weights (D-030): independent sources weigh most. */
+export const PAIN_RATING = {
+  perSource: 13,
+  maxSources: 5,
+  signals: 10,
+  maxSignals: 15,
+  severity: 15,
+  ownerConfirmed: 10,
+} as const;
+
+/** A favorite pain is confirmed by evidence from at least two distinct sources (§2.5, D-030). */
+export function isFavoritePain(sourceCount: number): boolean {
+  return sourceCount >= MIN_SOURCES_FOR_VALIDATED_PAIN;
+}
+
+/**
+ * The pain's rating 0–100, computed in code (D-030, §2.13): up to 65 for distinct sources
+ * (13 each, up to 5), up to 10 for signals, up to 15 for severity and 10 when the owner
+ * confirmed it. At equal severity one more independent source outweighs any number of signals.
+ */
+export function painRating(pain: Pain, sourceCount: number): number {
+  const sources = Math.min(Math.max(sourceCount, 0), PAIN_RATING.maxSources);
+  const signals = Math.min(pain.signalIds.length, PAIN_RATING.maxSignals);
+  const score =
+    sources * PAIN_RATING.perSource +
+    (signals / PAIN_RATING.maxSignals) * PAIN_RATING.signals +
+    (pain.severity / 5) * PAIN_RATING.severity +
+    (pain.ownerConfirmedAt === undefined ? 0 : PAIN_RATING.ownerConfirmed);
+  return Math.round(score);
 }

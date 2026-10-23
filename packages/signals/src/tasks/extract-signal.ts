@@ -196,8 +196,9 @@ export const extractSignalTask: AiTask<
   maxOutputTokens: 1_024,
   // Worst case: ~2 400 input and 1 024 output tokens on the dearest bulk model.
   maxCostMicroUsd: 10_000,
-  // ~$0.0002 a post on the cheapest model; up to 720 posts a day fit into 15% of $1.6.
-  dailyShare: 0.15,
+  // ~$0.0002 a post on the cheapest model; up to 620 posts a day fit into 13% of $1.6
+  // (2% went to translate-pains, D-030).
+  dailyShare: 0.13,
   evalCases: cases,
   score: scoreExtractSignal,
 };

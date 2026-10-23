@@ -24,6 +24,7 @@ import { atomic, type Sql, type TransactionSql } from './executor.js';
 import { createRepositories, type Repositories } from './repositories.js';
 import type { WriteContext } from './repository.js';
 import { createSignalExtractionLog, type SignalExtractionLog } from './signal-extractions.js';
+import { createPainReviewQueries, type PainReviewQueries } from './pain-review.js';
 import {
   createOpportunityAssessmentLog,
   type OpportunityAssessmentLog,
@@ -96,6 +97,8 @@ export interface Database {
   readonly aiCalls: AiCallLog;
   /** Journal of evidence analysis for pains (PHASE 06). */
   readonly signalExtractions: SignalExtractionLog;
+  /** Russian titles and source counts of pains for the owner's review (D-030). */
+  readonly painReview: PainReviewQueries;
   /** Journal of opportunity assessments (PHASE 07). */
   readonly opportunityAssessments: OpportunityAssessmentLog;
   /** Company Brain: search, counts and totals by fixed parameterized queries (PHASE 08). */
@@ -221,6 +224,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     access,
     aiCalls: createAiCallLog(sql),
     signalExtractions: createSignalExtractionLog(sql),
+    painReview: createPainReviewQueries(sql),
     opportunityAssessments: createOpportunityAssessmentLog(sql),
     brain: createBrainQueries(sql),
     agentRuns: createAgentRunLog(sql),
