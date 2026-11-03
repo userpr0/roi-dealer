@@ -18,6 +18,6 @@
     "@roi-dealer/shared": "workspace:*",
     "@roi-dealer/site": "workspace:*",
     "@roi-dealer/telegram": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }

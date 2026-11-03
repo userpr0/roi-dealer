@@ -23,6 +23,6 @@
     "@roi-dealer/domain": "workspace:*",
     "@roi-dealer/observability": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
