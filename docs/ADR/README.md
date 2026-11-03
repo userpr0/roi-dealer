@@ -35,3 +35,4 @@ ADR фиксирует значимое архитектурное решени�
 | [0008](0008-miniapp-data-through-api.md)                  | Данные Mini App — через `api` с проверкой подписи Telegram                             | Accepted | 2026-10-19 |
 | [0009](0009-payments-merchant-of-record.md)               | Приём оплат — merchant of record Lemon Squeezy, ссылка на оплату и подписанный webhook | Accepted | 2026-10-19 |
 | [0010](0010-hosting-hetzner.md)                           | Хостинг — Hetzner основной, Railway резерв (D-029)                                     | Accepted | 2026-10-21 |
+| [0011](0011-closed-loop-with-gen-content.md)              | Замкнутый цикл ROI Dealer ↔ Gen_Content                                                | Proposed | 2026-11-03 |

@@ -52,6 +52,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The server installs every green build of main within minutes (ADR-0010): a known
+      # high or critical vulnerability in a production dependency keeps the build from shipping.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+
       - name: Typecheck
         run: pnpm typecheck
 

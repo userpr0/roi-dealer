@@ -68,7 +68,7 @@ import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
-import { createServiceWatchdog, setupStatus } from './watchdog.js';
+import { backupStatusLine, createServiceWatchdog, setupStatus } from './watchdog.js';
 
 export interface CommandCenterOptions {
   /** Without a database the panel commands explain that it is not connected. */
@@ -454,6 +454,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         await killSwitchStatus(database.repositories, database.events),
         await aiStatusLine(database.aiCalls, nowMs()),
         ...(await setupStatus(database, setup, nowMs())).lines,
+        backupStatusLine(await database.services.heartbeats(), nowMs()),
       ];
     },
     refused: (attempt) => audit.refused(attempt),

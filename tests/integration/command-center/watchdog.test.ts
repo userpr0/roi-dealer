@@ -1,7 +1,10 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   aiKeyFixedText,
   aiKeyText,
+  BACKUP_SILENT_AFTER_MS,
+  backupMissedText,
+  backupStatusLine,
   buildDigest,
   createCommandCenter,
   createServiceWatchdog,
@@ -278,6 +281,53 @@ describe('the watchdog (13c)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('the backup watch (0020, D-029)', () => {
+  const HOUR = 60 * MINUTE;
+  let started = clock;
+  beforeEach(() => {
+    started = clock;
+  });
+  afterEach(() => {
+    clock = started;
+  });
+
+  it('stays quiet until the first backup, then reports a missed one once and its recovery', async () => {
+    const dog = watchdog();
+    // Not moved to Hetzner yet: no backup has ever run.
+    expect(await dog.runOnce()).toBe(0);
+    expect(backupStatusLine(await db.services.heartbeats(), clock)).toBe(
+      '💾 Бэкап: ещё не было (ночью на сервере Hetzner)',
+    );
+
+    await mark('backup', 25 * 60, { setup: { reserve: true } });
+    expect(await dog.runOnce()).toBe(0);
+    expect(backupStatusLine(await db.services.heartbeats(), clock)).toContain(' · копия в резерве');
+
+    clock += 2 * HOUR;
+    expect(await dog.runOnce()).toBe(1);
+    const lastSuccess = stamp(clock - 27 * HOUR);
+    expect(notices).toEqual([backupMissedText(lastSuccess, clock)]);
+    expect(notices[0]).toContain('🔴 Ночной бэкап не прошёл');
+    expect(notices[0]).toContain('27 ч назад');
+    expect(backupStatusLine(await db.services.heartbeats(), clock)).toMatch(/^🔴 Бэкап/);
+    expect(await dog.runOnce()).toBe(0);
+
+    await mark('backup', 0, { setup: { reserve: false } });
+    expect(await dog.runOnce()).toBe(1);
+    expect(notices[1]).toBe('🟢 Бэкап снова прошёл.');
+    expect(await dog.runOnce()).toBe(0);
+    expect(await db.services.openIncidents()).toEqual([]);
+  });
+
+  it('keeps the ten-minute limit for the running services and no version check for the backup', async () => {
+    await mark('backup', 60, { version: 'old1234' });
+    await mark('worker', 11);
+    expect(await watchdog().runOnce()).toBe(1);
+    expect(notices).toEqual([silentText('worker', stamp(clock - 11 * MINUTE), clock)]);
+    expect(BACKUP_SILENT_AFTER_MS).toBe(26 * HOUR);
   });
 });
 

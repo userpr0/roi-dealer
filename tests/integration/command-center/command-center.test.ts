@@ -309,6 +309,7 @@ describe('🛑 kill switch', () => {
       '⚠️ нет PUBLIC_CONTACT_EMAIL у api — deploy/hetzner.md, «Заменить ключ»',
       '⚠️ нет PUBLIC_API_URL у бота — deploy/hetzner.md',
       '✅ доступы решены',
+      '💾 Бэкап: ещё не было (ночью на сервере Hetzner)',
     ]);
   });
 });

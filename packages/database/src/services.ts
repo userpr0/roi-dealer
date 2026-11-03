@@ -12,7 +12,8 @@ import { instant } from './rows.js';
  * events, no personal data, no secrets — the setup holds names and switches, never values.
  */
 
-export const SERVICES = ['bot', 'worker', 'api'] as const;
+/** `backup` marks once per successful nightly backup (migration 0020), not every minute. */
+export const SERVICES = ['bot', 'worker', 'api', 'backup'] as const;
 export type ServiceName = (typeof SERVICES)[number];
 
 export const INCIDENT_KINDS = ['silent', 'version', 'ai_key'] as const;

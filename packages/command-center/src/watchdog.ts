@@ -20,6 +20,8 @@ import { formatTime } from './texts.js';
 
 /** A service that has not marked for this long is silent. */
 export const SILENT_AFTER_MS = 10 * 60_000;
+/** The backup runs nightly (02:30 UTC): with no successful one for this long, it failed. */
+export const BACKUP_SILENT_AFTER_MS = 26 * 60 * 60_000;
 /** After the bot's start, services get this long to reach its version before it is reported. */
 export const VERSION_GRACE_MS = 20 * 60_000;
 /** AI calls looked at for rejected keys. */
@@ -48,6 +50,31 @@ export function silentText(service: ServiceName, lastSeen: Timestamp, nowMs: num
 
 export function recoveredText(service: ServiceName, lastSeen: Timestamp, nowMs: number): string {
   return `🟢 ${service} снова работает (молчал около ${minutes(timestampMs(lastSeen), nowMs)}).`;
+}
+
+function hours(fromMs: number, toMs: number): string {
+  return `${String(Math.max(1, Math.round((toMs - fromMs) / 3_600_000)))} ч`;
+}
+
+export function backupMissedText(lastSuccess: Timestamp, nowMs: number): string {
+  return [
+    `🔴 Ночной бэкап не прошёл: последний успешный — ${formatTime(lastSuccess)} (Киев), ${hours(timestampMs(lastSuccess), nowMs)} назад.`,
+    'На сервере: journalctl -u roi-dealer-backup и свободное место на диске — deploy/hetzner.md, «Бэкапы». Когда бэкап пройдёт, я напишу.',
+  ].join('\n');
+}
+
+export function backupRecoveredText(heartbeat: Pick<ServiceHeartbeat, 'setup'>): string {
+  const reserve = heartbeat.setup['reserve'] === true ? ', копия в резерве обновлена' : '';
+  return `🟢 Бэкап снова прошёл${reserve}.`;
+}
+
+/** For /status: the last successful backup; not part of the launch checklist. */
+export function backupStatusLine(heartbeats: readonly ServiceHeartbeat[], nowMs: number): string {
+  const backup = heartbeats.find((item) => item.service === 'backup');
+  if (backup === undefined) return '💾 Бэкап: ещё не было (ночью на сервере Hetzner)';
+  const reserve = backup.setup['reserve'] === true ? ' · копия в резерве' : '';
+  const late = nowMs - timestampMs(backup.seenAt) > BACKUP_SILENT_AFTER_MS ? '🔴' : '💾';
+  return `${late} Бэкап: последний ${formatTime(backup.seenAt)} (Киев)${reserve}`;
 }
 
 export function versionText(service: ServiceName, serviceVersion: string, bot: string): string {
@@ -176,6 +203,7 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
       }
     }
 
+    sent += await watchBackup(now, heartbeats, open);
     sent += await watchAiKeys(now, open);
     if (options.setup !== undefined) sent += await announceSetup(options.setup, now);
     return sent;
@@ -193,6 +221,26 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
       },
     );
     return outcome === 'executed' ? 1 : 0;
+  }
+
+  /** A backup that never ran (not moved to Hetzner yet) is not reported. */
+  async function watchBackup(
+    now: number,
+    heartbeats: readonly ServiceHeartbeat[],
+    open: readonly ServiceIncident[],
+  ): Promise<number> {
+    const backup = heartbeats.find((item) => item.service === 'backup');
+    if (backup === undefined) return 0;
+    const missed = now - timestampMs(backup.seenAt) > BACKUP_SILENT_AFTER_MS;
+    const incident = open.find((item) => item.kind === 'silent' && item.subject === 'backup');
+    if (missed && incident === undefined) {
+      return report(
+        { kind: 'silent', subject: 'backup', detail: backup.seenAt },
+        backupMissedText(backup.seenAt, now),
+      );
+    }
+    if (!missed && incident !== undefined) return close(incident, backupRecoveredText(backup));
+    return 0;
   }
 
   async function watchAiKeys(now: number, open: readonly ServiceIncident[]): Promise<number> {

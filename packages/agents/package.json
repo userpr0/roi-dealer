@@ -27,6 +27,6 @@
     "@roi-dealer/opportunities": "workspace:*",
     "@roi-dealer/shared": "workspace:*",
     "@roi-dealer/signals": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
