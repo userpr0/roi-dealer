@@ -39,7 +39,12 @@ describe('/sources (D-026)', () => {
     const text = await sourcesText(databaseWith([hackerNews]));
 
     expect(text).toContain(`📚 Источники в каталоге: ${String(SOURCE_CATALOG.length)}`);
-    expect(text).toContain('последняя проверка 20.10.2026');
+    const latest =
+      SOURCE_CATALOG.map((entry) => entry.review.checkedOn)
+        .sort()
+        .at(-1) ?? '';
+    const [year, month, day] = latest.split('-');
+    expect(text).toContain(`последняя проверка ${day ?? ''}.${month ?? ''}.${year ?? ''}`);
     expect(text).toContain('• Hacker News — ✅ работает');
     expect(text).toContain('• npm: загрузки пакетов — ещё не подключён');
     for (const entry of SOURCE_CATALOG) expect(text).toContain(entry.name);
