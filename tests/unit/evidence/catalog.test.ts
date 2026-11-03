@@ -68,6 +68,10 @@ describe('source catalog (D-014 п.5)', () => {
       'microsoft-ads-keywords': 'needs_agreement',
       'google-ads-transparency': 'needs_review',
       oecd: 'needs_review',
+      'uk-bank-holidays': 'allowed',
+      'us-federal-holidays': 'allowed',
+      'au-public-holidays': 'allowed',
+      'ca-public-holidays': 'needs_review',
     });
   });
 

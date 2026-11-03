@@ -1947,6 +1947,168 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
   },
   {
+    key: 'uk-bank-holidays',
+    name: 'UK: государственные праздники',
+    siteUrl: 'https://www.gov.uk/bank-holidays',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://www.gov.uk/bank-holidays.json',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.gov.uk/bank-holidays', 'https://www.gov.uk/help/terms-conditions'],
+      summary:
+        'gov.uk: государственные праздники Англии и Уэльса, Шотландии и Северной Ирландии в JSON — для календаря «Пульса».',
+      conditions: [
+        'Open Government Licence v3.0: указывать источник',
+        'Запрашивать редко: даты меняются раз в год',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Явных лимитов нет; статический JSON',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 100,
+    },
+    dataFields: {
+      provided: ['регион', 'дата', 'название праздника'],
+      stored: ['регион, дата, название'],
+    },
+    personalData: { risk: 'low', notes: 'Календарные даты; людей в данных нет.' },
+    markets: ['GB'],
+    languages: ['en'],
+    evidenceMarket: 'GB',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-03',
+      notes:
+        'Страница gov.uk/bank-holidays: «All content is available under the Open Government Licence v3.0, except where otherwise stated». OGL разрешает коммерческое использование с указанием источника. Данные отдаёт /bank-holidays.json.',
+    },
+  },
+  {
+    key: 'us-federal-holidays',
+    name: 'US: федеральные праздники',
+    siteUrl: 'https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/',
+    sourceKind: 'dataset',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/'],
+      summary:
+        'OPM: список федеральных праздников США по годам — для календаря «Пульса». Произведение правительства США, общественное достояние.',
+      conditions: [
+        'Произведение правительства США: 17 U.S.C. §105, без ограничений',
+        'API нет: даты вносятся по странице OPM раз в год',
+      ],
+    },
+    cost: 'Бесплатно',
+    limits: {
+      provider: 'API нет; страница с расписанием по годам',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 20,
+    },
+    dataFields: { provided: ['год', 'дата', 'название праздника'], stored: ['дата, название'] },
+    personalData: { risk: 'low', notes: 'Календарные даты; людей в данных нет.' },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-03',
+      notes:
+        'Страница OPM «Federal Holidays» перечисляет расписания 2026 и 2027. Произведение федерального правительства США — общественное достояние (17 U.S.C. §105). Машинного API нет: вносим даты по странице раз в год.',
+    },
+  },
+  {
+    key: 'au-public-holidays',
+    name: 'Australia: государственные праздники',
+    siteUrl: 'https://data.gov.au/data/dataset/australian-holidays-machine-readable-dataset',
+    sourceKind: 'dataset',
+    access: {
+      method: 'export',
+      endpoint: 'https://data.gov.au/data/api/3/action/package_show',
+      authentication: 'none',
+    },
+    terms: {
+      urls: [
+        'https://data.gov.au/data/dataset/australian-holidays-machine-readable-dataset',
+        'https://creativecommons.org/licenses/by/3.0/au/',
+      ],
+      summary:
+        'data.gov.au (Department of the Prime Minister and Cabinet): государственные праздники Австралии по штатам в CSV — для календаря «Пульса».',
+      conditions: [
+        'Creative Commons Attribution 3.0 Australia: указывать источник',
+        'Брать годовой CSV: данные меняются раз в год',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Явных лимитов нет; годовые CSV через CKAN',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 100,
+    },
+    dataFields: {
+      provided: ['штат', 'дата', 'название праздника'],
+      stored: ['штат, дата, название'],
+    },
+    personalData: { risk: 'low', notes: 'Календарные даты; людей в данных нет.' },
+    markets: ['AU'],
+    languages: ['en'],
+    evidenceMarket: 'AU',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-03',
+      notes:
+        'CKAN package_show: «license_title: Creative Commons Attribution 3.0 Australia», организация — Department of the Prime Minister and Cabinet. Годовые CSV с праздниками по штатам.',
+    },
+  },
+  {
+    key: 'ca-public-holidays',
+    name: 'Canada: государственные праздники',
+    siteUrl: 'https://www.canada.ca/en/revenue-agency/services/tax/public-holidays.html',
+    sourceKind: 'dataset',
+    access: {
+      method: 'manual',
+      endpoint: 'https://www.canada.ca/en/revenue-agency/services/tax/public-holidays.html',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://www.canada.ca/en/transparency/terms.html'],
+      summary:
+        'canada.ca: государственные праздники Канады — для календаря «Пульса». Условия не прочитаны: домен закрыт сетью среды.',
+      conditions: ['Подключать только после проверки лицензии данных'],
+    },
+    cost: 'Бесплатно',
+    limits: {
+      provider: 'Не проверено',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 20,
+    },
+    dataFields: { provided: ['дата', 'название праздника'], stored: [] },
+    personalData: { risk: 'low', notes: 'Календарные даты; людей в данных нет.' },
+    markets: ['CA'],
+    languages: ['en'],
+    evidenceMarket: 'CA',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-03',
+      notes:
+        'canada.ca отвечает 000 (закрыт сетью среды), условия использования открытых данных не прочитаны. Ожидается Open Government Licence – Canada. Проверить при следующем запуске; домен — в отчёт.',
+    },
+  },
+  {
     key: 'oecd',
     name: 'OECD: статистика',
     siteUrl: 'https://www.oecd.org',
