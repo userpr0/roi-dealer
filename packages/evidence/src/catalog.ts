@@ -765,9 +765,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'Developer guidelines прочитаны: «You can make up to 600 requests within a 5 minute period». Лицензию данных на сайтах Companies House не нашёл; на их форуме — разные мнения (OGL или публикация по закону). Проверить при следующем запуске.',
+        'Developer guidelines: «You can make up to 600 requests within a 5 minute period». Лицензии данных реестра на developer-сайте нет (3.11 — снова); подвал gov.uk про Open Government Licence относится к страницам gov.uk, не к данным. Проверить при следующем запуске.',
     },
   },
   {
@@ -1369,9 +1369,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'quora.com отвечает 403 на автоматические запросы — условия не прочитаны. Официального API для чтения не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+        'quora.com отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны. Официального API для чтения не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
     },
   },
   {
@@ -1399,9 +1399,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'indiehackers.com отвечает 403 на автоматические запросы — условия не прочитаны. Официального API не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+        'indiehackers.com отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны. Официального API не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
     },
   },
   {
@@ -1595,22 +1595,29 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://developers.facebook.com/terms/',
       ],
       summary:
-        'Threads API: поиск постов по словам — боли. Условия Meta Platform Terms не прочитаны.',
-      conditions: ['Подключать только после чтения условий'],
+        'Threads API: поиск публичных постов по словам — боли. Нужна проверка приложения Meta (разрешение threads_keyword_search) и Meta Platform Terms.',
+      conditions: [
+        'Приложение Meta с одобренным разрешением threads_keyword_search',
+        'Meta Platform Terms: без слежки за людьми и без передачи данных третьим лицам',
+      ],
     },
-    cost: 'Не проверено',
-    limits: { provider: 'Не проверено', minIntervalMinutes: 360, maxItemsPerRun: 30 },
+    cost: 'Бесплатно; нужна проверка приложения Meta',
+    limits: {
+      provider: '2 200 запросов за скользящие 24 часа на пользователя',
+      minIntervalMinutes: 360,
+      maxItemsPerRun: 30,
+    },
     dataFields: { provided: ['посты', 'имена и аккаунты авторов'], stored: [] },
     personalData: { risk: 'high', notes: 'Имена и аккаунты авторов.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
     defaultTrust: 'low',
     review: {
-      verdict: 'needs_review',
+      verdict: 'needs_agreement',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'developers.facebook.com отвечает 400 на автоматические запросы — условия и правила поиска по словам не прочитаны. Проверить: нужна ли проверка приложения Meta и разрешён ли анализ чужих постов.',
+        'Keyword search: «If your app has not been approved for the threads_keyword_search permission, the search will be performed only on posts owned by the authenticated user. After approval, public posts will be searchable». Лимит: «a maximum of 2,200 queries within a rolling 24-hour period».',
     },
   },
   {
@@ -1669,8 +1676,8 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
-      notes: 'fred.stlouisfed.org закрыт сетью среды — условия не прочитаны.',
+      checkedOn: '2026-11-03',
+      notes: 'fred.stlouisfed.org закрыт сетью среды (20.10 и 3.11) — условия не прочитаны.',
     },
   },
   {
@@ -1726,9 +1733,17 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       authentication: 'none',
     },
     terms: {
-      urls: ['https://www.nomisweb.co.uk/api/v01/help'],
-      summary: 'Nomis API (ONS): занятость и компании по отраслям и районам Великобритании.',
-      conditions: ['Подключать только после проверки лицензии данных'],
+      urls: [
+        'https://www.nomisweb.co.uk/api/v01/help',
+        'https://www.nomisweb.co.uk/home/copyright.asp',
+        'https://www.nomisweb.co.uk/home/terms.asp',
+      ],
+      summary:
+        'Nomis API (ONS): занятость и компании по отраслям и районам Великобритании. Open Government Licence.',
+      conditions: [
+        'Указывать источник: «Source: Office for National Statistics (Nomis)»',
+        'Материалы третьих лиц на сайте лицензией не покрыты',
+      ],
     },
     cost: 'Бесплатно, без ключа',
     limits: {
@@ -1743,11 +1758,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     evidenceMarket: 'GB',
     defaultTrust: 'high',
     review: {
-      verdict: 'needs_review',
+      verdict: 'allowed',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'Справка API прочитана: «The number of concurrently running requests to the API is limited»; «You have a 25000 cell limit». Лицензию данных не нашёл: страница условий отвечает 404. Проверить при следующем запуске.',
+        'Страница Copyright: «anyone wishing to use or re-use ONS material, whether commercially or privately, may do so freely without a specific application for a licence, subject to the conditions of the OGL». Справка API: «You have a 25000 cell limit».',
     },
   },
   {
@@ -1868,10 +1883,14 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     },
     terms: {
       urls: ['https://learn.microsoft.com/en-us/advertising/guides/get-started'],
-      summary: 'Ad Insight API: оценки объёма поиска Bing по словам — спрос.',
-      conditions: ['Подключать только после чтения условий доступа'],
+      summary:
+        'Ad Insight API: оценки объёма поиска Bing по словам — спрос. Нужны аккаунт Microsoft Advertising и developer token.',
+      conditions: [
+        'Аккаунт Microsoft Advertising (соглашение рекламодателя) и developer token из Developer Portal',
+        'Вход владельца через OAuth; ключ не передаётся в чат',
+      ],
     },
-    cost: 'Не проверено',
+    cost: 'API бесплатно; нужен аккаунт рекламодателя',
     limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
     dataFields: { provided: ['ключевое слово', 'объём поиска', 'конкуренция'], stored: [] },
     personalData: { risk: 'low', notes: 'Агрегаты по запросам; людей в данных нет.' },
@@ -1879,11 +1898,52 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     languages: ['en'],
     defaultTrust: 'high',
     review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-03',
+      notes:
+        'Get started: «To use Bing Ads APIs, you must have a developer token and valid user credentials. If you do not yet have a Microsoft Advertising account, you can sign up via the Microsoft Advertising web application». Отдельной страницы условий API нет (404) — действуют условия аккаунта рекламодателя.',
+    },
+  },
+  {
+    key: 'google-ads-transparency',
+    name: 'Google Ads Transparency Center',
+    siteUrl: 'https://adstransparency.google.com',
+    sourceKind: 'other',
+    access: {
+      method: 'export',
+      endpoint:
+        'https://console.cloud.google.com/marketplace/product/bigquery-public-data/google-ads-transparency-center',
+      authentication: 'oauth',
+    },
+    terms: {
+      urls: [
+        'https://adstransparency.google.com/faq',
+        'https://cloud.google.com/bigquery/public-data',
+      ],
+      summary:
+        'Объявления рекламодателей Google: кто и что рекламирует на рынке — контекст. Официальный доступ — публичный набор BigQuery; сайт не скрейпить.',
+      conditions: ['Подключать только после чтения условий набора данных'],
+    },
+    cost: 'BigQuery: «The first 1 TB per month is free»; нужен проект Google Cloud',
+    limits: { provider: 'Не проверено', minIntervalMinutes: 1_440, maxItemsPerRun: 50 },
+    dataFields: {
+      provided: ['рекламодатель', 'текст и формат объявления', 'страны и даты показа'],
+      stored: [],
+    },
+    personalData: {
+      risk: 'medium',
+      notes: 'Рекламодатели — компании, но бывают и частные лица (имя в верификации).',
+    },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-03',
       notes:
-        'Страницы learn.microsoft.com собираются скриптом — текст условий API не получен. Проверить, что нужно для доступа к Ad Insight API и разрешено ли использовать оценки для исследования рынка.',
+        'adstransparency.google.com отвечает 429 программам, страница набора в BigQuery собирается скриптом — условия и охват (все объявления или только политические) не прочитаны. Проверить при следующем запуске.',
     },
   },
   {
@@ -1911,8 +1971,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
-      notes: 'oecd.org отвечает 403 на автоматические запросы — условия не прочитаны.',
+      checkedOn: '2026-11-03',
+      notes:
+        'oecd.org отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны.',
     },
   },
 ];
