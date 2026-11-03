@@ -13,6 +13,7 @@ import { decidableRequests } from './approvals.js';
 import { reviewCount } from './opportunity-cards.js';
 import { collectEvents, PERIODS } from './journal.js';
 import { killSwitchStatus } from './kill-switch.js';
+import { pulseDigestLine } from './pulse.js';
 import { rewardsDigestLine } from './rewards.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
 import { formatTime } from './texts.js';
@@ -28,7 +29,7 @@ export const DIGEST_RETRY_MS = 5 * 60_000;
 export async function buildDigest(
   database: Pick<
     Database,
-    'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns' | 'services'
+    'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns' | 'services' | 'pulse'
   >,
   nowMs: number,
 ): Promise<string> {
@@ -51,6 +52,7 @@ export async function buildDigest(
   const incidents = await database.services.incidentsSince(
     toTimestamp(new Date(nowMs - PERIODS.day.ms)),
   );
+  const pulse = await pulseDigestLine(database, nowMs);
   const requests = await decidableRequests(database.repositories, now);
   const review = await reviewCount(database.repositories);
   const nearest = requests[0];
@@ -96,6 +98,7 @@ export async function buildDigest(
           `💡 Новых возможностей за сутки: ${String(newOpportunities)}${partial ? '+' : ''} → /opportunities`,
         ]),
     ...(ai === undefined ? [] : [ai]),
+    ...(pulse === undefined ? [] : [pulse]),
     ...(agentFailures === 0
       ? []
       : [`⚠️ Сбоев агентов за сутки: ${String(agentFailures)} → /agents`]),

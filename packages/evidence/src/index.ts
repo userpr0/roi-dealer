@@ -60,6 +60,28 @@ export {
   type RedactionKind,
 } from './privacy.js';
 export {
+  collectPulse,
+  createPulseScheduler,
+  createUkBankHolidaysCollector,
+  createUsFederalHolidaysCollector,
+  createWikipediaPageviewsCollector,
+  GOV_UK_URL,
+  pulseWindow,
+  UK_BANK_HOLIDAYS_CATALOG_KEY,
+  US_FEDERAL_HOLIDAYS,
+  US_FEDERAL_HOLIDAYS_CATALOG_KEY,
+  WIKIMEDIA_API_URL,
+  wikipediaArticleSchema,
+  WIKIPEDIA_PAGEVIEWS_CATALOG_KEY,
+  type PulseCollector,
+  type PulseLoad,
+  type PulseOutcome,
+  type PulseRequest,
+  type PulseScheduler,
+  type PulseSchedulerOptions,
+  type WikipediaPageviewsOptions,
+} from './pulse.js';
+export {
   createEvidenceScheduler,
   type EvidenceScheduler,
   type EvidenceSchedulerOptions,

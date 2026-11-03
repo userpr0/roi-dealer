@@ -109,7 +109,7 @@ EOF
   put "$ENV_DIR/worker.env" DATABASE_URL "$database_url"
   local key
   for key in GEMINI_API_KEY GEMINIFREE_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY \
-    AI_MONTHLY_LIMIT_USD AI_DAILY_LIMIT_USD; do
+    AI_MONTHLY_LIMIT_USD AI_DAILY_LIMIT_USD PUBLIC_CONTACT_EMAIL PULSE_WIKIPEDIA_ARTICLES; do
     put "$ENV_DIR/worker.env" "$key" "$(secret "$key")"
   done
 

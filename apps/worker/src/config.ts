@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { databaseConfigShape } from '@roi-dealer/database';
-import { HACKER_NEWS_API_URL, HACKER_NEWS_SEARCH_URL, LEMMY_API_URL } from '@roi-dealer/evidence';
+import {
+  GOV_UK_URL,
+  HACKER_NEWS_API_URL,
+  HACKER_NEWS_SEARCH_URL,
+  LEMMY_API_URL,
+  WIKIMEDIA_API_URL,
+  wikipediaArticleSchema,
+} from '@roi-dealer/evidence';
 import { LOG_LEVELS } from '@roi-dealer/observability';
 import { loadConfig, nodeEnvSchema, railwayCommitSchema, type EnvSource } from '@roi-dealer/shared';
 
@@ -27,6 +34,36 @@ const workerConfigSchema = z.object({
   HACKER_NEWS_SEARCH_URL: z.url({ protocol: /^https?$/ }).default(HACKER_NEWS_SEARCH_URL),
   /** Lemmy API of lemmy.world, the second pain source (05b); tests point it to a local fake. */
   LEMMY_API_URL: z.url({ protocol: /^https?$/ }).default(LEMMY_API_URL),
+  /** How often the Pulse scheduler wakes up (05c); each source keeps its catalog interval. */
+  PULSE_COLLECT_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .default(6 * 3_600_000),
+  /** gov.uk (UK bank holidays, 05c); tests point it to a local fake. */
+  GOV_UK_URL: z.url({ protocol: /^https?$/ }).default(GOV_UK_URL),
+  /** Wikimedia Analytics API (05c); tests point it to a local fake. */
+  WIKIMEDIA_API_URL: z.url({ protocol: /^https?$/ }).default(WIKIMEDIA_API_URL),
+  /**
+   * English Wikipedia articles whose daily views the Pulse follows, comma-separated (05c), e.g.
+   * `Tax_return,Bookkeeping`. Names only, set by the owner; at most 50.
+   */
+  PULSE_WIKIPEDIA_ARTICLES: z
+    .string()
+    .trim()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item !== ''),
+    )
+    .pipe(z.array(wikipediaArticleSchema).max(50)),
+  /**
+   * The owner's public contact: Wikimedia asks for it in the User-Agent (catalog condition).
+   * Without it the Pulse does not read Wikipedia. Never logged.
+   */
+  PUBLIC_CONTACT_EMAIL: z.email().optional(),
   /**
    * AI providers (PHASE 09, ADR-0006, D-021): optional; without a key its models are not used.
    * Secrets.

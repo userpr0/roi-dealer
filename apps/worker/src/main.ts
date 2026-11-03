@@ -28,7 +28,12 @@ import {
   createHackerNewsConnector,
   createHackerNewsSearchConnector,
   createLemmyConnector,
+  createPulseScheduler,
+  createUkBankHolidaysCollector,
+  createUsFederalHolidaysCollector,
+  createWikipediaPageviewsCollector,
   EVIDENCE_ENGINE_ACTOR,
+  type PulseCollector,
 } from '@roi-dealer/evidence';
 import { MEDIA_TASKS } from '@roi-dealer/media';
 import { createLogger } from '@roi-dealer/observability';
@@ -146,6 +151,28 @@ function main(): void {
     intervalMs: config.EVIDENCE_COLLECT_INTERVAL_MS,
     redactNames: namesPass,
   });
+  // The Pulse (05c): holidays of the markets and, with the owner's articles and public contact,
+  // daily Wikipedia views. Each source asks for access in /decisions first.
+  const pulseCollectors: PulseCollector[] = [
+    createUkBankHolidaysCollector({ baseUrl: config.GOV_UK_URL }),
+    createUsFederalHolidaysCollector(),
+  ];
+  if (config.PULSE_WIKIPEDIA_ARTICLES.length > 0 && config.PUBLIC_CONTACT_EMAIL !== undefined) {
+    pulseCollectors.push(
+      createWikipediaPageviewsCollector({
+        baseUrl: config.WIKIMEDIA_API_URL,
+        articles: config.PULSE_WIKIPEDIA_ARTICLES,
+        userAgent: `roi-dealer/${serviceVersion(config)} (${config.PUBLIC_CONTACT_EMAIL})`,
+      }),
+    );
+  }
+  const pulse = createPulseScheduler({
+    database,
+    logger,
+    collectors: pulseCollectors,
+    ensureAccess: ensureAccessRequest,
+    intervalMs: config.PULSE_COLLECT_INTERVAL_MS,
+  });
   // The agents (PHASE 06, 07, 10, 11, 14) need AI: without a provider they do not even ask for access.
   const agents = createAgentScheduler({
     database,
@@ -197,12 +224,14 @@ function main(): void {
   heartbeat.start();
   maintenance.start();
   evidence.start();
+  pulse.start();
   agents.start();
   spendGuard.start();
   retention.start();
   // Registered last, so they stop first: work finishes before the database closes.
   shutdown.register('ai-maintenance', () => maintenance.stop());
   shutdown.register('evidence-collection', () => evidence.stop());
+  shutdown.register('pulse-collection', () => pulse.stop());
   shutdown.register('agents', () => agents.stop());
   shutdown.register('spend-guard', () => spendGuard.stop());
   shutdown.register('lead-retention', () => retention.stop());
