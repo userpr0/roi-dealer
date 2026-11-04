@@ -45,6 +45,7 @@ export * from './pulse.js';
 export * from './forecast.js';
 export * from './stopping.js';
 export * from './portfolio.js';
+export * from './watchlist.js';
 export * from './judgement.js';
 export * from './decision-engine.js';
 export * from './funnel.js';

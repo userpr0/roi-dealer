@@ -283,6 +283,17 @@ export {
   roiText,
 } from './roi.js';
 export {
+  createWatchlistFlow,
+  WATCHLIST_PREFIX,
+  watchItems,
+  watchlistDigestLine,
+  watchlistView,
+  type WatchItem,
+  type WatchlistFlow,
+  type WatchlistFlowDeps,
+  type WatchlistView,
+} from './watchlist.js';
+export {
   createModelsFlow,
   MODELS_PREFIX,
   modelsDigestLine,
