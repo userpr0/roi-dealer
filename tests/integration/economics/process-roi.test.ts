@@ -100,6 +100,10 @@ describe('ROI of the processes (16b)', () => {
     expect(text).toContain('• Платформа: $5.00 — ℹ️ общие расходы');
     expect(text).toContain('Всего: расходы $9.90 · выручка $0.00 · ROI 0%');
     expect(text).toContain('Выключить агентов процесса — /access; всё сразу — /stop. Решаете вы.');
+    // ADR-0015: paid calls of the batchable tasks (extract-signal), half of it saved by batches.
+    expect(text).toContain(
+      '🧺 Платные массовые вызовы AI: $2.50 · пакетный режим сэкономил бы ≈ $1.25 (строим от $10.00 в месяц, ADR-0015).',
+    );
     expect(text.length).toBeLessThan(4_096);
   });
 

@@ -87,3 +87,11 @@ describe('processRoi (16b, §2.13)', () => {
     expect(new Set(tasks).size).toBe(tasks.length);
   });
 });
+
+describe('batch mode threshold (ADR-0015)', () => {
+  it('says when paid batchable calls pass $10 a month', async () => {
+    const { batchLine } = await import('@roi-dealer/command-center');
+    expect(batchLine(12_000_000)).toContain('порог $10.00 пройден');
+    expect(batchLine(0)).toContain('$0.00');
+  });
+});

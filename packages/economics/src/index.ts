@@ -10,6 +10,8 @@ export {
   PROCESS_VERDICTS,
   PROCESSES,
   processReport,
+  BATCHABLE_TASKS,
+  BATCH_THRESHOLD_MICRO_USD,
   processRoi,
   type ProcessDefinition,
   type ProcessLine,

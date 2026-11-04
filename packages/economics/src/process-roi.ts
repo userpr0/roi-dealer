@@ -184,7 +184,14 @@ export interface ProcessReport {
   readonly revenue: Money;
   /** Revenue ÷ all costs, percent; absent without costs. */
   readonly roiPercent?: number;
+  /** Paid calls of the tasks that could run in batches (ADR-0015), micro-USD. */
+  readonly batchableMicroUsd: number;
 }
+
+/** Non-urgent bulk tasks a provider batch could run at about half the price (ADR-0015). */
+export const BATCHABLE_TASKS: readonly string[] = ['extract-signal', 'redact-names', 'match-pain'];
+/** Paid batchable calls per month above which batch mode pays for its work (ADR-0015). */
+export const BATCH_THRESHOLD_MICRO_USD = 10_000_000;
 
 /** The UTC month that contains `nowMs`, or the one before it. */
 function monthBounds(nowMs: number, which: 'current' | 'previous') {
@@ -219,6 +226,10 @@ export async function processReport(
     lines,
     totalCost,
     revenue: received,
+    batchableMicroUsd: BATCHABLE_TASKS.reduce(
+      (sum, task) => sum + (outputs.aiByTask.get(task) ?? 0),
+      0,
+    ),
     ...(totalCost.amountCents > 0
       ? { roiPercent: Math.round((received.amountCents / totalCost.amountCents) * 100) }
       : {}),
