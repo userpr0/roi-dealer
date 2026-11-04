@@ -14,6 +14,7 @@ import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
 import { createLeadContacts, type LeadContacts } from './lead-contacts.js';
 import { createPaymentEventLog, type PaymentEventLog } from './payments.js';
 import { createPulseJournal, type PulseJournal } from './pulse.js';
+import { createForecastJournal, type ForecastJournal } from './forecasts.js';
 import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
@@ -66,6 +67,8 @@ export interface TransactionScope {
   readonly services: ServiceWatch;
   /** Demand series and the calendar, stored in one transaction per load (05c). */
   readonly pulse: PulseJournal;
+  /** The forecast of a test at its start and its fact at the result (phase 25). */
+  readonly forecasts: ForecastJournal;
 }
 
 export interface TransactionOptions {
@@ -123,6 +126,8 @@ export interface Database {
   readonly services: ServiceWatch;
   /** Demand series and the calendar of holidays and events (05c). */
   readonly pulse: PulseJournal;
+  /** Forecasts of the tests and their facts (phase 25). */
+  readonly forecasts: ForecastJournal;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -172,6 +177,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     payments: createPaymentEventLog(tx),
     services: createServiceWatch(tx),
     pulse: createPulseJournal(tx),
+    forecasts: createForecastJournal(tx),
   };
 }
 
@@ -239,6 +245,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     payments: createPaymentEventLog(sql),
     services: createServiceWatch(sql),
     pulse: createPulseJournal(sql),
+    forecasts: createForecastJournal(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

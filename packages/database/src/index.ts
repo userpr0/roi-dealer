@@ -184,3 +184,10 @@ export {
   type MetricPoint,
   type PulseJournal,
 } from './pulse.js';
+export {
+  createForecastJournal,
+  type ForecastEntry,
+  type ForecastJournal,
+  type ForecastOutcomeEntry,
+  type StoredForecast,
+} from './forecasts.js';

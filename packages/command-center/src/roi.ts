@@ -1,4 +1,10 @@
-import { formatUsd } from '@roi-dealer/domain';
+import {
+  calibration,
+  COIN_BRIER,
+  formatUsd,
+  WEIGHTS_PROPOSAL_MIN_OUTCOMES,
+  type Calibration,
+} from '@roi-dealer/domain';
 import type { Database } from '@roi-dealer/database';
 import {
   processReport,
@@ -83,14 +89,54 @@ export function roiReportText(report: ProcessReport): string {
     .join('\n');
 }
 
+const percent = (value: number) => `${String(Math.round(value * 100))}%`;
+
+/**
+ * Forecast vs fact (phase 25, ADR-0013): how accurate the forecasts of each version of the rules
+ * are, over all time. Numbers come from `calibration` in code.
+ */
+export function forecastLines(versions: readonly Calibration[]): string[] {
+  if (versions.length === 0) {
+    return ['🎯 Прогнозы: пока нет — журнал начнётся с первого запущенного теста.'];
+  }
+  const lines = versions.map((item) => {
+    const head = `🎯 Прогнозы (правила v${String(item.rulesVersion)}): тестов ${String(item.forecasts)}, с итогом ${String(item.resolved)}`;
+    if (item.brier === undefined || item.expectedRate === undefined) return `${head}.`;
+    return (
+      `${head}\nОжидали успех в ${percent(item.expectedRate)}, вышло ${percent(item.observedRate ?? 0)} · ` +
+      `точность (Brier) ${item.brier.toFixed(2)} — монетка ${COIN_BRIER.toFixed(2)}, меньше — лучше`
+    );
+  });
+  const resolved = versions[0]?.resolved ?? 0;
+  return [
+    ...lines,
+    resolved >= WEIGHTS_PROPOSAL_MIN_OUTCOMES
+      ? 'Итогов достаточно для новых весов оценки — их предложение придёт карточкой.'
+      : `Новые веса оценки — после ${String(WEIGHTS_PROPOSAL_MIN_OUTCOMES)} итогов (сейчас ${String(resolved)}).`,
+  ];
+}
+
 /** /roi — the current month so far; `/roi прошлый` — the previous full month. */
 export async function roiText(
-  database: Pick<Database, 'economics'>,
+  database: Pick<Database, 'economics' | 'forecasts'>,
   nowMs: number,
   args: string,
 ): Promise<string> {
   const which = PREVIOUS.has(args.trim().toLowerCase()) ? 'previous' : 'current';
-  return roiReportText(await processReport(database, nowMs, which));
+  const [report, forecasts] = await Promise.all([
+    processReport(database, nowMs, which),
+    database.forecasts.list(),
+  ]);
+  return [roiReportText(report), '', ...forecastLines(calibration(forecasts))].join('\n');
+}
+
+/** One line of the weekly review once some forecast test has a clear result. */
+export async function forecastReviewLine(
+  database: Pick<Database, 'forecasts'>,
+): Promise<string | undefined> {
+  const [latest] = calibration(await database.forecasts.list());
+  if (latest?.brier === undefined) return undefined;
+  return `🎯 Прогнозы v${String(latest.rulesVersion)}: итогов ${String(latest.resolved)}, точность (Brier) ${latest.brier.toFixed(2)} (монетка ${COIN_BRIER.toFixed(2)}) → /roi`;
 }
 
 /** On the first day of a UTC month the digest points to the report of the month just closed. */

@@ -26,6 +26,8 @@ import {
   honestChecklist,
   hypothesisVerdict,
   isApprovalExpired,
+  judgePanel,
+  launchForecast,
   knowledgeAssetIdSchema,
   metricReached,
   metricValue,
@@ -55,6 +57,7 @@ import {
   type FunnelTotals,
   type HonestCheck,
   type Hypothesis,
+  type JudgeCriterion,
   type MediaAsset,
   type Metric,
   type Money,
@@ -917,10 +920,47 @@ async function go(
       actor,
     );
   }
+  const probability = await recordForecast(scope, view);
   return {
     outcome: 'done',
-    text: `▶️ Тест идёт. Вносите цифры и траты: /funnel ${String(view.number)} …`,
+    text:
+      `▶️ Тест идёт. Вносите цифры и траты: /funnel ${String(view.number)} …` +
+      (probability === undefined
+        ? ''
+        : `\n🎯 Прогноз кода: успех с вероятностью ${String(Math.round(probability * 100))}% — сверим с итогом в /roi.`),
   };
+}
+
+/**
+ * The forecast of a test at its start (phase 25, ADR-0013): computed in code from the
+ * opportunity's score, with the inputs kept for calibration. An opportunity created outside the
+ * assessment has no score, so its tests get no forecast.
+ */
+async function recordForecast(
+  scope: TransactionScope,
+  view: ExperimentView,
+): Promise<number | undefined> {
+  const { experiment, hypothesis, opportunity } = view;
+  const score = (await scope.opportunityAssessments.scores([opportunity.id])).get(opportunity.id);
+  if (score === undefined) return undefined;
+  const scores: Partial<Record<JudgeCriterion, number>> = {};
+  for (const item of (await scope.judgements.latest([opportunity.id])).get(opportunity.id) ?? []) {
+    if (item.outcome === 'judged' && item.score !== undefined) scores[item.criterion] = item.score;
+  }
+  const judgesTotal = judgePanel(scores).total;
+  const forecast = launchForecast({
+    score: score.score,
+    components: score.components,
+    ...(judgesTotal === undefined ? {} : { judgesTotal }),
+    method: hypothesis.validationMethod,
+    geo: hypothesis.geo,
+    priceCents: hypothesis.price.amountCents,
+    budgetCents: experimentTotalBudget(experiment).amountCents,
+    metric: experiment.successMetric.name,
+    target: experiment.successMetric.target,
+  });
+  await scope.forecasts.record({ experimentId: experiment.id, ...forecast });
+  return forecast.probability;
 }
 
 async function stop(
@@ -1027,6 +1067,13 @@ async function finish(
     completeExperiment(experiment, { outcome, summary, assetIds: [asset.id] }, context),
     actor,
   );
+  // The fact of the forecast (phase 25); a test started before it has none.
+  await scope.forecasts.recordOutcome({
+    experimentId: experiment.id,
+    reached,
+    ...(value === undefined ? {} : { metricValue: value }),
+    verdict,
+  });
   if (hypothesis.status === 'testing') {
     await repositories.hypotheses.update(
       changeHypothesisStatus(hypothesis, verdict, context),

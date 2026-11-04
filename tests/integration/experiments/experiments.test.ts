@@ -168,6 +168,18 @@ async function approvedWithHypotheses(title: string): Promise<[Opportunity, Hypo
     { id: opportunityIdSchema.parse(uuidv7()), actor: SYSTEM, at: now() },
   );
   await db.repositories.opportunities.insert(draft);
+  // The score the opportunity was created with (PHASE 07): the forecast of its tests reads it.
+  await db.opportunityAssessments.record({
+    painId: pain.id,
+    painVersion: pain.version,
+    taskVersion: 1,
+    outcome: 'opportunity',
+    score: 62,
+    components: { frequency: 6.3, severity: 10, sources: 7.5, willingness: 12, market: 10 },
+    opportunityId: draft.id,
+    actorType: 'agent',
+    actorId: 'opportunity-analyst',
+  });
   const review = submitOpportunityForReview(draft, { actor: SYSTEM, at: now() });
   await db.repositories.opportunities.update(review, SYSTEM);
   const decision = createDecision(
@@ -329,6 +341,9 @@ describe('the honest-test checklist and the launch (D-014 п.8, D-006)', () => {
 
     const started = await press(button(await experimentOf(landing), 'yg'));
     expect(started.text).toContain('▶️ Тест идёт');
+    expect(started.text).toContain(
+      '🎯 Прогноз кода: успех с вероятностью 62% — сверим с итогом в /roi.',
+    );
     const running = await experimentOf(landing);
     expect(running.status).toBe('running');
     expect((await fresh(landing)).status).toBe('testing');
@@ -478,6 +493,64 @@ describe('the result (§7.1 H, §2.9)', () => {
     ]);
   });
 
+  it('keeps the forecast of each started test and its fact, and shows the accuracy in /roi', async () => {
+    const landing = await experimentOf(by('landing_page'));
+    const preorder = await experimentOf(by('preorder'));
+    const rows = await db.sql<
+      {
+        experiment_id: string;
+        rules_version: number;
+        probability: string;
+        method: string;
+        reached: boolean;
+        verdict: string;
+      }[]
+    >`
+      select f.experiment_id, f.rules_version, f.probability::text as probability,
+             f.signals->>'method' as method, o.reached, o.verdict
+      from forecasts f join forecast_outcomes o using (experiment_id)
+      order by f.occurred_at
+    `;
+    expect(rows).toEqual([
+      {
+        experiment_id: landing.id,
+        rules_version: 1,
+        probability: '0.620',
+        method: 'landing_page',
+        reached: false,
+        verdict: 'refuted',
+      },
+      {
+        experiment_id: preorder.id,
+        rules_version: 1,
+        probability: '0.620',
+        method: 'preorder',
+        reached: true,
+        verdict: 'confirmed',
+      },
+    ]);
+    const [signals] = await db.sql<{ signals: Record<string, unknown> }[]>`
+      select signals from forecasts where experiment_id = ${landing.id}
+    `;
+    expect(signals?.signals).toMatchObject({
+      score: 62,
+      components: { willingness: 12 },
+      geo: 'US',
+      budgetCents: 5_000,
+      metric: 'lead',
+      target: 20,
+    });
+    expect(signals?.signals).not.toHaveProperty('judgesTotal');
+
+    const [roi] = await run('roi');
+    // ((0.62 − 0)² + (0.62 − 1)²) / 2 = 0.264
+    expect(roi?.text).toContain('🎯 Прогнозы (правила v1): тестов 2, с итогом 2');
+    expect(roi?.text).toContain(
+      'Ожидали успех в 62%, вышло 50% · точность (Brier) 0.26 — монетка 0.25, меньше — лучше',
+    );
+    expect(roi?.text).toContain('Новые веса оценки — после 20 итогов (сейчас 2).');
+  });
+
   it('returns a rejected launch to planning; a cancelled one cancels its request', async () => {
     const concierge = by('concierge');
     await press(hypothesisButton(await fresh(concierge), 'yt'));
@@ -506,6 +579,57 @@ describe('the result (§7.1 H, §2.9)', () => {
     expect(audit.map((entry) => entry.permission)).toContain('experiment.write');
     expect(JSON.stringify(records)).not.toContain('we pay $300');
     expect(JSON.stringify(records)).not.toContain('Freelancers');
+  });
+});
+
+describe('the database keeps the forecasts (migration 0022)', () => {
+  it('keeps one forecast and one fact per test, append-only, with a fact that matches', async () => {
+    const landing = await experimentOf(by('landing_page'));
+    await expect(
+      db.forecasts.record({
+        experimentId: landing.id,
+        rulesVersion: 1,
+        probability: 0.5,
+        signals: {
+          score: 50,
+          components: {},
+          method: 'landing_page',
+          geo: 'US',
+          priceCents: 0,
+          budgetCents: 0,
+          metric: 'lead',
+          target: 1,
+        },
+      }),
+    ).rejects.toBeInstanceOf(ConstraintViolationError);
+    await expect(
+      db.forecasts.recordOutcome({ experimentId: landing.id, reached: false, verdict: 'refuted' }),
+    ).rejects.toBeInstanceOf(ConstraintViolationError);
+    await expect(
+      db.sql`update forecasts set probability = 0.9 where experiment_id = ${landing.id}`,
+    ).rejects.toThrow();
+    await expect(
+      db.sql`delete from forecast_outcomes where experiment_id = ${landing.id}`,
+    ).rejects.toThrow();
+    // A test without a forecast (started before phase 25) gets no fact.
+    const demo = await experimentOf(by('demo'));
+    expect(
+      await db.forecasts.recordOutcome({
+        experimentId: demo.id,
+        reached: true,
+        verdict: 'confirmed',
+      }),
+    ).toBe(false);
+  });
+
+  it('refuses a fact that contradicts its verdict', async () => {
+    const preorder = await experimentOf(by('preorder'));
+    await expect(
+      db.sql`
+        insert into forecast_outcomes (experiment_id, reached, verdict)
+        values (${preorder.id}, false, 'confirmed')
+      `,
+    ).rejects.toThrow();
   });
 });
 

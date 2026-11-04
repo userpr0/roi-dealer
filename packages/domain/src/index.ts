@@ -42,6 +42,7 @@ export * from './ai-budget.js';
 export * from './markets.js';
 export * from './market-context.js';
 export * from './pulse.js';
+export * from './forecast.js';
 export * from './judgement.js';
 export * from './decision-engine.js';
 export * from './funnel.js';
