@@ -273,6 +273,7 @@ export {
   type CheckoutFlow,
   type PaymentFlowDeps,
 } from './payments.js';
+export { pulseDigestLine, pulseText } from './pulse.js';
 export {
   aiKeyFixedText,
   aiKeyText,

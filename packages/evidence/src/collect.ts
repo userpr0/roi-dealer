@@ -56,7 +56,7 @@ export interface EngineDeps {
 }
 
 /** Kill switch (13b): every automation checks it as its first step. */
-async function assertRunning(database: Database): Promise<void> {
+export async function assertRunning(database: Database): Promise<void> {
   const control = await database.repositories.systemControls.getById(AUTOMATION_CONTROL_ID);
   if (control === undefined)
     throw new Error('the automation kill switch is missing (migration 0003)');

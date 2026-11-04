@@ -1,8 +1,8 @@
 # ADR-0012: Ряды чисел спроса и календарь событий
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-03
-- **Approved by:** —
+- **Approved by:** владелец, 2026-11-04 («одобряю», D-031)
 
 ## Context
 

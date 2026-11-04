@@ -168,3 +168,14 @@ export {
   type ServiceSetup,
   type ServiceWatch,
 } from './services.js';
+export {
+  CALENDAR_EVENT_KINDS,
+  calendarEventSchema,
+  createPulseJournal,
+  daySchema,
+  metricPointSchema,
+  type CalendarEvent,
+  type CalendarEventKind,
+  type MetricPoint,
+  type PulseJournal,
+} from './pulse.js';

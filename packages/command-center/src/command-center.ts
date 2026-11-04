@@ -32,6 +32,7 @@ import {
   type JournalKind,
 } from './journal.js';
 import { agentsText } from './agents.js';
+import { pulseText } from './pulse.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -154,6 +155,7 @@ const DESCRIPTIONS = {
   review: 'Недельный разбор сейчас',
   agents: 'Агенты: доступ, работа, AI за сутки',
   sources: 'Источники данных: разрешены, ждут проверки, отклонены',
+  pulse: 'Пульс на 6 недель: праздники рынков и растущие темы',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -408,6 +410,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('sources', 'status.read', async (context) =>
         context.reply(await sourcesText(database)),
+      ),
+      command('pulse', 'status.read', async (context) =>
+        context.reply(await pulseText(database, nowMs())),
       ),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),

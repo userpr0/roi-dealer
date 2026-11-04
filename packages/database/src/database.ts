@@ -13,6 +13,7 @@ import { createBrainQueries, type BrainQueries } from './brain.js';
 import { createEconomicsQueries, type EconomicsQueries } from './economics.js';
 import { createLeadContacts, type LeadContacts } from './lead-contacts.js';
 import { createPaymentEventLog, type PaymentEventLog } from './payments.js';
+import { createPulseJournal, type PulseJournal } from './pulse.js';
 import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
@@ -63,6 +64,8 @@ export interface TransactionScope {
   readonly payments: PaymentEventLog;
   /** The watchdog's incidents, opened in the same transaction as the notice to the owner (13c). */
   readonly services: ServiceWatch;
+  /** Demand series and the calendar, stored in one transaction per load (05c). */
+  readonly pulse: PulseJournal;
 }
 
 export interface TransactionOptions {
@@ -118,6 +121,8 @@ export interface Database {
   readonly payments: PaymentEventLog;
   /** Heartbeats of the services and the watchdog's incidents (13c). */
   readonly services: ServiceWatch;
+  /** Demand series and the calendar of holidays and events (05c). */
+  readonly pulse: PulseJournal;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -166,6 +171,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     leadContacts: createLeadContacts(tx),
     payments: createPaymentEventLog(tx),
     services: createServiceWatch(tx),
+    pulse: createPulseJournal(tx),
   };
 }
 
@@ -232,6 +238,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     leadContacts: createLeadContacts(sql),
     payments: createPaymentEventLog(sql),
     services: createServiceWatch(sql),
+    pulse: createPulseJournal(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>
