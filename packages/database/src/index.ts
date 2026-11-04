@@ -150,7 +150,12 @@ export {
 } from './signal-extractions.js';
 
 export const PACKAGE_NAME = '@roi-dealer/database';
-export type { LeadContact, LeadContacts } from './lead-contacts.js';
+export type {
+  AudienceCount,
+  AudienceSubscriber,
+  LeadContact,
+  LeadContacts,
+} from './lead-contacts.js';
 export {
   PAYMENT_EVENT_KINDS,
   type PaymentEventEntry,

@@ -5,6 +5,7 @@ import {
 } from '@roi-dealer/database';
 import {
   assertAutomationRunning,
+  AUDIENCE_RETENTION_DAYS,
   AUTOMATION_CONTROL_ID,
   createLead,
   DomainError,
@@ -33,6 +34,8 @@ export interface SignUp {
   readonly hypothesis: Pick<Hypothesis, 'channel'>;
   /** Normalized by `normalizeEmail`. */
   readonly email: string;
+  /** Phase 28: the separate box for topic emails was ticked. */
+  readonly updates?: boolean | undefined;
   readonly utm: Readonly<Record<string, string>>;
   readonly at: Timestamp;
   readonly correlationId?: string | undefined;
@@ -53,6 +56,17 @@ export async function captureLead(
   try {
     return await database.transaction(
       async (scope) => {
+        if (signUp.updates === true) {
+          await scope.leadContacts.subscribe(
+            {
+              opportunityId: signUp.experiment.opportunityId,
+              experimentId: signUp.experiment.id,
+              email: signUp.email,
+              consentAt: signUp.at,
+            },
+            actor,
+          );
+        }
         const existing = await scope.leadContacts.leadOf(signUp.experiment.id, signUp.email, actor);
         if (existing !== undefined) return 'existing';
         const lead = createLead(
@@ -135,6 +149,8 @@ export async function forgetEmail(
   at: Timestamp,
 ): Promise<number> {
   const leadIds = await scope.leadContacts.leadsByEmail(email, actor);
+  // Phase 28: the person's topic subscriptions go too.
+  await scope.leadContacts.unsubscribeEmail(email, actor);
   return eraseContacts(scope, leadIds, actor, at);
 }
 
@@ -157,6 +173,12 @@ export async function purgeExpiredContacts(options: {
   assertAutomationRunning(control);
   const nowMs = options.now();
   const cutoff = toTimestamp(new Date(nowMs - LEAD_RETENTION_DAYS * DAY_MS));
+  // Phase 28: topic subscriptions never confirmed go after their own period.
+  const unconfirmed = await database.leadContacts.purgeUnconfirmed(
+    toTimestamp(new Date(nowMs - AUDIENCE_RETENTION_DAYS * DAY_MS)),
+    LEAD_RETENTION,
+  );
+  if (unconfirmed > 0) logger.info('unconfirmed subscriptions erased', { erased: unconfirmed });
   const expired = await database.leadContacts.expired(cutoff, LEAD_RETENTION);
   if (expired.length === 0) return { erased: 0 };
   const at = toTimestamp(new Date(nowMs));

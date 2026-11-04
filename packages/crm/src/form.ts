@@ -10,6 +10,8 @@ export const LEAD_FORM_FIELDS = {
   consent: 'consent',
   /** Hidden from people by CSS; a filled trap is a robot. */
   trap: 'website',
+  /** Phase 28: a separate, optional box for emails about the topic (own audience). */
+  updates: 'updates',
 } as const;
 
 /** The value of the consent box when it is ticked. */
@@ -23,7 +25,7 @@ const EMAIL_SHAPE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const emailSchema = z.email().max(MAX_EMAIL_LENGTH);
 
 export type LeadForm =
-  | { readonly kind: 'valid'; readonly email: string }
+  | { readonly kind: 'valid'; readonly email: string; readonly updates: boolean }
   | { readonly kind: 'invalid'; readonly reason: 'email' | 'consent' }
   | { readonly kind: 'trap' };
 
@@ -42,5 +44,5 @@ export function parseLeadForm(body: string): LeadForm {
   if (form.get(LEAD_FORM_FIELDS.consent) !== CONSENT_VALUE) {
     return { kind: 'invalid', reason: 'consent' };
   }
-  return { kind: 'valid', email };
+  return { kind: 'valid', email, updates: form.get(LEAD_FORM_FIELDS.updates) === CONSENT_VALUE };
 }

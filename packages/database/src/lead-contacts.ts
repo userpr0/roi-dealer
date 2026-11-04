@@ -4,6 +4,7 @@ import {
   type Actor,
   type ExperimentId,
   type LeadId,
+  type OpportunityId,
   type Timestamp,
 } from '@roi-dealer/domain';
 import { decideAccess, type Permission } from '@roi-dealer/policies';
@@ -41,6 +42,31 @@ export interface LeadContacts {
    * cancelled before `endedBefore`.
    */
   expired(endedBefore: Timestamp, actor: Actor, limit?: number): Promise<LeadId[]>;
+  /**
+   * Own audience (phase 28): the separate consent to topic emails; one per email and topic,
+   * a repeat changes nothing. Needs `lead.capture`.
+   */
+  subscribe(subscriber: AudienceSubscriber, actor: Actor): Promise<void>;
+  /** Deletes every subscription of this email; returns how many. Needs `lead.manage`. */
+  unsubscribeEmail(email: string, actor: Actor): Promise<number>;
+  /** Unconfirmed subscriptions older than `before` are deleted (retention). Needs `lead.manage`. */
+  purgeUnconfirmed(before: Timestamp, actor: Actor): Promise<number>;
+  /** Subscribers per topic: all and confirmed. Needs `lead.manage`. */
+  audience(actor: Actor): Promise<AudienceCount[]>;
+}
+
+export interface AudienceSubscriber {
+  readonly opportunityId: OpportunityId;
+  readonly experimentId: ExperimentId;
+  /** Lower case. */
+  readonly email: string;
+  readonly consentAt: Timestamp;
+}
+
+export interface AudienceCount {
+  readonly opportunityId: OpportunityId;
+  readonly subscribers: number;
+  readonly confirmed: number;
 }
 
 async function authorize(executor: Executor, actor: Actor, permission: Permission): Promise<void> {
@@ -57,6 +83,48 @@ async function authorize(executor: Executor, actor: Actor, permission: Permissio
 
 export function createLeadContacts(executor: Executor): LeadContacts {
   return {
+    subscribe: (subscriber, actor) =>
+      translated(async () => {
+        await authorize(executor, actor, 'lead.capture');
+        await executor`
+          insert into audience_contacts (opportunity_id, experiment_id, email, consent_at)
+          values (${subscriber.opportunityId}, ${subscriber.experimentId}, ${subscriber.email},
+                  ${subscriber.consentAt})
+          on conflict (opportunity_id, email) do nothing
+        `;
+      }),
+    unsubscribeEmail: (email, actor) =>
+      translated(async () => {
+        await authorize(executor, actor, 'lead.manage');
+        const rows =
+          await executor`delete from audience_contacts where email = ${email} returning id`;
+        return rows.length;
+      }),
+    purgeUnconfirmed: (before, actor) =>
+      translated(async () => {
+        await authorize(executor, actor, 'lead.manage');
+        const rows = await executor`
+          delete from audience_contacts where confirmed_at is null and consent_at < ${before}
+          returning id
+        `;
+        return rows.length;
+      }),
+    audience: (actor) =>
+      translated(async () => {
+        await authorize(executor, actor, 'lead.manage');
+        const rows = await executor<
+          { opportunity_id: OpportunityId; subscribers: string; confirmed: string }[]
+        >`
+          select opportunity_id, count(*)::text as subscribers,
+                 count(confirmed_at)::text as confirmed
+          from audience_contacts group by opportunity_id order by count(*) desc
+        `;
+        return rows.map((row) => ({
+          opportunityId: row.opportunity_id,
+          subscribers: Number(row.subscribers),
+          confirmed: Number(row.confirmed),
+        }));
+      }),
     add: (contact, actor) =>
       translated(async () => {
         await authorize(executor, actor, 'lead.capture');

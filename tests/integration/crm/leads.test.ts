@@ -232,6 +232,17 @@ describe('the sign-up form (PHASE 20)', () => {
       (await join({ email: ANNA, consent: 'yes' }, { 'x-forwarded-for': '203.0.113.20' })).status,
     ).toBe(303);
 
+    // Phase 28: the separate box for topic emails — a subscription, not a second lead.
+    const form = await get(`/l/${landing.slug}/join`);
+    expect(await form.text()).toContain('name="updates"');
+    expect((await join({ email: ANNA, consent: 'yes', updates: 'yes' })).status).toBe(303);
+    expect(await db.leadContacts.audience(OWNER)).toEqual([
+      { opportunityId: experiment.opportunityId, subscribers: 1, confirmed: 0 },
+    ]);
+    const [audience] = await command('audience', '');
+    expect(audience?.text).toContain('📬 Своя аудитория: 1 подписчиков · подтвердили 0');
+    expect(audience?.text).not.toContain('anna');
+
     const [lead] = await leads();
     expect(await leads()).toHaveLength(1);
     expect(lead).toMatchObject({
@@ -353,6 +364,8 @@ describe('leads in the panel (PHASE 20)', () => {
     if (anna === undefined) throw new Error('no lead');
     expect(anna.contactErasedAt).toBeDefined();
     expect(await db.leadContacts.emails([anna.id], OWNER)).toEqual(new Map());
+    // Phase 28: the person's topic subscription is gone too.
+    expect(await db.leadContacts.audience(OWNER)).toEqual([]);
     // The same press delivered again deletes nothing more.
     expect((await press(confirm)).text).toContain('Подтверждение устарело');
     // An erased lead never gets its email back.

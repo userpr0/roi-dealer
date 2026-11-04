@@ -7,6 +7,7 @@ import {
 } from '@roi-dealer/crm';
 import type { Database } from '@roi-dealer/database';
 import {
+  AUDIENCE_RETENTION_DAYS,
   LEAD_RETENTION_DAYS,
   MEDIA_SLUG_PATTERN,
   PREVIEW_TOKEN_PATTERN,
@@ -128,6 +129,10 @@ export function privacyPage(contactEmail: string | undefined): SitePage {
         'or share it, except with our hosting provider, which stores it for us.',
     ),
     paragraph(
+      'If you also tick the optional box for topic emails, we keep your email for that topic ' +
+        `until you unsubscribe, or delete it after ${String(AUDIENCE_RETENTION_DAYS)} days if you never confirm it.`,
+    ),
+    paragraph(
       `We delete your email ${String(LEAD_RETENTION_DAYS)} days after the test ends, unless you ` +
         'become a customer. You can ask us to delete it at any time, and to see what we hold ' +
         `about you: write to ${contactEmail}.`,
@@ -200,6 +205,8 @@ function joinPage(
     `<label><input type="checkbox" name="${LEAD_FORM_FIELDS.consent}" value="${CONSENT_VALUE}" required> ` +
       'Email me about this product. I can ask you to delete my email at any time. ' +
       '<a href="/privacy">Privacy</a></label>',
+    `<label><input type="checkbox" name="${LEAD_FORM_FIELDS.updates}" value="${CONSENT_VALUE}"> ` +
+      'Optional: also send me occasional emails about this topic. I can unsubscribe at any time.</label>',
     `<button type="submit">${e(asset.content.cta)}</button>`,
     '</form>',
     `<p class="muted">${e(MEASUREMENT_NOTE)}</p>`,
@@ -315,6 +322,7 @@ export async function landingPage(
             experiment,
             hypothesis,
             email: parsed.email,
+            updates: parsed.updates,
             utm: utmOf(visit.query),
             at: toTimestamp(new Date((deps.now ?? Date.now)())),
             correlationId: visit.correlationId,
