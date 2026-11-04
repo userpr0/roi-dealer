@@ -7,6 +7,7 @@ import {
 } from '@roi-dealer/domain';
 import type { Database } from '@roi-dealer/database';
 import {
+  BATCH_THRESHOLD_MICRO_USD,
   processReport,
   type ProcessLine,
   type ProcessReport,
@@ -65,6 +66,16 @@ function line(process: ProcessLine): string {
   return `${parts.join(' · ')} — ${VERDICT_TEXT[process.verdict]}`;
 }
 
+const microDollars = (micro: number) => `$${(micro / 1_000_000).toFixed(2)}`;
+
+/** ADR-0015: paid batchable AI calls of the month and whether batch mode would pay off. */
+export function batchLine(micro: number): string {
+  const head = `🧺 Платные массовые вызовы AI: ${microDollars(micro)} · пакетный режим сэкономил бы ≈ ${microDollars(micro / 2)}`;
+  return micro >= BATCH_THRESHOLD_MICRO_USD
+    ? `${head} — порог ${microDollars(BATCH_THRESHOLD_MICRO_USD)} пройден: можно строить пакетный режим (ADR-0015), решаете вы.`
+    : `${head} (строим от ${microDollars(BATCH_THRESHOLD_MICRO_USD)} в месяц, ADR-0015).`;
+}
+
 export function roiReportText(report: ProcessReport): string {
   const title = report.complete
     ? `📊 ROI процессов · ${monthTitle(report.month)} (месяц закрыт)`
@@ -83,6 +94,7 @@ export function roiReportText(report: ProcessReport): string {
     '',
     total,
     ...(review ? ['Выключить агентов процесса — /access; всё сразу — /stop. Решаете вы.'] : []),
+    batchLine(report.batchableMicroUsd),
     report.complete ? '' : 'Прошлый месяц целиком — /roi прошлый',
     'Расходы — из журналов и вызовов AI, результаты — из базы; вердикт считает код.',
   ]

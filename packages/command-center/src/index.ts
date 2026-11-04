@@ -275,6 +275,7 @@ export {
 } from './payments.js';
 export { pulseDigestLine, pulseText } from './pulse.js';
 export {
+  batchLine,
   forecastLines,
   forecastReviewLine,
   monthTitle,
