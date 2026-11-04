@@ -15,6 +15,7 @@ import { collectEvents, PERIODS } from './journal.js';
 import { killSwitchStatus } from './kill-switch.js';
 import { pulseDigestLine } from './pulse.js';
 import { roiDigestLine } from './roi.js';
+import { modelsDigestLine } from './models.js';
 import { rewardsDigestLine } from './rewards.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
 import { formatTime } from './texts.js';
@@ -30,7 +31,7 @@ export const DIGEST_RETRY_MS = 5 * 60_000;
 export async function buildDigest(
   database: Pick<
     Database,
-    'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns' | 'services' | 'pulse'
+    'repositories' | 'events' | 'access' | 'aiCalls' | 'agentRuns' | 'services' | 'pulse' | 'models'
   >,
   nowMs: number,
 ): Promise<string> {
@@ -54,6 +55,7 @@ export async function buildDigest(
     toTimestamp(new Date(nowMs - PERIODS.day.ms)),
   );
   const pulse = await pulseDigestLine(database, nowMs);
+  const newModels = await modelsDigestLine(database, nowMs);
   const requests = await decidableRequests(database.repositories, now);
   const review = await reviewCount(database.repositories);
   const nearest = requests[0];
@@ -100,6 +102,7 @@ export async function buildDigest(
         ]),
     ...(ai === undefined ? [] : [ai]),
     ...(pulse === undefined ? [] : [pulse]),
+    ...(newModels === undefined ? [] : [newModels]),
     ...(roiDigestLine(nowMs) === undefined ? [] : [roiDigestLine(nowMs) ?? '']),
     ...(agentFailures === 0
       ? []

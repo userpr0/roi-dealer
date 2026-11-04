@@ -35,6 +35,7 @@ import { agentsText } from './agents.js';
 import { pulseText } from './pulse.js';
 import { roiText } from './roi.js';
 import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
+import { createModelsFlow, MODELS_PREFIX } from './models.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -162,6 +163,7 @@ const DESCRIPTIONS = {
   pulse: 'Пульс на 6 недель: праздники рынков и растущие темы',
   roi: 'ROI процессов: что сколько стоило и что дало',
   allocate: 'Портфель тестов: бюджет месяца и что получит деньги',
+  models: 'Модели AI: паспорт, допуск, претенденты по эталонам',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -193,6 +195,7 @@ function withoutDatabase(): Pick<
       FUNNEL_PREFIX,
       COST_PREFIX,
       ALLOCATE_PREFIX,
+      MODELS_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -243,6 +246,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const funnel = createFunnelFlow(deps);
   const costs = createCostFlow(deps);
   const allocations = createAllocateFlow(deps);
+  const modelFlow = createModelsFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -426,6 +430,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         context.reply(await roiText(database, nowMs(), context.args)),
       ),
       command('allocate', 'research.read', allocations.allocate),
+      command('models', 'status.read', modelFlow.models),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),
       command('reward', 'reward.write', rewards.reward),
@@ -448,6 +453,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(FUNNEL_PREFIX, 'experiment.write', funnel.handleButton),
       button(COST_PREFIX, 'cost.record', costs.handleButton),
       button(ALLOCATE_PREFIX, 'decision.record', allocations.handleButton),
+      button(MODELS_PREFIX, 'decision.record', modelFlow.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),

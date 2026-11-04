@@ -283,6 +283,15 @@ export {
   roiText,
 } from './roi.js';
 export {
+  createModelsFlow,
+  MODELS_PREFIX,
+  modelsDigestLine,
+  modelsView,
+  type ModelsFlow,
+  type ModelsFlowDeps,
+  type ModelsView,
+} from './models.js';
+export {
   ALLOCATE_PREFIX,
   ALLOCATE_USAGE,
   allocateText,

@@ -14,7 +14,7 @@ import {
   type AiRuntime,
   type ModelSpec,
 } from '@roi-dealer/ai-runtime';
-import { ensureAccessRequest } from '@roi-dealer/command-center';
+import { createModelsFlow, ensureAccessRequest, modelsView } from '@roi-dealer/command-center';
 import type { Database } from '@roi-dealer/database';
 import {
   approvePrincipal,
@@ -269,6 +269,76 @@ describe('evals (D-014 п.7)', () => {
     const calls = claude.calls.length;
     await ai.runTask(redactNamesTask, { text: SARAH }, CONTEXT);
     expect(claude.calls).toHaveLength(calls);
+  });
+});
+
+describe('model changes by tests (09b, ADR-0014)', () => {
+  it('evaluates a candidate but routes real calls to it only after the owner admits it', async () => {
+    const candidate: ModelSpec = { ...HAIKU, id: 'claude-haiku-cand', admission: 'candidate' };
+    claude.answer(oracle);
+    const ai = runtime({ models: [candidate, GPT_MINI] });
+    await expect(ai.evaluate(redactNamesTask, candidate.id)).resolves.toMatchObject({
+      score: { passed: true },
+    });
+    const before = claude.calls.length;
+    await ai.runTask(redactNamesTask, { text: SARAH }, CONTEXT);
+    expect(claude.calls).toHaveLength(before);
+    expect(await ai.route(redactNamesTask)).not.toContain(candidate.id);
+
+    // /models shows the candidate with its buttons; the owner admits it with a confirmation.
+    const view = await modelsView(db, Date.now(), [candidate, GPT_MINI]);
+    expect(view.text).toContain(`🆕 Претендент: ${candidate.id} · bulk`);
+    // Its report is for redact-names v1; the newest version of the task (v2) has none yet.
+    expect(view.text).toContain('Рекомендация кода: пока нет');
+    const flow = createModelsFlow({
+      database: db,
+      now,
+      owner: () => OWNER,
+      models: [candidate, GPT_MINI],
+    });
+    const edits: { text: string; keyboard?: unknown }[] = [];
+    const press = (data: string, id: string) =>
+      flow.handleButton({
+        data,
+        userId: 1,
+        updateId: 7,
+        callbackQueryId: id,
+        edit: (text: string, keyboard?: unknown) => {
+          edits.push({ text, keyboard });
+          return Promise.resolve();
+        },
+        answer: () => Promise.resolve(),
+      } as never);
+    await press(`md:a:${candidate.id}`, 'q-ask');
+    expect(edits.at(-1)?.text).toContain(`✅ Допустить ${candidate.id} к реальным задачам?`);
+    const yes = JSON.stringify(edits.at(-1)?.keyboard).match(/md:y:[0-9a-f]+/)?.[0];
+    await press(yes ?? expect.unreachable(), 'q-yes');
+    expect(edits.at(-1)?.text).toContain(`✅ ${candidate.id} допущен.`);
+    expect((await db.models.decisions()).get(candidate.id)).toBe('admitted');
+
+    const fresh = runtime({ models: [candidate, GPT_MINI] });
+    expect(await fresh.route(redactNamesTask)).toContain(candidate.id);
+    await expect(
+      db.sql`delete from model_admissions where model_id = ${candidate.id}`,
+    ).rejects.toThrow();
+  });
+
+  it('keeps the first model list of a provider as a baseline and reports later ids', async () => {
+    await db.models.recordListed('google', ['gemini-base']);
+    const [baseline] = await db.sql<{ count: string }[]>`
+      select count(*)::text as count from provider_models where provider = 'google' and baseline
+    `;
+    expect(Number(baseline?.count)).toBeGreaterThan(0);
+    expect(await db.models.recordListed('google', ['gemini-base', 'gemini-zz-new'])).toEqual([
+      'gemini-zz-new',
+    ]);
+    expect(await db.models.recordListed('google', ['gemini-zz-new'])).toEqual([]);
+    const fresh = (await db.models.newModels()).map((item) => item.modelId);
+    expect(fresh).toContain('gemini-zz-new');
+    const listedFirst = await db.sql<{ model_id: string }[]>`
+      select model_id from provider_models where provider = 'google' and baseline
+    `;
+    for (const row of listedFirst) expect(fresh).not.toContain(row.model_id);
   });
 });
 

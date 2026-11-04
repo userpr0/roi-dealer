@@ -16,6 +16,7 @@ import { createPaymentEventLog, type PaymentEventLog } from './payments.js';
 import { createPulseJournal, type PulseJournal } from './pulse.js';
 import { createForecastJournal, type ForecastJournal } from './forecasts.js';
 import { createPortfolioQueries, type PortfolioQueries } from './portfolio.js';
+import { createModelQueries, type ModelQueries } from './models.js';
 import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
@@ -72,6 +73,8 @@ export interface TransactionScope {
   readonly forecasts: ForecastJournal;
   /** The owner's month test budget and what the tests took (phase 26). */
   readonly portfolio: PortfolioQueries;
+  /** Decisions on candidate AI models and the ids providers list (09b). */
+  readonly models: ModelQueries;
 }
 
 export interface TransactionOptions {
@@ -133,6 +136,8 @@ export interface Database {
   readonly forecasts: ForecastJournal;
   /** The month test budget and its limits (phase 26). */
   readonly portfolio: PortfolioQueries;
+  /** Candidate AI models and provider model lists (09b). */
+  readonly models: ModelQueries;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -184,6 +189,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     pulse: createPulseJournal(tx),
     forecasts: createForecastJournal(tx),
     portfolio: createPortfolioQueries(tx),
+    models: createModelQueries(tx),
   };
 }
 
@@ -253,6 +259,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     pulse: createPulseJournal(sql),
     forecasts: createForecastJournal(sql),
     portfolio: createPortfolioQueries(sql),
+    models: createModelQueries(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

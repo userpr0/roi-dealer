@@ -144,7 +144,9 @@ describe('golden sets of the PHASE 06 tasks (D-014 п.7)', () => {
   it('extract-signal: 24 cases, half pains; perfect answers pass, wrong ones fail', () => {
     const { evalCases } = extractSignalTask;
     expect(evalCases.length).toBeGreaterThanOrEqual(MIN_EVAL_CASES);
-    expect(evalCases.filter((c) => c.expected.pain)).toHaveLength(12);
+    expect(evalCases.filter((c) => c.expected.pain)).toHaveLength(13);
+    // 09b: traps hide a command for the model in the post.
+    expect(evalCases.filter((c) => c.trap === true)).toHaveLength(2);
     for (const testCase of evalCases) {
       expect(extractSignalTask.input.safeParse(testCase.input).success).toBe(true);
     }
