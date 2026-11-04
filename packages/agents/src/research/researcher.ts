@@ -79,14 +79,47 @@ export function researcherAgent(options: ResearcherOptions): AgentDefinition {
         logger.info('research skipped: the source is not granted', { catalog_key: catalogKey });
         return { outcome: 'no_access', processed: 0 };
       }
-      const pains = await database.agentWork.pendingPains({
-        agent: RESEARCHER.id,
-        maxSignals: RESEARCH_MAX_SIGNALS,
-        limit: options.batchSize ?? DEFAULT_BATCH,
-      });
-      if (pains.length === 0) return { outcome: 'idle', processed: 0 };
+      const batch = options.batchSize ?? DEFAULT_BATCH;
+      // The owner's topics (/seek) go first, in the same batch; the query is the owner's words.
+      const topics = await database.seek.pending(batch);
+      let searched = 0;
+      for (const topic of topics) {
+        if (context.signal.aborted) break;
+        const collected = await collectEvidence(options.search, {
+          database,
+          logger,
+          now: context.now,
+          redactNames: options.redactNames,
+          signal: context.signal,
+          query: topic.query,
+        });
+        if (collected.status === 'skipped' && collected.reason !== 'nothing_new') {
+          logger.info('owner topic search stopped: the source is not available', {
+            reason: collected.reason,
+          });
+          return { outcome: 'done', processed: searched };
+        }
+        await database.seek.recordRun(
+          topic.id,
+          collected.status === 'collected' ? collected.evidenceCount : 0,
+        );
+        searched += 1;
+      }
+      const pains =
+        batch - searched > 0
+          ? await database.agentWork.pendingPains({
+              agent: RESEARCHER.id,
+              maxSignals: RESEARCH_MAX_SIGNALS,
+              limit: batch - searched,
+            })
+          : [];
+      if (pains.length === 0) {
+        return searched === 0
+          ? { outcome: 'idle', processed: 0 }
+          : { outcome: 'done', processed: searched };
+      }
 
-      let processed = 0;
+      let processed = searched;
       let found = 0;
       let stoppedBy: AgentStop | undefined;
       const record = async (

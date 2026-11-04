@@ -211,3 +211,4 @@ export {
   type WatchDecisionEntry,
   type WatchlistQueries,
 } from './watchlist.js';
+export { createSeekQueries, type SeekQueries, type SeekTopic } from './seek.js';
