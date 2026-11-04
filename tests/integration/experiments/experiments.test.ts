@@ -287,6 +287,39 @@ describe('choosing a hypothesis to test (PHASE 15)', () => {
   });
 });
 
+describe('the portfolio budget (phase 26)', () => {
+  it('sets the month budget after a confirmation and recommends what gets the money', async () => {
+    const [none] = await run('allocate');
+    expect(none?.text).toContain('🎯 Бюджет тестов на месяц не задан.');
+
+    const [wrong] = await run('allocate', '100 страна 200');
+    expect(wrong?.text).toContain('⛔ Лимиты на страну и возможность');
+
+    const [question] = await run('allocate', '300 страна 150 возможность 100');
+    expect(question?.text).toContain(
+      'Месяц $300.00 · на страну до $150.00 · на возможность до $100.00',
+    );
+    const yes = buttons(question).find((data) => data.startsWith('al:y:'));
+    expect((await press(yes ?? expect.unreachable())).text).toBe(
+      '🎯 Бюджет тестов задан. Рекомендация — /allocate.',
+    );
+    const [row] = await db.sql<{ total_cents: number; actor_id: string }[]>`
+      select total_cents, actor_id from portfolio_budgets
+    `;
+    expect(row).toEqual({ total_cents: 30_000, actor_id: OWNER_ACTOR.id });
+
+    const [advice] = await run('allocate');
+    expect(advice?.text).toContain('🎯 Портфель тестов');
+    expect(advice?.text).toContain('Бюджет месяца $300.00 · занято $0.00');
+    expect(advice?.text).toContain('Лимиты: страна $150.00 · возможность $100.00');
+    expect(advice?.text).toContain('Рекомендация кода (сэмплирование Томпсона по итогам тестов):');
+    expect(advice?.text).toMatch(
+      /1\. «Invoices that get paid» — .+ · US · \$\d+\.\d{2} · шанс ~56%/,
+    );
+    expect(advice?.text).toContain('Не входит:');
+  });
+});
+
 describe('the honest-test checklist and the launch (D-014 п.8, D-006)', () => {
   it('asks for the checklist, then requests the launch in /decisions', async () => {
     const landing = by('landing_page');
@@ -308,6 +341,7 @@ describe('the honest-test checklist and the launch (D-014 п.8, D-006)', () => {
     expect(asked.text).toContain('4. Если продукта ещё нет — прямо сказано «скоро»');
     expect(asked.text).toContain('5. На странице: политика конфиденциальности');
     expect(asked.text).toContain('Дальше — запрос на запуск в /decisions на $50.00.');
+    expect(asked.text).toContain('🎯 Портфель месяца: занято $0.00 → $50.00 из $300.00');
 
     const requested = await press(button(experiment, 'yp'));
     expect(requested.text).toContain('🚀 Запуск на $50.00 запрошен');
@@ -383,6 +417,10 @@ describe('the funnel, spend and the stop-loss (D-014 п.9, §2.19)', () => {
       actor_id: OWNER_ACTOR.id,
       channel: 'Reddit ads',
     });
+
+    const [card] = (await run('experiments')).slice(1);
+    // Four leads for a quarter of the budget: about 41 % to reach 20 (phase 26).
+    expect(card?.text).toContain('Шанс дойти до цели: 41%');
 
     const [tooMuch] = await run('funnel', '1 $40');
     expect(tooMuch?.text).toContain('⛔ Траты превысят одобренный бюджет $50.00');

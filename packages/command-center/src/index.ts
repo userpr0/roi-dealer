@@ -274,7 +274,25 @@ export {
   type PaymentFlowDeps,
 } from './payments.js';
 export { pulseDigestLine, pulseText } from './pulse.js';
-export { forecastLines, forecastReviewLine, roiDigestLine, roiReportText, roiText } from './roi.js';
+export {
+  forecastLines,
+  forecastReviewLine,
+  monthTitle,
+  roiDigestLine,
+  roiReportText,
+  roiText,
+} from './roi.js';
+export {
+  ALLOCATE_PREFIX,
+  ALLOCATE_USAGE,
+  allocateText,
+  createAllocateFlow,
+  parseAllocate,
+  portfolioLaunchLines,
+  portfolioMonth,
+  type AllocateFlow,
+  type AllocateFlowDeps,
+} from './allocate.js';
 export {
   aiKeyFixedText,
   aiKeyText,

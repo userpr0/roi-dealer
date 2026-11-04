@@ -34,6 +34,7 @@ import {
 import { agentsText } from './agents.js';
 import { pulseText } from './pulse.js';
 import { roiText } from './roi.js';
+import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -160,6 +161,7 @@ const DESCRIPTIONS = {
   sources: 'Источники данных: разрешены, ждут проверки, отклонены',
   pulse: 'Пульс на 6 недель: праздники рынков и растущие темы',
   roi: 'ROI процессов: что сколько стоило и что дало',
+  allocate: 'Портфель тестов: бюджет месяца и что получит деньги',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -190,6 +192,7 @@ function withoutDatabase(): Pick<
       EXPERIMENT_PREFIX,
       FUNNEL_PREFIX,
       COST_PREFIX,
+      ALLOCATE_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -239,6 +242,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const notes = createNoteFlow(deps);
   const funnel = createFunnelFlow(deps);
   const costs = createCostFlow(deps);
+  const allocations = createAllocateFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -421,6 +425,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('roi', 'history.read', async (context) =>
         context.reply(await roiText(database, nowMs(), context.args)),
       ),
+      command('allocate', 'research.read', allocations.allocate),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),
       command('reward', 'reward.write', rewards.reward),
@@ -442,6 +447,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       button(FUNNEL_PREFIX, 'experiment.write', funnel.handleButton),
       button(COST_PREFIX, 'cost.record', costs.handleButton),
+      button(ALLOCATE_PREFIX, 'decision.record', allocations.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),

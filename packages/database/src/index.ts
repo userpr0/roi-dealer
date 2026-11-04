@@ -191,3 +191,9 @@ export {
   type ForecastOutcomeEntry,
   type StoredForecast,
 } from './forecasts.js';
+export {
+  createPortfolioQueries,
+  type PortfolioBudgetEntry,
+  type PortfolioQueries,
+  type StoredPortfolioBudget,
+} from './portfolio.js';

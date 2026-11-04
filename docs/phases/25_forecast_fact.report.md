@@ -30,7 +30,7 @@
 
 - Unit: вероятность в пределах 5–95 %, входы правил, Brier, «не определена» вне точности, версии отдельно, тексты `/roi`.
 - Integration: прогноз при запуске и факт при итоге двух тестов, `/roi` с Brier 0.26; повторы и правка журнала отклоняются; факт против вердикта отклоняется.
-- `pnpm test` (все unit и integration): 97 файлов, 935 тестов — PASS; `typecheck`, `lint`, `format:check` — PASS.
+- `pnpm test` (все unit и integration): 96 файлов, 927 тестов — PASS; `typecheck`, `lint`, `format:check` — PASS.
 
 ## Not implemented (Feature Kill Gate)
 

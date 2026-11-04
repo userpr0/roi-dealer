@@ -46,7 +46,8 @@ const VERDICT_TEXT: Readonly<Record<ProcessVerdict, string>> = {
 /** Words that ask for the previous month: `/roi прошлый`. */
 const PREVIOUS = new Set(['прошлый', 'прошлого', 'прошлая', 'last', 'prev', 'previous']);
 
-function monthTitle(month: string): string {
+/** 'YYYY-MM' → «ноябрь 2026». */
+export function monthTitle(month: string): string {
   const [year, number] = month.split('-');
   return `${MONTHS[Number(number) - 1] ?? month} ${year ?? ''}`;
 }

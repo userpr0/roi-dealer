@@ -5,6 +5,7 @@ import {
   approveExperiment,
   automaticStopReason,
   cancelApprovalRequest,
+  clearlyAboveTarget,
   cancelExperiment,
   changeHypothesisStatus,
   compareMoney,
@@ -43,6 +44,7 @@ import {
   startOpportunityValidation,
   STOP_REASONS,
   stopExperiment,
+  stoppingEvidence,
   timestampMs,
   toTimestamp,
   usd,
@@ -81,6 +83,7 @@ import {
   type InlineKeyboard,
 } from '@roi-dealer/telegram';
 import { landingLine, MEDIA_PREFIX } from './media.js';
+import { portfolioLaunchLines } from './allocate.js';
 import { paymentLine } from './payments.js';
 import { formatTime, shorten } from './texts.js';
 
@@ -209,6 +212,7 @@ const STOP_LABELS: Readonly<Record<string, string>> = {
   [STOP_REASONS.stopLoss]: 'сработал stop-loss',
   [STOP_REASONS.budget]: 'бюджет израсходован',
   [STOP_REASONS.owner]: 'остановлен вами',
+  [STOP_REASONS.futility]: 'шанс дойти до цели меньше 5% — дальше тратить незачем',
 };
 
 const OUTCOMES: Readonly<
@@ -447,6 +451,25 @@ export function experimentCardText(view: ExperimentView, at: Timestamp): string 
     `Воронка: ${funnelLine(view.totals)}`,
     `Потрачено ${formatUsd(view.spent)} из ${formatUsd(experiment.testBudget)} · stop-loss ${formatUsd(experiment.stopLoss)}`,
   ];
+  // Phase 26: how likely the running test is to reach its target, from its own numbers.
+  const evidence =
+    experiment.status === 'running'
+      ? stoppingEvidence(
+          metric,
+          view.totals,
+          view.spent.amountCents,
+          experiment.testBudget.amountCents,
+        )
+      : undefined;
+  if (evidence !== undefined && evidence.probability < 1) {
+    lines.push(
+      `Шанс дойти до цели: ${String(Math.round(evidence.probability * 100))}%` +
+        (evidence.enoughData ? '' : ' · данных пока мало'),
+    );
+    if (clearlyAboveTarget(evidence)) {
+      lines.push('📈 Уже ясно: цель будет достигнута — можно подводить итог.');
+    }
+  }
   if (
     experiment.artifact === 'landing' &&
     !['completed', 'cancelled'].includes(experiment.status)
@@ -706,7 +729,8 @@ export async function handleExperimentButton(
       : undefined;
     const askOutcome = outcomeOf(action, 'ask');
     if (step === 'launch') {
-      await context.edit(`${card}\n\n${launchQuestion(view)}`, [
+      const portfolio = await portfolioLaunchLines(deps.database, view, timestampMs(at));
+      await context.edit(`${card}\n\n${[launchQuestion(view), ...portfolio].join('\n')}`, [
         [
           button(
             experiment.checksConfirmedAt === undefined
@@ -1320,7 +1344,7 @@ export function createFunnelFlow(deps: ExperimentFlowDeps): FunnelFlow {
         );
       }
       lines.push(`Успех: ${metricText(metric)} · станет ${valueText(metric, value)}`);
-      const stopReason = automaticStopReason(experiment, spendAfter, reached);
+      const stopReason = automaticStopReason(experiment, spendAfter, reached, after);
       if (stopReason !== undefined) {
         lines.push(`⚠️ Тест остановится: ${STOP_LABELS[stopReason] ?? stopReason}.`);
       }
@@ -1519,7 +1543,7 @@ async function recordReport(
     experiment.successMetric,
     metricValue(experiment.successMetric, totals),
   );
-  const stopReason = automaticStopReason(experiment, spent, reached);
+  const stopReason = automaticStopReason(experiment, spent, reached, totals);
   if (stopReason !== undefined) {
     await repositories.experiments.update(
       stopExperiment(experiment, stopReason, { actor, at }),
