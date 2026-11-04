@@ -93,6 +93,7 @@ describe('owner bot process', () => {
           'sources',
           'pulse',
           'roi',
+          'allocate',
           'rewards',
           'contribution',
           'reward',

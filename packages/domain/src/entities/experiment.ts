@@ -9,7 +9,8 @@ import {
   type DomainContext,
 } from '../entity.js';
 import { DomainError } from '../errors.js';
-import { readFunnelMeasure } from '../funnel.js';
+import { readFunnelMeasure, type FunnelTotals } from '../funnel.js';
+import { clearlyBelowTarget, stoppingEvidence } from '../stopping.js';
 import {
   compareMoney,
   formatUsd,
@@ -437,7 +438,16 @@ export const STOP_REASONS = {
   stopLoss: 'Stop-loss reached',
   budget: 'Test budget spent',
   owner: 'Stopped by the owner',
+  /** Phase 26: with enough data, the chance to reach the target is below 5 %. */
+  futility: 'Clearly below the target',
 } as const;
+
+/** The automatic reasons: the data, not the owner, ended the test. */
+const DATA_STOPS: readonly string[] = [
+  STOP_REASONS.stopLoss,
+  STOP_REASONS.budget,
+  STOP_REASONS.futility,
+];
 
 /**
  * The automatic stop of a running test after its spend changed (§2.19, PHASE 15): the whole
@@ -447,10 +457,26 @@ export function automaticStopReason(
   experiment: Experiment,
   spent: Money,
   reached: boolean,
+  totals?: FunnelTotals,
 ): string | undefined {
   if (experiment.status !== 'running') return undefined;
   if (compareMoney(spent, experiment.testBudget) >= 0) return STOP_REASONS.budget;
   if (!reached && compareMoney(spent, experiment.stopLoss) >= 0) return STOP_REASONS.stopLoss;
+  // Phase 26: clearly below the target with enough data — stop before the stop-loss.
+  if (
+    !reached &&
+    totals !== undefined &&
+    clearlyBelowTarget(
+      stoppingEvidence(
+        experiment.successMetric,
+        totals,
+        spent.amountCents,
+        experiment.testBudget.amountCents,
+      ),
+    )
+  ) {
+    return STOP_REASONS.futility;
+  }
   return undefined;
 }
 
@@ -463,8 +489,7 @@ export function hypothesisVerdict(
   reached: boolean,
 ): Extract<HypothesisStatus, 'confirmed' | 'refuted' | 'inconclusive'> {
   if (reached) return 'confirmed';
-  return experiment.stopReason === STOP_REASONS.stopLoss ||
-    experiment.stopReason === STOP_REASONS.budget
+  return experiment.stopReason !== undefined && DATA_STOPS.includes(experiment.stopReason)
     ? 'refuted'
     : 'inconclusive';
 }
@@ -492,10 +517,7 @@ export function proposeExperimentOutcome(
 ): ExperimentResult['outcome'] | undefined {
   if (experiment.status !== 'running' && experiment.status !== 'stopped') return undefined;
   if (reached) return 'scale';
-  if (
-    experiment.stopReason === STOP_REASONS.stopLoss ||
-    experiment.stopReason === STOP_REASONS.budget
-  ) {
+  if (experiment.stopReason !== undefined && DATA_STOPS.includes(experiment.stopReason)) {
     return 'pivot';
   }
   return experimentDay(experiment, at)?.overdue === true ? 'improve' : undefined;

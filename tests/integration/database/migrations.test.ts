@@ -57,6 +57,8 @@ const PROJECT_MIGRATIONS = [
   '0019_service_watch',
   '0020_backup_watch',
   '0021_pulse',
+  '0022_forecasts',
+  '0023_portfolio',
 ];
 
 describe('runMigrations with the project migrations', () => {

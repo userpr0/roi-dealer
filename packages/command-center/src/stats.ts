@@ -19,6 +19,7 @@ import {
 } from './experiments.js';
 import { buildDigest } from './digest.js';
 import { formatKyivDate } from './kyiv-time.js';
+import { forecastReviewLine } from './roi.js';
 
 /*
  * Statistics and the weekly review (PHASE 13, D-014 п.11–12): the cycle from evidence to
@@ -99,10 +100,11 @@ export async function statsText(database: Database, nowMs: number): Promise<stri
 /** The weekly review's summary (D-014 п.12): the week's decisions, tests, money and metrics. */
 export async function weeklyReviewText(database: Database, nowMs: number): Promise<string> {
   const period = { from: iso(nowMs - REVIEW_DAYS * DAY_MS), to: iso(nowMs + 1) };
-  const [decisions, week, month] = await Promise.all([
+  const [decisions, week, month, forecast] = await Promise.all([
     database.stats.decisionsByOutcome(period),
     database.stats.cycle(period.from),
     monthReport(database, nowMs),
+    forecastReviewLine(database),
   ]);
   const opportunityDecisions = decisions.filter((item) => item.subject === 'opportunity');
   const results = decisions.filter((item) => item.subject === 'experiment');
@@ -127,6 +129,7 @@ export async function weeklyReviewText(database: Database, nowMs: number): Promi
         )
         .join(' · '),
     ...(await metricLines(database, nowMs, REVIEW_DAYS)),
+    ...(forecast === undefined ? [] : [forecast]),
     '',
     'Предложения системы по тестам — следующими сообщениями. Решаете вы. Источник: таблицы БД → /stats, /economics',
   ].join('\n');
