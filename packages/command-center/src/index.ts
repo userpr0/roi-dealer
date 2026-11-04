@@ -274,6 +274,7 @@ export {
   type PaymentFlowDeps,
 } from './payments.js';
 export { pulseDigestLine, pulseText } from './pulse.js';
+export { roiDigestLine, roiReportText, roiText } from './roi.js';
 export {
   aiKeyFixedText,
   aiKeyText,

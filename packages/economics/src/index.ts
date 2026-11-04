@@ -6,6 +6,19 @@
  */
 export { aiCents, monthReport, type BudgetLine, type EconomicsReport } from './report.js';
 export {
+  PROCESS_MIN_COST,
+  PROCESS_VERDICTS,
+  PROCESSES,
+  processReport,
+  processRoi,
+  type ProcessDefinition,
+  type ProcessLine,
+  type ProcessOutputKey,
+  type ProcessReport,
+  type ProcessRoiInput,
+  type ProcessVerdict,
+} from './process-roi.js';
+export {
   AUTO_PAUSE_PREFIX,
   createSpendGuard,
   runSpendGuard,

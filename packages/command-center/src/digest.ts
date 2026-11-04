@@ -14,6 +14,7 @@ import { reviewCount } from './opportunity-cards.js';
 import { collectEvents, PERIODS } from './journal.js';
 import { killSwitchStatus } from './kill-switch.js';
 import { pulseDigestLine } from './pulse.js';
+import { roiDigestLine } from './roi.js';
 import { rewardsDigestLine } from './rewards.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
 import { formatTime } from './texts.js';
@@ -99,6 +100,7 @@ export async function buildDigest(
         ]),
     ...(ai === undefined ? [] : [ai]),
     ...(pulse === undefined ? [] : [pulse]),
+    ...(roiDigestLine(nowMs) === undefined ? [] : [roiDigestLine(nowMs) ?? '']),
     ...(agentFailures === 0
       ? []
       : [`⚠️ Сбоев агентов за сутки: ${String(agentFailures)} → /agents`]),

@@ -44,6 +44,27 @@ export interface EconomicsQueries {
     readonly days: number;
     readonly until: number;
   }): Promise<number[]>;
+  /**
+   * What each process of the cycle cost in AI and produced in the period (16b): AI spend per task
+   * (evals apart), and the results the owner cares about — validated pains, owner-approved
+   * opportunities, hypotheses, approved landings, leads.
+   */
+  processOutputs(period: MoneyPeriod): Promise<ProcessOutputs>;
+}
+
+export interface ProcessOutputs {
+  /** AI spend of real tasks (not evals), micro-USD, by task name. */
+  readonly aiByTask: ReadonlyMap<string, number>;
+  /** AI spend of the golden-set evals, micro-USD. */
+  readonly aiEvalMicroUsd: number;
+  readonly signals: number;
+  readonly painsValidated: number;
+  /** Opportunities the owner approved in the period. */
+  readonly opportunitiesApproved: number;
+  readonly hypotheses: number;
+  /** Landings the owner approved or released in the period. */
+  readonly landingsApproved: number;
+  readonly leads: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -199,6 +220,54 @@ export function createEconomicsQueries(executor: Executor): EconomicsQueries {
         for (const row of ai) add(row['day'], Number(row['total']));
         for (const row of costs) add(row['day'], Number(row['total']) * MICRO_PER_CENT);
         return totals;
+      }),
+
+    processOutputs: (period) =>
+      translated(async () => {
+        const ai = await executor<Row[]>`
+          select task, purpose, coalesce(sum(cost_micro_usd), 0)::bigint as total
+          from ai_calls
+          where occurred_at >= ${period.from} and occurred_at < ${period.to}
+          group by task, purpose
+        `;
+        const aiByTask = new Map<string, number>();
+        let aiEvalMicroUsd = 0;
+        for (const row of ai) {
+          const total = Number(row['total']);
+          if (row['purpose'] === 'eval') aiEvalMicroUsd += total;
+          else aiByTask.set(String(row['task']), (aiByTask.get(String(row['task'])) ?? 0) + total);
+        }
+        const [row] = await executor<Row[]>`
+          select
+            (select count(*) from signals
+              where created_at >= ${period.from} and created_at < ${period.to})::bigint as signals,
+            (select count(*) from pains where status = 'validated'
+              and updated_at >= ${period.from} and updated_at < ${period.to})::bigint
+              as pains_validated,
+            (select count(*) from decisions where subject_type = 'opportunity'
+              and created_by_type = 'owner' and outcome = 'approve'
+              and created_at >= ${period.from} and created_at < ${period.to})::bigint
+              as opportunities_approved,
+            (select count(*) from hypotheses
+              where created_at >= ${period.from} and created_at < ${period.to})::bigint
+              as hypotheses,
+            (select count(*) from media_assets where status in ('approved', 'released')
+              and updated_at >= ${period.from} and updated_at < ${period.to})::bigint
+              as landings_approved,
+            (select count(*) from leads
+              where created_at >= ${period.from} and created_at < ${period.to})::bigint as leads
+        `;
+        const count = (key: string) => Number(row?.[key] ?? 0);
+        return {
+          aiByTask,
+          aiEvalMicroUsd,
+          signals: count('signals'),
+          painsValidated: count('pains_validated'),
+          opportunitiesApproved: count('opportunities_approved'),
+          hypotheses: count('hypotheses'),
+          landingsApproved: count('landings_approved'),
+          leads: count('leads'),
+        };
       }),
   };
 }

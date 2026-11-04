@@ -33,6 +33,7 @@ import {
 } from './journal.js';
 import { agentsText } from './agents.js';
 import { pulseText } from './pulse.js';
+import { roiText } from './roi.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -158,6 +159,7 @@ const DESCRIPTIONS = {
   agents: 'Агенты: доступ, работа, AI за сутки',
   sources: 'Источники данных: разрешены, ждут проверки, отклонены',
   pulse: 'Пульс на 6 недель: праздники рынков и растущие темы',
+  roi: 'ROI процессов: что сколько стоило и что дало',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -415,6 +417,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('pulse', 'status.read', async (context) =>
         context.reply(await pulseText(database, nowMs())),
+      ),
+      command('roi', 'history.read', async (context) =>
+        context.reply(await roiText(database, nowMs(), context.args)),
       ),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),
