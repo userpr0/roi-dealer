@@ -44,6 +44,8 @@ export type CustomerOutcome = (typeof CUSTOMER_OUTCOMES)[number];
 
 /** Contacts of leads that did not become customers are erased this long after the test. */
 export const LEAD_RETENTION_DAYS = 180;
+/** Unconfirmed topic subscriptions (phase 28) are deleted after this many days. */
+export const AUDIENCE_RETENTION_DAYS = 180;
 
 const newLeadShape = {
   experimentId: experimentIdSchema,

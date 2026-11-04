@@ -38,6 +38,7 @@ import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
 import { createModelsFlow, MODELS_PREFIX } from './models.js';
 import { createWatchlistFlow, WATCHLIST_PREFIX } from './watchlist.js';
 import { createSeekFlow, SEEK_PREFIX } from './seek.js';
+import { audienceText } from './audience.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -168,6 +169,7 @@ const DESCRIPTIONS = {
   models: 'Модели AI: паспорт, допуск, претенденты по эталонам',
   watchlist: 'Лист наблюдения: отсечённое, которое снова растёт',
   seek: 'Тема поиска для агента исследований',
+  audience: 'Своя аудитория: подписчики по темам',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -441,6 +443,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('models', 'status.read', modelFlow.models),
       command('watchlist', 'research.read', watch.watchlist),
       command('seek', 'research.read', seeker.seek),
+      command('audience', 'lead.manage', async (context) =>
+        context.reply(await audienceText(database, ownerActor(context.userId))),
+      ),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),
       command('reward', 'reward.write', rewards.reward),

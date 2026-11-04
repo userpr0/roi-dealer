@@ -283,6 +283,7 @@ export {
   roiReportText,
   roiText,
 } from './roi.js';
+export { audienceText } from './audience.js';
 export {
   createSeekFlow,
   SEEK_PREFIX,

@@ -19,6 +19,12 @@ describe('the sign-up form (PHASE 20)', () => {
     expect(parseLeadForm('email=%20Anna%40Example.ORG%20&consent=yes')).toEqual({
       kind: 'valid',
       email: 'anna@example.org',
+      updates: false,
+    });
+    // Phase 28: the separate box for topic emails.
+    expect(parseLeadForm('email=anna%40example.org&consent=yes&updates=yes')).toMatchObject({
+      kind: 'valid',
+      updates: true,
     });
     expect(parseLeadForm('email=anna%40example.org')).toEqual({
       kind: 'invalid',
