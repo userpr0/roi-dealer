@@ -69,7 +69,7 @@ import { CONTRIBUTION_PREFIX, createRewardFlow, REWARD_PREFIX } from './rewards.
 import { isReviewDay, sendWeeklyReview, statsText, weeklyReviewText } from './stats.js';
 import { createKillSwitchFlow, KILL_SWITCH_PREFIX, killSwitchStatus } from './kill-switch.js';
 import { NO_DATABASE_TEXT } from './texts.js';
-import { backupStatusLine, createServiceWatchdog, setupStatus } from './watchdog.js';
+import { backupStatusLine, createServiceWatchdog, setupStatus, type Hosting } from './watchdog.js';
 
 export interface CommandCenterOptions {
   /** Without a database the panel commands explain that it is not connected. */
@@ -83,6 +83,8 @@ export interface CommandCenterOptions {
   readonly cardIntervalMs?: number | undefined;
   /** The api's public address (`PUBLIC_API_URL`): preview links of landings (PHASE 19a). */
   readonly publicApiUrl?: string | undefined;
+  /** Where the services run (D-029, D-032): the watchdog's hints name its steps. */
+  readonly hosting?: Hosting | undefined;
   /**
    * The bot's version and start (13c): the watchdog compares the services' versions with it.
    * Without them the watchdog does not run.
@@ -320,7 +322,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
           intervalMs: options.cardIntervalMs,
           publicApiUrl: options.publicApiUrl,
         });
-  const setup = { publicApiUrl: options.publicApiUrl !== undefined };
+  const setup = { publicApiUrl: options.publicApiUrl !== undefined, hosting: options.hosting };
   const watchdog =
     options.watchdog === undefined
       ? undefined
@@ -459,7 +461,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         await killSwitchStatus(database.repositories, database.events),
         await aiStatusLine(database.aiCalls, nowMs()),
         ...(await setupStatus(database, setup, nowMs())).lines,
-        backupStatusLine(await database.services.heartbeats(), nowMs()),
+        backupStatusLine(await database.services.heartbeats(), nowMs(), options.hosting),
       ];
     },
     refused: (attempt) => audit.refused(attempt),

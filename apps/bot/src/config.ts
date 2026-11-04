@@ -32,6 +32,8 @@ const botConfigSchema = z.object({
   APP_VERSION: z.string().min(1).max(64).default('dev'),
   /** The commit Railway deployed: the version when `APP_VERSION` is not set (13c). */
   RAILWAY_GIT_COMMIT_SHA: railwayCommitSchema,
+  /** Railway sets it on every service: the watchdog then names Railway's steps (D-032). */
+  RAILWAY_ENVIRONMENT_ID: z.string().trim().min(1).optional(),
   TELEGRAM_BOT_TOKEN: telegramBotTokenSchema,
   /** The only Telegram user the bot answers to. */
   TELEGRAM_OWNER_USER_ID: telegramUserIdSchema,

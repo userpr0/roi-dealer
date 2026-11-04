@@ -426,3 +426,22 @@ describe('the setup checklist of /status (D-023)', () => {
     );
   });
 });
+
+describe('the checklist on Railway (D-032)', () => {
+  it('names the Railway steps and variables', async () => {
+    await mark('worker', 30);
+    const { lines } = await setupStatus(db, { publicApiUrl: false, hosting: 'railway' }, clock);
+    expect(
+      lines.some(
+        (line) =>
+          line.startsWith('🔴 worker молчит с ') &&
+          line.endsWith(' — Railway → worker → Deployments → Restart'),
+      ),
+    ).toBe(true);
+    expect(lines).toContain(
+      '⚠️ ключи AI не заданы у worker — Railway → worker → Variables → GEMINI_API_KEY',
+    );
+    expect(lines).toContain('⚠️ api не запущен — deploy/START.md');
+    expect(lines.join('\n')).not.toContain('Hetzner');
+  });
+});

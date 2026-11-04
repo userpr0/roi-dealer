@@ -37,14 +37,65 @@ export const AI_PROVIDER_SETUP: Readonly<
   google: { name: 'Google (Gemini)', variable: 'GEMINI_API_KEY' },
 };
 
+/**
+ * Where the services run (D-029, D-032): the watchdog's hints name the steps of that host. The
+ * bot knows it from the variables Railway sets on its own; elsewhere it is the Hetzner server.
+ */
+export const HOSTINGS = ['hetzner', 'railway'] as const;
+export type Hosting = (typeof HOSTINGS)[number];
+
+interface HostingHints {
+  /** How to restart a silent service, without losing data. */
+  readonly restart: (service: ServiceName) => string;
+  /** What to do when the versions stay apart. */
+  readonly update: string;
+  /** Where a variable is replaced. */
+  readonly replace: (variable: string, service: ServiceName) => string;
+  /** The guide of the host. */
+  readonly guide: string;
+  /** Short restart step for the /status checklist. */
+  readonly restartShort: (service: ServiceName) => string;
+  /** Where to set a missing variable, for the /status checklist. */
+  readonly setting: (variable: string, service: ServiceName) => string;
+}
+
+export const HOSTING_HINTS: Readonly<Record<Hosting, HostingHints>> = {
+  hetzner: {
+    restart: () =>
+      'Hetzner → сервер → Power → Reboot перезапустит сервисы, данные сохранятся (deploy/hetzner.md)',
+    update:
+      'Сервер обновляется сам раз в 5 минут. Если версии не сойдутся за час — Hetzner → сервер → Power → Reboot.',
+    replace: (variable) => `Замените ${variable} — deploy/hetzner.md, «Заменить ключ»`,
+    guide: 'deploy/hetzner.md',
+    restartShort: () => 'Hetzner → сервер → Reboot',
+    setting: () => 'deploy/hetzner.md, «Заменить ключ»',
+  },
+  railway: {
+    restart: (service) =>
+      `Railway → ${service} → Deployments → ⋮ у последнего деплоя → Restart, данные сохранятся (deploy/START.md)`,
+    update:
+      'Railway → сервис → Deployments: если последний деплой упал или ждёт в очереди — ⋮ → Redeploy. Если очередь стоит — status.railway.com.',
+    replace: (variable, service) =>
+      `Railway → ${service} → Variables → ${variable}: замените значение, сервис перезапустится сам`,
+    guide: 'deploy/START.md',
+    restartShort: (service) => `Railway → ${service} → Deployments → Restart`,
+    setting: (variable, service) => `Railway → ${service} → Variables → ${variable}`,
+  },
+};
+
 function minutes(fromMs: number, toMs: number): string {
   return `${String(Math.max(1, Math.round((toMs - fromMs) / 60_000)))} мин`;
 }
 
-export function silentText(service: ServiceName, lastSeen: Timestamp, nowMs: number): string {
+export function silentText(
+  service: ServiceName,
+  lastSeen: Timestamp,
+  nowMs: number,
+  hosting: Hosting = 'hetzner',
+): string {
   return [
     `🔴 ${service} молчит ${minutes(timestampMs(lastSeen), nowMs)}: последняя отметка ${formatTime(lastSeen)} (Киев).`,
-    `Hetzner → сервер → Power → Reboot перезапустит сервисы, данные сохранятся (deploy/hetzner.md). Когда ${service} заработает, я напишу.`,
+    `${HOSTING_HINTS[hosting].restart(service)}. Когда ${service} заработает, я напишу.`,
   ].join('\n');
 }
 
@@ -69,18 +120,31 @@ export function backupRecoveredText(heartbeat: Pick<ServiceHeartbeat, 'setup'>):
 }
 
 /** For /status: the last successful backup; not part of the launch checklist. */
-export function backupStatusLine(heartbeats: readonly ServiceHeartbeat[], nowMs: number): string {
+export function backupStatusLine(
+  heartbeats: readonly ServiceHeartbeat[],
+  nowMs: number,
+  hosting: Hosting = 'hetzner',
+): string {
   const backup = heartbeats.find((item) => item.service === 'backup');
-  if (backup === undefined) return '💾 Бэкап: ещё не было (ночью на сервере Hetzner)';
+  if (backup === undefined) {
+    return hosting === 'railway'
+      ? '💾 Бэкап: на Railway — вкладка Backups сервиса Postgres (deploy/START.md)'
+      : '💾 Бэкап: ещё не было (ночью на сервере Hetzner)';
+  }
   const reserve = backup.setup['reserve'] === true ? ' · копия в резерве' : '';
   const late = nowMs - timestampMs(backup.seenAt) > BACKUP_SILENT_AFTER_MS ? '🔴' : '💾';
   return `${late} Бэкап: последний ${formatTime(backup.seenAt)} (Киев)${reserve}`;
 }
 
-export function versionText(service: ServiceName, serviceVersion: string, bot: string): string {
+export function versionText(
+  service: ServiceName,
+  serviceVersion: string,
+  bot: string,
+  hosting: Hosting = 'hetzner',
+): string {
   return [
     `⚠️ Версии разошлись: бот — ${bot}, ${service} — ${serviceVersion}. Последний деплой одного из них не прошёл.`,
-    'Сервер обновляется сам раз в 5 минут. Если версии не сойдутся за час — Hetzner → сервер → Power → Reboot.',
+    HOSTING_HINTS[hosting].update,
   ].join('\n');
 }
 
@@ -88,11 +152,15 @@ export function versionFixedText(service: ServiceName, version: string): string 
   return `✅ ${service} на той же версии, что и бот (${version}).`;
 }
 
-export function aiKeyText(provider: AiProvider, rejected: number): string {
+export function aiKeyText(
+  provider: AiProvider,
+  rejected: number,
+  hosting: Hosting = 'hetzner',
+): string {
   const { name, variable } = AI_PROVIDER_SETUP[provider];
   return [
     `🔑 Ключ ${name} не принят: ${String(rejected)} вызовов за час с ошибкой доступа.`,
-    `Замените ${variable} — deploy/hetzner.md, «Заменить ключ» — и проверьте баланс в кабинете провайдера. Пока работают другие провайдеры.`,
+    `${HOSTING_HINTS[hosting].replace(variable, 'worker')} — и проверьте баланс в кабинете провайдера. Пока работают другие провайдеры.`,
   ].join('\n');
 }
 
@@ -113,6 +181,8 @@ export interface ServiceWatchdogOptions {
   readonly intervalMs?: number | undefined;
   /** With the bot's own setup, the owner is told once when everything is set up. */
   readonly setup?: SetupFacts | undefined;
+  /** Where the services run: the hints name its steps. Default: Hetzner. */
+  readonly hosting?: Hosting | undefined;
 }
 
 export const SETUP_COMPLETE_TEXT = [
@@ -130,6 +200,7 @@ export interface ServiceWatchdog {
 export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceWatchdog {
   const { database, logger } = options;
   const nowMs = options.now ?? Date.now;
+  const hosting = options.hosting ?? options.setup?.hosting ?? 'hetzner';
   let timer: NodeJS.Timeout | undefined;
   let running: Promise<unknown> | undefined;
 
@@ -176,7 +247,7 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
       if (silent && silentIncident === undefined) {
         sent += await report(
           { kind: 'silent', subject: service, detail: heartbeat.seenAt },
-          silentText(service, heartbeat.seenAt, now),
+          silentText(service, heartbeat.seenAt, now, hosting),
         );
       } else if (!silent && silentIncident !== undefined) {
         sent += await close(
@@ -195,7 +266,7 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
         if (now - options.startedAtMs > VERSION_GRACE_MS) {
           sent += await report(
             { kind: 'version', subject: service, detail: options.version },
-            versionText(service, heartbeat.version, options.version),
+            versionText(service, heartbeat.version, options.version, hosting),
           );
         }
       } else if (!differs && !silent && versionIncident !== undefined) {
@@ -270,7 +341,7 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
             subject: provider,
             detail: new Date(now).toISOString().slice(0, 10),
           },
-          aiKeyText(provider, rejected.length),
+          aiKeyText(provider, rejected.length, hosting),
         );
       } else if (
         incident !== undefined &&
@@ -317,6 +388,8 @@ export function createServiceWatchdog(options: ServiceWatchdogOptions): ServiceW
 export interface SetupFacts {
   /** The bot has the api's address (`PUBLIC_API_URL`): the menu button «Пульт». */
   readonly publicApiUrl: boolean;
+  /** Where the services run: the checklist names its guide and steps. Default: Hetzner. */
+  readonly hosting?: Hosting | undefined;
 }
 
 export interface SetupStatus {
@@ -337,15 +410,16 @@ export async function setupStatus(
   ]);
   const of = (service: ServiceName): ServiceHeartbeat | undefined =>
     heartbeats.find((item) => item.service === service);
+  const hints = HOSTING_HINTS[facts.hosting ?? 'hetzner'];
   const state = (service: ServiceName): { ok: boolean; line: string } => {
     const heartbeat = of(service);
     if (heartbeat === undefined) {
-      return { ok: false, line: `⚠️ ${service} не запущен — deploy/hetzner.md` };
+      return { ok: false, line: `⚠️ ${service} не запущен — ${hints.guide}` };
     }
     if (nowMs - timestampMs(heartbeat.seenAt) > SILENT_AFTER_MS) {
       return {
         ok: false,
-        line: `🔴 ${service} молчит с ${formatTime(heartbeat.seenAt)} — Hetzner → сервер → Reboot`,
+        line: `🔴 ${service} молчит с ${formatTime(heartbeat.seenAt)} — ${hints.restartShort(service)}`,
       };
     }
     return { ok: true, line: `✅ ${service} работает · ${heartbeat.version}` };
@@ -372,20 +446,20 @@ export async function setupStatus(
       line:
         providers.length > 0
           ? `✅ AI: ${providers.join(', ')}${freeNote}`
-          : '⚠️ ключи AI не заданы у worker — deploy/hetzner.md, «Заменить ключ»',
+          : `⚠️ ключи AI не заданы у worker — ${hints.setting('GEMINI_API_KEY', 'worker')}`,
     },
     api,
     {
       ok: form,
       line: form
         ? '✅ форма заявки на страницах тестов'
-        : '⚠️ нет PUBLIC_CONTACT_EMAIL у api — deploy/hetzner.md, «Заменить ключ»',
+        : `⚠️ нет PUBLIC_CONTACT_EMAIL у api — ${hints.setting('PUBLIC_CONTACT_EMAIL', 'api')}`,
     },
     {
       ok: facts.publicApiUrl,
       line: facts.publicApiUrl
         ? '✅ кнопка «Пульт»'
-        : '⚠️ нет PUBLIC_API_URL у бота — deploy/hetzner.md',
+        : `⚠️ нет PUBLIC_API_URL у бота — ${hints.guide}`,
     },
     {
       ok: access === 0,

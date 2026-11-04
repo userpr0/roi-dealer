@@ -77,6 +77,10 @@ async function main(): Promise<void> {
     deliverCard: (text, keyboard) => client.sendMessage({ chatId: ownerUserId, text, keyboard }),
     cardIntervalMs: config.DECISION_CARDS_INTERVAL_MS,
     publicApiUrl: config.PUBLIC_API_URL,
+    hosting:
+      config.RAILWAY_ENVIRONMENT_ID !== undefined || config.RAILWAY_GIT_COMMIT_SHA !== undefined
+        ? 'railway'
+        : 'hetzner',
     watchdog: {
       version: runtime.version,
       startedAtMs: startedAt,
