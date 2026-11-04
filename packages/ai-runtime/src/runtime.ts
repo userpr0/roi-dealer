@@ -17,6 +17,7 @@ import {
 import type { AiCallPurpose, AiFailure, Database } from '@roi-dealer/database';
 import type { Logger } from '@roi-dealer/observability';
 import { uuidv7 } from '@roi-dealer/shared';
+import { isAdmitted } from './admission.js';
 import { callCostMicroUsd, MODEL_REGISTRY, modelTag, type ModelSpec } from './models.js';
 import { classifyError, ProviderFailure, type AiProviderClient } from './providers/provider.js';
 import { EVAL_DAILY_SHARE, type AiTask, type AnyAiTask, type EvalScore } from './task.js';
@@ -186,6 +187,29 @@ export function routingOrder(
   ];
 }
 
+/**
+ * The task's own score, failed when any trap of its golden set (ADR-0014) is answered wrongly:
+ * each trap must pass the task's score on its own, and its share is a metric of the report.
+ */
+export function withTraps(
+  task: AnyAiTask,
+  results: readonly { readonly expected: unknown; readonly output: unknown }[],
+): EvalScore {
+  const score = task.score(results);
+  const traps = task.evalCases.flatMap((testCase, index) => {
+    const result = results[index];
+    return testCase.trap === true && result !== undefined ? [result] : [];
+  });
+  if (traps.length === 0) return score;
+  const held = traps.filter(
+    (result) => result.output !== undefined && task.score([result]).passed,
+  ).length;
+  return {
+    passed: score.passed && held === traps.length,
+    metrics: { ...score.metrics, traps: held / traps.length },
+  };
+}
+
 export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
   const { database, logger } = options;
   const models = options.models ?? MODEL_REGISTRY;
@@ -221,8 +245,9 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
     const key = `${task.name}@${String(task.version)}`;
     const cached = routes.get(key);
     if (cached !== undefined && now() - cached.at < ROUTE_CACHE_MS) return cached.models;
+    const decisions = await database.models.decisions();
     const passing: { model: ModelSpec; report: EvalSummary }[] = [];
-    for (const model of usableModels(task)) {
+    for (const model of usableModels(task).filter((item) => isAdmitted(item, decisions))) {
       const report = await reportOf(task, model.id);
       if (report?.passed === true) passing.push({ model, report });
     }
@@ -365,7 +390,7 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
         results.push({ expected: testCase.expected, output: undefined });
       }
     }
-    const score = task.score(results);
+    const score = withTraps(task, results);
     const costMicroUsd = tally.micro;
     const at = iso(now());
     const metrics = Object.entries(score.metrics)
@@ -443,7 +468,16 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
     async verifyModels() {
       for (const provider of options.providers) {
         try {
-          const listed = new Set(await provider.listModels());
+          const ids = await provider.listModels();
+          const listed = new Set(ids);
+          // New ids after the first list are shown to the owner in /models (ADR-0014).
+          const fresh = await database.models.recordListed(provider.provider, ids);
+          if (fresh.length > 0) {
+            logger.info('ai new provider models', {
+              provider: provider.provider,
+              count: fresh.length,
+            });
+          }
           for (const model of models.filter((item) => item.provider === provider.provider)) {
             available.set(model.id, listed.has(model.id));
           }
@@ -463,8 +497,12 @@ export function createAiRuntime(options: AiRuntimeOptions): AiRuntime {
 
     async evaluateMissing(tasks) {
       const reports: EvalReport[] = [];
+      const decisions = await database.models.decisions();
       for (const task of tasks) {
-        for (const model of usableModels(task)) {
+        // Candidates are evaluated too (ADR-0014); a rejected model is not.
+        for (const model of usableModels(task).filter(
+          (item) => decisions.get(item.id) !== 'rejected',
+        )) {
           if ((await reportOf(task, model.id)) !== undefined) continue;
           try {
             reports.push(await evaluate(task, model.id));

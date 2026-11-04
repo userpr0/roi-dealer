@@ -303,6 +303,9 @@ importers:
 
   packages/command-center:
     dependencies:
+      '@roi-dealer/ai-runtime':
+        specifier: workspace:*
+        version: link:../ai-runtime
       '@roi-dealer/brain':
         specifier: workspace:*
         version: link:../brain

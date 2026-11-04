@@ -20,12 +20,33 @@ export {
 } from './maintenance.js';
 export {
   callCostMicroUsd,
+  MODALITIES,
+  MODEL_ADMISSIONS,
   MODEL_REGISTRY,
   modelTag,
+  NOT_CHECKED,
   TASK_TIERS,
+  type Modality,
+  type ModelAdmission,
+  type ModelPassport,
   type ModelSpec,
   type TaskTier,
 } from './models.js';
+export {
+  CAPABILITY_WISHES,
+  compareCandidate,
+  isAdmitted,
+  latestEvals,
+  retiringModels,
+  wishesMet,
+  type CandidateComparison,
+  type CapabilityWish,
+  type EvalResult,
+  type ModelDecision,
+  type StoredEval,
+  type TaskComparison,
+  type TaskVerdict,
+} from './admission.js';
 export { createAnthropicProvider, type AnthropicProviderOptions } from './providers/anthropic.js';
 export {
   createGoogleProvider,
@@ -46,6 +67,7 @@ export {
   AiTaskError,
   createAiRuntime,
   routingOrder,
+  withTraps,
   type AiRuntime,
   type AiRuntimeOptions,
   type AiSpendToday,
@@ -58,6 +80,7 @@ export {
 export {
   EVAL_DAILY_SHARE,
   MIN_EVAL_CASES,
+  MIN_TRAP_CASES,
   type AiTask,
   type AnyAiTask,
   type EvalCase,

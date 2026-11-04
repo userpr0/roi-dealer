@@ -197,3 +197,10 @@ export {
   type PortfolioQueries,
   type StoredPortfolioBudget,
 } from './portfolio.js';
+export {
+  createModelQueries,
+  type ListedModel,
+  type ModelAdmissionEntry,
+  type ModelDecision,
+  type ModelQueries,
+} from './models.js';

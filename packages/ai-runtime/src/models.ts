@@ -17,6 +17,42 @@ export interface ModelSpec {
   /** Where the price comes from and when it was checked. */
   readonly priceSource: string;
   readonly checkedOn: string;
+  /** The passport (09b, ADR-0014): what the model can do and on what terms. */
+  readonly passport: ModelPassport;
+  /**
+   * `standing` — admitted by ADR-0006 / D-021; `candidate` — runs only on evals until the owner
+   * admits it in /models.
+   */
+  readonly admission: ModelAdmission;
+}
+
+export const MODALITIES = [
+  'text',
+  'image_in',
+  'video_in',
+  'audio_in',
+  'image_out',
+  'audio_out',
+] as const;
+export type Modality = (typeof MODALITIES)[number];
+
+export const MODEL_ADMISSIONS = ['standing', 'candidate'] as const;
+export type ModelAdmission = (typeof MODEL_ADMISSIONS)[number];
+
+/** A passport field the model scout has not confirmed on the provider's official page yet. */
+export const NOT_CHECKED = 'not_checked';
+
+export interface ModelPassport {
+  readonly modalities: readonly Modality[];
+  /** Whether the provider may use our requests to train its models on this plan. */
+  readonly dataUse: 'no_training' | 'may_train' | typeof NOT_CHECKED;
+  /** Who holds the rights to what the model returns. */
+  readonly outputRights: 'customer' | 'restricted' | typeof NOT_CHECKED;
+  /** The date the provider retires the model, when announced (YYYY-MM-DD). */
+  readonly retiresOn?: string | undefined;
+  /** Where the passport comes from and when it was checked. */
+  readonly source: string;
+  readonly checkedOn: string;
 }
 
 const USD = 1_000_000;
@@ -37,6 +73,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Claude API reference (prompts up to 100K tokens)',
     checkedOn: '2026-10-18',
+    passport: {
+      modalities: ['text', 'image_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
   {
     id: 'gemini-3.1-flash-lite',
@@ -49,6 +93,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Gemini API pricing page (paid tier, text); confirmed by the model list',
     checkedOn: '2026-10-18',
+    passport: {
+      modalities: ['text', 'image_in', 'video_in', 'audio_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
   {
     id: 'gpt-5.4-mini',
@@ -60,6 +112,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Third-party price tables (June and October 2026); confirmed by the model list',
     checkedOn: '2026-10-18',
+    passport: {
+      modalities: ['text', 'image_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
   {
     id: 'claude-opus-5-5',
@@ -71,6 +131,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Claude API reference',
     checkedOn: '2026-10-18',
+    passport: {
+      modalities: ['text', 'image_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
   // PHASE 11 (ADR-0006): strong models of the other providers, so judgement runs with any key.
   {
@@ -84,6 +152,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Third-party price tables (June and August 2026); confirmed by the model list',
     checkedOn: '2026-10-19',
+    passport: {
+      modalities: ['text', 'image_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
   {
     id: 'gemini-3.1-pro-preview',
@@ -97,6 +173,14 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     structuredOutput: true,
     priceSource: 'Third-party price tables (July and September 2026, higher of the two)',
     checkedOn: '2026-10-19',
+    passport: {
+      modalities: ['text', 'image_in', 'video_in', 'audio_in'],
+      dataUse: NOT_CHECKED,
+      outputRights: NOT_CHECKED,
+      source: 'Provider model overview (inputs); terms to be confirmed by model-scout',
+      checkedOn: '2026-11-04',
+    },
+    admission: 'standing',
   },
 ];
 

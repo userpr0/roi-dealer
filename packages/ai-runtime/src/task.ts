@@ -5,6 +5,11 @@ import type { TaskTier } from './models.js';
 export interface EvalCase<Input, Expected> {
   readonly input: Input;
   readonly expected: Expected;
+  /**
+   * A trap (09b, ADR-0014): the input hides a command for the model ("ignore the rules…"). A
+   * model passes the eval only if it answers every trap correctly on its own.
+   */
+  readonly trap?: boolean | undefined;
 }
 
 /** Quality of a set of answers; the task decides when it passes. */
@@ -28,6 +33,11 @@ export interface AiTask<Input, Output, Expected = Output> {
    * terms let the provider use the content (D-025).
    */
   readonly privateInput?: boolean | undefined;
+  /**
+   * The input holds text written by outsiders (Evidence, market context): its golden set has at
+   * least `MIN_TRAP_CASES` traps (09b, ADR-0014).
+   */
+  readonly externalText?: boolean | undefined;
   /** System instructions; the input is rendered into the user message. */
   readonly instructions: string;
   readonly input: z.ZodType<Input>;
@@ -54,6 +64,9 @@ export interface AiTask<Input, Output, Expected = Output> {
 export type AnyAiTask = AiTask<any, any, any>;
 
 export const MIN_EVAL_CASES = 20;
+
+/** Traps in the golden set of a task that reads outsiders' text (ADR-0014). */
+export const MIN_TRAP_CASES = 2;
 
 /** Share of today's AI allowance for all eval runs together (D-021). */
 export const EVAL_DAILY_SHARE = 0.2;
