@@ -96,6 +96,7 @@ describe('owner bot process', () => {
           'allocate',
           'models',
           'watchlist',
+          'seek',
           'rewards',
           'contribution',
           'reward',

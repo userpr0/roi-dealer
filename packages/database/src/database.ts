@@ -18,6 +18,7 @@ import { createForecastJournal, type ForecastJournal } from './forecasts.js';
 import { createPortfolioQueries, type PortfolioQueries } from './portfolio.js';
 import { createModelQueries, type ModelQueries } from './models.js';
 import { createWatchlistQueries, type WatchlistQueries } from './watchlist.js';
+import { createSeekQueries, type SeekQueries } from './seek.js';
 import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
@@ -78,6 +79,8 @@ export interface TransactionScope {
   readonly models: ModelQueries;
   /** The owner's answers on cut pains that came back (phase 27). */
   readonly watchlist: WatchlistQueries;
+  /** Topics the owner asked to search (/seek). */
+  readonly seek: SeekQueries;
 }
 
 export interface TransactionOptions {
@@ -143,6 +146,8 @@ export interface Database {
   readonly models: ModelQueries;
   /** The watchlist of cut pains (phase 27). */
   readonly watchlist: WatchlistQueries;
+  /** Owner search topics (/seek). */
+  readonly seek: SeekQueries;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -196,6 +201,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     portfolio: createPortfolioQueries(tx),
     models: createModelQueries(tx),
     watchlist: createWatchlistQueries(tx),
+    seek: createSeekQueries(tx),
   };
 }
 
@@ -267,6 +273,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     portfolio: createPortfolioQueries(sql),
     models: createModelQueries(sql),
     watchlist: createWatchlistQueries(sql),
+    seek: createSeekQueries(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

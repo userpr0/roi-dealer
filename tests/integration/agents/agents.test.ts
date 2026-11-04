@@ -380,6 +380,19 @@ describe('the research agent finds more posts about a pain (PHASE 10)', () => {
     expect(hn.searches).toEqual(['reconcile stripe payouts', 'late invoices']);
   });
 
+  it('searches the owner’s topics (/seek) first, once each', async () => {
+    await db.seek.add({ query: 'escrow for freelancers', actorId: 'telegram:1' });
+    hn.answerSearch((query) => (query === 'escrow for freelancers' ? [] : []));
+    const before = hn.searches.length;
+    await expect(context(research())).resolves.toBe('done');
+    expect(hn.searches.slice(before)).toEqual(['escrow for freelancers']);
+    expect(await db.seek.pending(5)).toEqual([]);
+    const [topic] = await db.seek.list(5);
+    expect(topic).toMatchObject({ query: 'escrow for freelancers', evidence: 0 });
+    await expect(context(research())).resolves.toBe('idle');
+    expect(hn.searches.slice(before)).toEqual(['escrow for freelancers']);
+  });
+
   it('refuses a search on a source whose catalog entry has no search', async () => {
     const catalog = SOURCE_CATALOG.map((entry) =>
       entry.key === 'hacker-news'

@@ -27,3 +27,13 @@ describe('the watchlist growth rule (phase 27)', () => {
     expect(watchGrowth(snapshot, [{ signals: 8, sources: ['news'] }], 4).growing).toBe(true);
   });
 });
+
+describe('/seek words', () => {
+  it('keeps 2–5 plain English words', async () => {
+    const { seekQuery } = await import('@roi-dealer/command-center');
+    expect(seekQuery('Escrow for Freelancers!')).toBe('escrow for freelancers');
+    expect(seekQuery('гарант сделок')).toBeUndefined();
+    expect(seekQuery('escrow')).toBeUndefined();
+    expect(seekQuery('one two three four five six')).toBeUndefined();
+  });
+});
