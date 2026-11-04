@@ -60,6 +60,7 @@ const PROJECT_MIGRATIONS = [
   '0022_forecasts',
   '0023_portfolio',
   '0024_model_admissions',
+  '0025_watchlist',
 ];
 
 describe('runMigrations with the project migrations', () => {

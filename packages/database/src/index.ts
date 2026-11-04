@@ -204,3 +204,10 @@ export {
   type ModelDecision,
   type ModelQueries,
 } from './models.js';
+export {
+  createWatchlistQueries,
+  type StoredWatchDecision,
+  type WatchDecision,
+  type WatchDecisionEntry,
+  type WatchlistQueries,
+} from './watchlist.js';

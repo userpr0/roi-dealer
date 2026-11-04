@@ -36,6 +36,7 @@ import { pulseText } from './pulse.js';
 import { roiText } from './roi.js';
 import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
 import { createModelsFlow, MODELS_PREFIX } from './models.js';
+import { createWatchlistFlow, WATCHLIST_PREFIX } from './watchlist.js';
 import { sourcesText } from './sources.js';
 import {
   createFunnelFlow,
@@ -164,6 +165,7 @@ const DESCRIPTIONS = {
   roi: 'ROI процессов: что сколько стоило и что дало',
   allocate: 'Портфель тестов: бюджет месяца и что получит деньги',
   models: 'Модели AI: паспорт, допуск, претенденты по эталонам',
+  watchlist: 'Лист наблюдения: отсечённое, которое снова растёт',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
   reward: 'Начислить вознаграждение за вклады',
@@ -196,6 +198,7 @@ function withoutDatabase(): Pick<
       COST_PREFIX,
       ALLOCATE_PREFIX,
       MODELS_PREFIX,
+      WATCHLIST_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -247,6 +250,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const costs = createCostFlow(deps);
   const allocations = createAllocateFlow(deps);
   const modelFlow = createModelsFlow(deps);
+  const watch = createWatchlistFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -431,6 +435,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       ),
       command('allocate', 'research.read', allocations.allocate),
       command('models', 'status.read', modelFlow.models),
+      command('watchlist', 'research.read', watch.watchlist),
       command('rewards', 'history.read', rewards.rewards),
       command('contribution', 'contribution.write', rewards.contribution),
       command('reward', 'reward.write', rewards.reward),
@@ -454,6 +459,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(COST_PREFIX, 'cost.record', costs.handleButton),
       button(ALLOCATE_PREFIX, 'decision.record', allocations.handleButton),
       button(MODELS_PREFIX, 'decision.record', modelFlow.handleButton),
+      button(WATCHLIST_PREFIX, 'decision.record', watch.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),
