@@ -115,7 +115,12 @@ export {
   type MediaAssetRepository,
 } from './repositories.js';
 export type { ListOptions, Repository, VersionedRepository, WriteContext } from './repository.js';
-export { createEconomicsQueries, type EconomicsQueries, type MoneyPeriod } from './economics.js';
+export {
+  createEconomicsQueries,
+  type EconomicsQueries,
+  type MoneyPeriod,
+  type ProcessOutputs,
+} from './economics.js';
 export { createFunnelLog, type FunnelLog } from './experiments.js';
 export { createStatsQueries, type CycleCounts, type StatsQueries } from './stats.js';
 export {

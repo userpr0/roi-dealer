@@ -108,7 +108,7 @@ export async function pulseText(database: Pick<Database, 'pulse'>, nowMs: number
   lines.push('', '📊 Интерес к темам (Википедия: 7 дней против 4 недель до них)');
   if (topics.length === 0) {
     lines.push(
-      'Темы не заданы: PULSE_WIKIPEDIA_ARTICLES и PUBLIC_CONTACT_EMAIL у worker — deploy/hetzner.md, «Заменить ключ».',
+      'Темы не заданы: PULSE_WIKIPEDIA_ARTICLES и PUBLIC_CONTACT_EMAIL у worker — переменные сервиса worker (deploy/START.md или deploy/hetzner.md).',
     );
   } else {
     lines.push(...topics.slice(0, MAX_TOPICS).map(topicLine));
