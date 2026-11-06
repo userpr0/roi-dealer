@@ -73,7 +73,7 @@ pnpm dev:bot          # owner bot; needs TELEGRAM_* in .env — use a separate t
 - Watchdog (13c, D-024): every service marks that it runs only through `createServiceHeartbeat` (`database.services`): its `serviceVersion` and a setup of switches and names — never values, addresses or secrets. Incidents go only through `createServiceWatchdog` in `@roi-dealer/command-center`: opened in `service_incidents` in the same transaction as the notice, once each, and closed with one notice. The watchdog only reads and notifies, so it is the one loop that keeps running while the kill switch is on.
 - Kill switch: every automation and automated spend calls `assertAutomationRunning` (from `@roi-dealer/domain`, with the `automation` SystemControl loaded from the database) as its first step.
 - Code and comments are in English; project documentation is in Russian.
-- Replies to the owner (owner, 2026-11-04): short and plain Russian, no filler — what is done, what needs the owner, what is next.
+- Replies to the owner (owner, 2026-11-04): short and plain Russian, no filler — what is done, what needs the owner, what is next. Money only in USD, never in other currencies (owner, 2026-11-06).
 
 ## Routine helper
 
