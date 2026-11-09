@@ -72,6 +72,8 @@ describe('source catalog (D-014 п.5)', () => {
       'us-federal-holidays': 'allowed',
       'au-public-holidays': 'allowed',
       'ca-public-holidays': 'needs_review',
+      openfda: 'allowed',
+      'nhtsa-complaints': 'needs_review',
     });
   });
 

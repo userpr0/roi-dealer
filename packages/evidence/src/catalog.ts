@@ -765,9 +765,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'Developer guidelines: «You can make up to 600 requests within a 5 minute period». Лицензии данных реестра на developer-сайте нет (3.11 — снова); подвал gov.uk про Open Government Licence относится к страницам gov.uk, не к данным. Проверить при следующем запуске.',
+        'Developer Hub открыт (9.11), лицензии данных реестра на нём по-прежнему нет; страница gov.uk «Companies House data products» называет снимок данных бесплатным («free monthly snapshot»), но лицензию не указывает. Нужен официальный текст о повторном использовании данных. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1369,9 +1369,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'quora.com отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны. Официального API для чтения не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+        'quora.com/about/tos отвечает 403 программам (9.11, снова). Условия не прочитаны; официального API для чтения вопросов нет по выдаче поиска. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1399,9 +1399,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'indiehackers.com отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны. Официального API не нашёл; если его нет, вердикт — rejected (только скрейпинг).',
+        'indiehackers.com/terms отвечает 403 программам (9.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1676,8 +1676,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
-      notes: 'fred.stlouisfed.org закрыт сетью среды (20.10 и 3.11) — условия не прочитаны.',
+      checkedOn: '2026-11-09',
+      notes:
+        'fred.stlouisfed.org закрыт сетью среды (9.11, снова, код 000). Условия API не прочитаны. По выдаче поиска: ключ бесплатный, часть рядов принадлежит третьим лицам с их ограничениями. Перепроверить, когда домен откроют.',
     },
   },
   {
@@ -1941,9 +1942,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'adstransparency.google.com отвечает 429 программам, страница набора в BigQuery собирается скриптом — условия и охват (все объявления или только политические) не прочитаны. Проверить при следующем запуске.',
+        'Страница FAQ (9.11) отдаёт 200, но текст собирается скриптом — условий в ответе нет; страница набора BigQuery требует входа в Google Cloud Console. Охват по США, GB, CA, AU и условия набора не прочитаны. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -2103,9 +2104,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'canada.ca отвечает 000 (закрыт сетью среды), условия использования открытых данных не прочитаны. Ожидается Open Government Licence – Canada. Проверить при следующем запуске; домен — в отчёт.',
+        'canada.ca закрыт сетью среды (9.11, снова). Прочитана Open Government Licence – Canada на open.canada.ca: «a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, including for commercial purposes»; но набора федеральных праздников в каталоге open.canada.ca нет, а условия canada.ca не прочитаны. Перепроверить, когда canada.ca откроют.',
     },
   },
   {
@@ -2133,9 +2134,115 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-03',
+      checkedOn: '2026-11-09',
       notes:
-        'oecd.org отвечает 403 на автоматические запросы (20.10 и 3.11) — условия не прочитаны.',
+        'oecd.org/en/about/terms-conditions.html отвечает 403 программам (9.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+    },
+  },
+  {
+    key: 'openfda',
+    name: 'openFDA',
+    siteUrl: 'https://open.fda.gov',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.fda.gov',
+      authentication: 'none',
+    },
+    terms: {
+      urls: [
+        'https://open.fda.gov/terms/',
+        'https://open.fda.gov/license/',
+        'https://open.fda.gov/apis/authentication/',
+      ],
+      summary:
+        'openFDA (FDA США): отзывы продуктов (recalls), сообщения о проблемах с лекарствами, едой, косметикой и медицинскими изделиями — контекст для ниш здоровья и потребительских товаров.',
+      conditions: [
+        'Только контекст: никаких медицинских обещаний в продуктах и страницах',
+        'Не утверждать, что FDA одобряет нас или наши продукты',
+        'Хранить счётчики и короткие выдержки без имён, контактов и номеров',
+      ],
+    },
+    cost: 'Бесплатно; ключ необязателен (больше лимит с бесплатным ключом)',
+    limits: {
+      provider:
+        'Без ключа: 240 запросов в минуту и 1 000 в день с одного IP; с ключом — 120 000 в день',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: {
+      provided: [
+        'отзывы продуктов',
+        'сообщения о нежелательных событиях',
+        'категории продуктов',
+        'даты',
+      ],
+      stored: ['категория', 'причина отзыва или проблемы (очищенная выдержка)', 'дата', 'ссылка'],
+    },
+    personalData: {
+      risk: 'medium',
+      notes:
+        'Сообщения о нежелательных событиях содержат возраст, пол и симптомы; сохраняются только категория, причина и дата, текст проходит очистку.',
+    },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-09',
+      notes:
+        'Terms of Service: «the content, data, documentation, code, and related materials on openFDA is public domain and made available with a Creative Commons CC0 1.0 Universal dedication… You can copy, modify, distribute, and perform the work, even for commercial purposes, all without asking permission». Лимиты — со страницы Authentication.',
+    },
+  },
+  {
+    key: 'nhtsa-complaints',
+    name: 'NHTSA Complaints',
+    siteUrl: 'https://www.nhtsa.gov',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://api.nhtsa.gov/complaints',
+      authentication: 'none',
+    },
+    terms: {
+      urls: [
+        'https://www.nhtsa.gov/nhtsa-datasets-and-apis',
+        'https://www.nhtsa.gov/about-nhtsa/website-policies',
+      ],
+      summary:
+        'Жалобы владельцев автомобилей в NHTSA (США): текст проблемы, компонент, марка и год — боли автомобильной ниши.',
+      conditions: [
+        'Подключать только после чтения официальных условий',
+        'Не хранить VIN, имена и контакты; текст жалобы — только после очистки',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Лимиты в официальном тексте не прочитаны',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 30,
+    },
+    dataFields: {
+      provided: ['текст жалобы', 'компонент', 'марка, модель, год', 'даты', 'часть VIN'],
+      stored: [],
+    },
+    personalData: {
+      risk: 'medium',
+      notes:
+        'NHTSA сама закрывает VIN и даты в тексте как [XXX]; в ответе API есть часть VIN — не хранится. Имена и контакты в тексте вычищаются.',
+    },
+    markets: ['US'],
+    languages: ['en'],
+    evidenceMarket: 'US',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'needs_review',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-09',
+      notes:
+        'API api.nhtsa.gov отвечает без ключа (9.11, проверочный запрос: 351 жалоба на одну модель). Страницы условий на www.nhtsa.gov отвечают 403 программам. По выдаче поиска: данные — произведение правительства США, общественное достояние. Перепроверить, когда www.nhtsa.gov откроют.',
     },
   },
 ];
