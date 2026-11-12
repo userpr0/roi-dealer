@@ -14,6 +14,8 @@ Updated: 2026-10-20
 
 **План и сроки (2026-11-06):** [`docs/PLAN.md`](PLAN.md)
 
+**2026-11-12, D-040:** одобрены пилот своих объектов недвижимости (Украина, Киевская область), библиотека, завод Gen_Content и тест Veo. Архитектура — [ADR-0016](ADR/0016-library-and-own-assets.md), **ждёт «одобряю ADR-0016»**; спецификации — [35](phases/35_library.md), [36](phases/36_own_properties.md).
+
 Решения владельца: [`docs/OWNER_DECISIONS.md`](OWNER_DECISIONS.md) · План до рабочего состояния: [`docs/ROADMAP.md`](ROADMAP.md)
 
 ## Implemented
