@@ -74,6 +74,7 @@ describe('source catalog (D-014 п.5)', () => {
       'ca-public-holidays': 'needs_review',
       openfda: 'allowed',
       'nhtsa-complaints': 'needs_review',
+      'uk-petitions': 'allowed',
     });
   });
 
