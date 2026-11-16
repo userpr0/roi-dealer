@@ -765,9 +765,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'Developer Hub открыт (9.11), лицензии данных реестра на нём по-прежнему нет; страница gov.uk «Companies House data products» называет снимок данных бесплатным («free monthly snapshot»), но лицензию не указывает. Нужен официальный текст о повторном использовании данных. Перепроверить при следующем запуске.',
+        'Developer Hub и developer-guidelines открыты (16.11), но лицензии данных реестра там нет; gov.uk называет снимок данных «free monthly snapshot» без лицензии. Нужен официальный текст о повторном использовании данных. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1369,9 +1369,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'quora.com/about/tos отвечает 403 программам (9.11, снова). Условия не прочитаны; официального API для чтения вопросов нет по выдаче поиска. Перепроверить при следующем запуске.',
+        'quora.com/about/tos отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1399,9 +1399,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'indiehackers.com/terms отвечает 403 программам (9.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+        'indiehackers.com/terms отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -1676,9 +1676,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'fred.stlouisfed.org закрыт сетью среды (9.11, снова, код 000). Условия API не прочитаны. По выдаче поиска: ключ бесплатный, часть рядов принадлежит третьим лицам с их ограничениями. Перепроверить, когда домен откроют.',
+        'fred.stlouisfed.org закрыт сетью среды (16.11, снова). Условия API не прочитаны. По выдаче поиска: ключ бесплатный, часть рядов принадлежит третьим лицам с их ограничениями. Перепроверить, когда домен откроют.',
     },
   },
   {
@@ -1942,9 +1942,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'Страница FAQ (9.11) отдаёт 200, но текст собирается скриптом — условий в ответе нет; страница набора BigQuery требует входа в Google Cloud Console. Охват по США, GB, CA, AU и условия набора не прочитаны. Перепроверить при следующем запуске.',
+        'FAQ отдаёт 200 (16.11), но текст собирается скриптом — условий в ответе нет; страница набора BigQuery требует входа в Cloud Console. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -2104,9 +2104,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'canada.ca закрыт сетью среды (9.11, снова). Прочитана Open Government Licence – Canada на open.canada.ca: «a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, including for commercial purposes»; но набора федеральных праздников в каталоге open.canada.ca нет, а условия canada.ca не прочитаны. Перепроверить, когда canada.ca откроют.',
+        'canada.ca закрыт сетью среды (16.11, снова). Open Government Licence – Canada прочитана 9.11 («including for commercial purposes»), но набора федеральных праздников на open.canada.ca нет, условия canada.ca не прочитаны.',
     },
   },
   {
@@ -2134,9 +2134,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'oecd.org/en/about/terms-conditions.html отвечает 403 программам (9.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+        'oecd.org/en/about/terms-conditions.html отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
     },
   },
   {
@@ -2240,9 +2240,62 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-09',
+      checkedOn: '2026-11-16',
       notes:
-        'API api.nhtsa.gov отвечает без ключа (9.11, проверочный запрос: 351 жалоба на одну модель). Страницы условий на www.nhtsa.gov отвечают 403 программам. По выдаче поиска: данные — произведение правительства США, общественное достояние. Перепроверить, когда www.nhtsa.gov откроют.',
+        'www.nhtsa.gov и transportation.gov отвечают 403 (16.11). Официальный каталог Минтранса США datahub.transportation.gov (набор 8qbs-9p4c «ODI Complaints») отмечает «Rights: public», но лицензии не указывает; тексты жалоб пишут граждане, а не правительство — §105 их не покрывает. Нужен официальный текст условий.',
+    },
+  },
+  {
+    key: 'uk-petitions',
+    name: 'UK Parliament Petitions',
+    siteUrl: 'https://petition.parliament.uk',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://petition.parliament.uk/petitions.json',
+      authentication: 'none',
+    },
+    terms: {
+      urls: ['https://petition.parliament.uk/help', 'https://petition.parliament.uk/privacy'],
+      summary:
+        'Петиции парламенту Великобритании: что люди просят изменить и сколько подписей набрано — боли и спрос на рынке GB.',
+      conditions: [
+        'Указывать источник: «Contains public sector information licensed under the Open Government Licence v3.0»',
+        'Не хранить имя автора петиции (creator_name)',
+        'Брать только официальные JSON-страницы сайта, без перебора подписей',
+      ],
+    },
+    cost: 'Бесплатно, без ключа',
+    limits: {
+      provider: 'Лимиты не опубликованы; страница — 50 петиций',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 50,
+    },
+    dataFields: {
+      provided: [
+        'текст петиции',
+        'обоснование',
+        'число подписей',
+        'даты',
+        'ответ правительства',
+        'имя автора',
+      ],
+      stored: ['текст петиции (очищенный)', 'число подписей', 'дата', 'ссылка'],
+    },
+    personalData: {
+      risk: 'medium',
+      notes: 'Имя автора петиции не сохраняется; имена в тексте вычищаются redactPersonalData.',
+    },
+    markets: ['GB'],
+    languages: ['en'],
+    evidenceMarket: 'GB',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-16',
+      notes:
+        'Подвал сайта: «All content is available under the Open Government Licence v3.0, except where otherwise stated». На странице каждой петиции — ссылка «Get petition data in JSON format»; список — petitions.json. OGL v3.0 разрешает коммерческое использование с указанием источника.',
     },
   },
 ];
