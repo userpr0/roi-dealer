@@ -10,6 +10,9 @@ import type {
   Checkout,
   KnowledgeAsset,
   Lead,
+  LibraryProject,
+  LibraryTopic,
+  LibraryVertical,
   MediaAsset,
   Opportunity,
   OpportunityId,
@@ -46,6 +49,9 @@ import {
   knowledgeAssetsTable,
   checkoutsTable,
   leadsTable,
+  libraryProjectsTable,
+  libraryTopicsTable,
+  libraryVerticalsTable,
   mediaAssetsTable,
   opportunitiesTable,
   painsTable,
@@ -84,6 +90,10 @@ export interface Repositories {
   readonly mediaAssets: MediaAssetRepository;
   readonly leads: LeadRepository;
   readonly checkouts: CheckoutRepository;
+  /** The library (phase 35): vertical → project → topic. */
+  readonly libraryVerticals: VersionedRepository<LibraryVertical>;
+  readonly libraryProjects: VersionedRepository<LibraryProject>;
+  readonly libraryTopics: VersionedRepository<LibraryTopic>;
 }
 
 export interface CheckoutRepository extends VersionedRepository<Checkout> {
@@ -212,6 +222,9 @@ export function createRepositories(executor: Executor, context: WriteContext = {
       getByActor: (actor) => translated(() => findPrincipal(executor, actor)),
     },
     sourceSnapshots: createRepository(executor, sourceSnapshotsTable, context),
+    libraryVerticals: createVersionedRepository(executor, libraryVerticalsTable, context),
+    libraryProjects: createVersionedRepository(executor, libraryProjectsTable, context),
+    libraryTopics: createVersionedRepository(executor, libraryTopicsTable, context),
     checkouts: {
       ...createVersionedRepository(executor, checkoutsTable, context),
       listActiveByExperiments: (ids) =>

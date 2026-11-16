@@ -38,6 +38,7 @@ export * from './entities/revenue.js';
 export * from './entities/media-asset.js';
 export * from './entities/lead.js';
 export * from './entities/checkout.js';
+export * from './entities/library.js';
 export * from './ai-budget.js';
 export * from './markets.js';
 export * from './market-context.js';

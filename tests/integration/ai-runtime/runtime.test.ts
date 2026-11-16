@@ -274,7 +274,8 @@ describe('evals (D-014 п.7)', () => {
 
 describe('model changes by tests (09b, ADR-0014)', () => {
   it('evaluates a candidate but routes real calls to it only after the owner admits it', async () => {
-    const candidate: ModelSpec = { ...HAIKU, id: 'claude-haiku-cand', admission: 'candidate' };
+    // A dot in the id, like real model ids: button data may not hold dots.
+    const candidate: ModelSpec = { ...HAIKU, id: 'claude-haiku-9.1-cand', admission: 'candidate' };
     claude.answer(oracle);
     const ai = runtime({ models: [candidate, GPT_MINI] });
     await expect(ai.evaluate(redactNamesTask, candidate.id)).resolves.toMatchObject({
@@ -297,9 +298,10 @@ describe('model changes by tests (09b, ADR-0014)', () => {
       models: [candidate, GPT_MINI],
     });
     const edits: { text: string; keyboard?: unknown }[] = [];
+    // Like the router: the handler gets the data after `md:`.
     const press = (data: string, id: string) =>
       flow.handleButton({
-        data,
+        data: data.slice(data.indexOf(':') + 1),
         userId: 1,
         updateId: 7,
         callbackQueryId: id,
@@ -309,7 +311,9 @@ describe('model changes by tests (09b, ADR-0014)', () => {
         },
         answer: () => Promise.resolve(),
       } as never);
-    await press(`md:a:${candidate.id}`, 'q-ask');
+    // The button of the card: a model id has dots, button data may not.
+    const admit = JSON.stringify(view.keyboard).match(/md:a:[A-Za-z0-9_-]+/)?.[0];
+    await press(admit ?? expect.unreachable(), 'q-ask');
     expect(edits.at(-1)?.text).toContain(`✅ Допустить ${candidate.id} к реальным задачам?`);
     const yes = JSON.stringify(edits.at(-1)?.keyboard).match(/md:y:[0-9a-f]+/)?.[0];
     await press(yes ?? expect.unreachable(), 'q-yes');

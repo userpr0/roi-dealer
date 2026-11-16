@@ -8,6 +8,7 @@
  */
 import type { AnyAiTask } from '@roi-dealer/ai-runtime';
 import { designHypothesesTask } from './hypotheses/design-hypotheses.js';
+import { fileLibraryTask } from './library/file-library.js';
 import { marketContextTask } from './market/market-context.js';
 import { researchQueryTask } from './research/research-query.js';
 
@@ -85,6 +86,21 @@ export {
   LANDING_WRITER_ACCESS,
   landingWriterAgent,
 } from './landing/writer.js';
+export {
+  fileLibraryTask,
+  MAX_LIBRARY_MOVES,
+  MAX_LIBRARY_PROJECTS_SHOWN,
+  MAX_LIBRARY_TOPICS,
+  MAX_LIBRARY_VERTICALS,
+  NEW_PLACE,
+  scoreFileLibrary,
+  toLibraryChoice,
+  type FileLibraryExpected,
+  type FileLibraryInput,
+  type FileLibraryOutput,
+  type LibraryChoice,
+} from './library/file-library.js';
+export { LIBRARIAN, LIBRARIAN_ACCESS, librarianAgent, libraryInput } from './library/librarian.js';
 export { failureCode, runAgent, type RunnerDeps, type RunResult } from './runner.js';
 export {
   createAgentScheduler,
@@ -93,11 +109,12 @@ export {
   type AgentSchedulerOptions,
 } from './scheduler.js';
 
-/** The AI tasks of the agents of PHASE 10 and 14, for evals in the worker's maintenance. */
+/** The AI tasks of the agents of PHASE 10, 14 and 35, for evals in the worker's maintenance. */
 export const AGENT_TASKS: readonly AnyAiTask[] = [
   researchQueryTask,
   marketContextTask,
   designHypothesesTask,
+  fileLibraryTask,
 ];
 
 export const PACKAGE_NAME = '@roi-dealer/agents';

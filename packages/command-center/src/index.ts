@@ -294,6 +294,19 @@ export {
   type SeekFlowDeps,
 } from './seek.js';
 export {
+  createLibraryFlow,
+  LIBRARY_PREFIX,
+  LIBRARY_USAGE,
+  libraryDigestLine,
+  libraryPlaceOf,
+  libraryTopicView,
+  libraryVerticalView,
+  libraryView,
+  type LibraryFlow,
+  type LibraryFlowDeps,
+  type LibraryView,
+} from './library.js';
+export {
   createWatchlistFlow,
   WATCHLIST_PREFIX,
   watchItems,
