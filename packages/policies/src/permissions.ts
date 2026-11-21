@@ -137,10 +137,6 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   lead: { create: 'lead.capture', update: 'lead.manage' },
   // The owner sets the payment link; the provider's test payment marks it tested (PHASE 20b).
   checkout: { create: 'experiment.write', update: 'payment.record' },
-  // The librarian agent and code file things; only the owner archives (domain, phase 35).
-  library_vertical: { create: 'research.write', update: 'research.write' },
-  library_project: { create: 'research.write', update: 'research.write' },
-  library_topic: { create: 'research.write', update: 'research.write' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

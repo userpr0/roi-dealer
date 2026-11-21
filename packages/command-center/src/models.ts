@@ -4,7 +4,6 @@ import {
   isAdmitted,
   latestEvals,
   MODEL_REGISTRY,
-  modelTag,
   NOT_CHECKED,
   retiringModels,
   wishesMet,
@@ -113,11 +112,8 @@ export async function modelsView(
         : '  Рекомендация кода: пока нет — не лучше на эталонах или они не прогнаны.',
     );
     keyboard.push([
-      callbackButton(
-        `✅ Допустить ${candidate.id}`,
-        `${MODELS_PREFIX}:a:${modelTag(candidate.id)}`,
-      ),
-      callbackButton('✖️ Отклонить', `${MODELS_PREFIX}:r:${modelTag(candidate.id)}`),
+      callbackButton(`✅ Допустить ${candidate.id}`, `${MODELS_PREFIX}:a:${candidate.id}`),
+      callbackButton('✖️ Отклонить', `${MODELS_PREFIX}:r:${candidate.id}`),
     ]);
   }
   const retiring = retiringModels(models, nowMs);
@@ -192,13 +188,9 @@ export function createModelsFlow(deps: ModelsFlowDeps): ModelsFlow {
     },
 
     async handleButton(context) {
-      // The router passes the data after `md:`.
-      const [action, value] = context.data.split(':');
+      const [, action, value] = context.data.split(':');
       if (action === 'a' || action === 'r') {
-        // Button data has no dots: the button carries the model's tag.
-        const model = registry.find(
-          (item) => modelTag(item.id) === value && item.admission === 'candidate',
-        );
+        const model = registry.find((item) => item.id === value && item.admission === 'candidate');
         if (model === undefined) {
           await context.edit('Претендент не найден.');
           return;

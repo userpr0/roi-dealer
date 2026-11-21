@@ -120,12 +120,6 @@ const workerConfigSchema = z.object({
     .int()
     .min(100)
     .default(15 * 60_000),
-  /** How often the librarian files new pains and opportunities (phase 35). Default: 30 min. */
-  LIBRARY_INTERVAL_MS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .default(30 * 60_000),
   /** How often the spend guard checks automated spend (PHASE 16, D-014 п.10). Default: 15 min. */
   SPEND_GUARD_INTERVAL_MS: z.coerce
     .number()

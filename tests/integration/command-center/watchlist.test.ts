@@ -103,10 +103,9 @@ describe('the watchlist (phase 27)', () => {
 
     const flow = createWatchlistFlow({ database: db, now, owner: () => OWNER });
     const edits: { text: string; keyboard?: unknown }[] = [];
-    // Like the router: the handler gets the data after `wl:`.
     const press = (data: string, id: string) =>
       flow.handleButton({
-        data: data.slice(data.indexOf(':') + 1),
+        data,
         userId: 1,
         updateId: 9,
         callbackQueryId: id,

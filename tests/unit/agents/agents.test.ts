@@ -6,11 +6,6 @@ import {
   failureCode,
   marketContextTask,
   marketSummary,
-  fileLibraryTask,
-  MAX_LIBRARY_MOVES,
-  MAX_LIBRARY_PROJECTS_SHOWN,
-  MAX_LIBRARY_TOPICS,
-  MAX_LIBRARY_VERTICALS,
   MAX_MARKET_EXCERPTS,
   parseUsd,
   periodOf,
@@ -256,13 +251,6 @@ describe('AI budget of the agents (D-021)', () => {
       'research-query': researchQueryTask.instructions.length + 2_300,
       'market-context': marketContextTask.instructions.length + MAX_MARKET_EXCERPTS * 1_010 + 2_300,
       'design-hypotheses': designHypothesesTask.instructions.length + 9_200,
-      // Ten topics, twenty verticals with eight projects, six moves and the item, at full length.
-      'file-library':
-        fileLibraryTask.instructions.length +
-        MAX_LIBRARY_TOPICS * 520 +
-        MAX_LIBRARY_VERTICALS * (62 + MAX_LIBRARY_PROJECTS_SHOWN * 62) +
-        MAX_LIBRARY_MOVES * 510 +
-        700,
     };
     for (const task of AGENT_TASKS) {
       for (const model of bulkModels) {

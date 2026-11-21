@@ -58,9 +58,6 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'lead':
     case 'knowledge_asset':
     case 'source_snapshot':
-    case 'library_vertical':
-    case 'library_project':
-    case 'library_topic':
       return false;
   }
 }

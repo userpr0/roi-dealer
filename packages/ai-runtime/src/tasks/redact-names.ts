@@ -105,9 +105,8 @@ export const redactNamesTask: AiTask<RedactNamesInput, RedactNamesOutput, readon
   render: ({ text }) => `Text:\n"""\n${text}\n"""`,
   maxOutputTokens: 2_048,
   maxCostMicroUsd: 15_000,
-  // ~$0.0001 a call on the cheapest model: 8% of a $1.6 day is over a thousand excerpts.
-  // (0.1 until phase 35: 0.02 went to `file-library`, the shares still add up to 1.)
-  dailyShare: 0.08,
+  // ~$0.0001 a call on the cheapest model: 10% of a $1.6 day is over a thousand excerpts.
+  dailyShare: 0.1,
   evalCases: cases,
   score: scoreRedactNames,
 };

@@ -93,8 +93,7 @@ export function createSeekFlow(deps: SeekFlowDeps): SeekFlow {
     },
 
     async handleButton(context) {
-      // The router passes the data after `sk:`.
-      const [action, nonce] = context.data.split(':');
+      const [, action, nonce] = context.data.split(':');
       const confirmation = nonce === undefined ? undefined : pending.get(nonce);
       if (action === 'n' && nonce !== undefined) {
         pending.delete(nonce);
