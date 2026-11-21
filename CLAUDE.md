@@ -2,8 +2,9 @@
 
 This repository is built phase by phase under an owner-approval protocol. Before doing anything:
 
-1. Read `docs/CURRENT_STATE.md` — the current phase, its status and what is allowed next.
-2. Read `docs/CLAUDE_CONSTITUTION.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/TECH_STACK.md`, `docs/CLAUDE_WORKING_PROTOCOL.md` and the current phase file in `docs/phases/` — including its requirements file `docs/phases/NN_*.plan.md` if one exists (owner requirements recorded ahead of the phase must go into the phase spec).
+1. Read `docs/PROJECT_BRIEF.md` — the owner's goal, direction and boundaries. Act only on its sections marked ✅; for ⏳ propose and wait. Work that contradicts it needs the owner's decision.
+2. Read `docs/CURRENT_STATE.md` — the current phase, its status and what is allowed next.
+3. Read `docs/CLAUDE_CONSTITUTION.md`, `docs/SYSTEM_ARCHITECTURE.md`, `docs/TECH_STACK.md`, `docs/CLAUDE_WORKING_PROTOCOL.md` and the current phase file in `docs/phases/` — including its requirements file `docs/phases/NN_*.plan.md` if one exists (owner requirements recorded ahead of the phase must go into the phase spec).
 
 ## Non-negotiable rules
 
