@@ -3,6 +3,8 @@ import {
   type BotCommandDefinition,
   type CallbackHandlerDefinition,
   type InlineKeyboard,
+  type PhotoHandlerDefinition,
+  type TelegramPhotoSize,
 } from '@roi-dealer/telegram';
 import type { Logger } from '@roi-dealer/observability';
 
@@ -33,8 +35,12 @@ export function ownerRouter(options: {
   readonly logger: Logger;
   readonly commands?: readonly BotCommandDefinition[];
   readonly callbacks?: readonly CallbackHandlerDefinition[];
+  /** The owner's photos (phase 36). */
+  readonly photo?: PhotoHandlerDefinition | undefined;
 }) {
   const messages: RoutedMessage[] = [];
+  /** Files the owner's photos point to, by file id. */
+  const files = new Map<string, Uint8Array>();
   const route = createOwnerCommandRouter({
     ownerUserId: ROUTER_OWNER_ID,
     commands: options.commands ?? [],
@@ -49,7 +55,14 @@ export function ownerRouter(options: {
         return Promise.resolve();
       },
       answerCallbackQuery: () => Promise.resolve(),
+      getFile: ({ fileId }) =>
+        Promise.resolve({ filePath: `photos/${fileId}.jpg`, fileSize: files.get(fileId)?.length }),
+      downloadFile: ({ filePath }) => {
+        const bytes = files.get(filePath.replace(/^photos\/|\.jpg$/g, ''));
+        return bytes === undefined ? Promise.reject(new Error('no file')) : Promise.resolve(bytes);
+      },
     },
+    photo: options.photo,
     logger: options.logger,
     unknownCommandReply: 'unknown command',
     failureReply: 'handler failed',
@@ -76,6 +89,20 @@ export function ownerRouter(options: {
           data,
         },
       }),
+    /** The owner sends a photo: its sizes (smallest first) and the bytes of each size. */
+    sendPhoto: (sizes: readonly (TelegramPhotoSize & { readonly bytes: Uint8Array })[]) => {
+      for (const size of sizes) files.set(size.file_id, size.bytes);
+      return route({
+        update_id: (updateId += 1),
+        message: {
+          message_id: updateId,
+          date: 0,
+          chat,
+          from,
+          photo: sizes.map(({ bytes: _bytes, ...size }) => size),
+        },
+      });
+    },
     last: (): RoutedMessage | undefined => messages.at(-1),
     /** `callback_data` of the buttons of a message (default: the last one). */
     buttons: (message: RoutedMessage | undefined = messages.at(-1)): string[] =>

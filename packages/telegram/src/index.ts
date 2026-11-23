@@ -4,6 +4,7 @@ export {
   telegramCallbackQuerySchema,
   telegramChatSchema,
   telegramMessageSchema,
+  telegramPhotoSizeSchema,
   telegramUpdateSchema,
   telegramUserSchema,
   type BotCommand,
@@ -14,6 +15,7 @@ export {
   type TelegramCallbackQuery,
   type TelegramChat,
   type TelegramMessage,
+  type TelegramPhotoSize,
   type TelegramUpdate,
   type TelegramUser,
 } from './api-types.js';
@@ -43,6 +45,8 @@ export {
   type CommandContext,
   type OwnerCommandRouterOptions,
   type ParsedCommand,
+  type PhotoContext,
+  type PhotoHandlerDefinition,
   type RejectedAttempt,
 } from './commands.js';
 export { createOwnerNotifier, type OwnerNotifier, type OwnerNotifierOptions } from './notifier.js';

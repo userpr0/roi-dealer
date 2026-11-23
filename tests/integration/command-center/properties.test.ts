@@ -92,7 +92,11 @@ describe('own objects through the bot (phase 36)', () => {
       '1. Тетіїв, Соборна, 42 м², оренда — 📝 черновик · $250/мес',
     );
     const card = chat.buttons();
-    expect(card.map((data) => data.split(':').slice(0, 2).join(':'))).toEqual(['pr:s', 'pr:s']);
+    expect(card.map((data) => data.split(':').slice(0, 2).join(':'))).toEqual([
+      'pr:s',
+      'pr:s',
+      'pr:p',
+    ]);
     const list = card.find((data) => data.endsWith(':l')) ?? '';
 
     await chat.press(list);
@@ -110,7 +114,12 @@ describe('own objects through the bot (phase 36)', () => {
     await chat.press(list);
     expect(chat.last()?.text).toBe('Карточка устарела. Повторите /properties.');
     await chat.send('/properties');
-    expect(chat.buttons().map((data) => data.at(-1))).toEqual(['u', 'c', 'w']);
+    expect(
+      chat
+        .buttons()
+        .filter((data) => data.startsWith('pr:s:'))
+        .map((data) => data.at(-1)),
+    ).toEqual(['u', 'c', 'w']);
 
     // Every version has its event from the owner.
     const events = await db.sql<{ type: string; actor_type: string }[]>`
@@ -120,6 +129,51 @@ describe('own objects through the bot (phase 36)', () => {
       { type: 'property.created', actor_type: 'owner' },
       { type: 'property.updated', actor_type: 'owner' },
     ]);
+  });
+
+  it("takes the photos of an object after «📷 Фото», in Telegram's ready size", async () => {
+    const chat = ownerRouter({
+      logger,
+      commands: center.commands,
+      callbacks: center.callbacks,
+      photo: center.photo,
+    });
+    const jpeg = (size: number) => {
+      const bytes = new Uint8Array(size).fill(1);
+      bytes.set([0xff, 0xd8, 0xff]);
+      return bytes;
+    };
+    // Without «📷 Фото» first the bot explains how.
+    await chat.sendPhoto([
+      { file_id: 'p0', width: 1280, height: 960, file_size: 3_000, bytes: jpeg(3_000) },
+    ]);
+    expect(chat.last()?.text).toContain('нажмите «📷 Фото»');
+
+    await chat.send('/properties');
+    await chat.press(chat.buttons().find((data) => data.startsWith('pr:p:')) ?? '');
+    expect(chat.last()?.text).toContain('📷 Пришлите фото «Тетіїв, Соборна, 42 м², оренда»');
+    // Telegram sends 320, 800 and 1280 px and the original 2560 px: the 1280 px one is kept.
+    await chat.sendPhoto([
+      { file_id: 's', width: 320, height: 240, file_size: 1_000, bytes: jpeg(1_000) },
+      { file_id: 'm', width: 800, height: 600, file_size: 2_000, bytes: jpeg(2_000) },
+      { file_id: 'x', width: 1280, height: 960, file_size: 3_000, bytes: jpeg(3_000) },
+      { file_id: 'y', width: 2560, height: 1920, file_size: 900_000, bytes: jpeg(4_000) },
+    ]);
+    expect(chat.last()?.text).toBe('📷 Фото 1/15 добавлено к «Тетіїв, Соборна, 42 м², оренда».');
+    const [shop] = await db.repositories.properties.listByStatuses(['listed']);
+    expect(await db.properties.photos(shop?.id ?? ('' as never))).toEqual([
+      { position: 1, width: 1280, height: 960 },
+    ]);
+    // A file that is not a JPEG is refused.
+    await chat.sendPhoto([
+      { file_id: 'png', width: 800, height: 600, bytes: new Uint8Array(500).fill(2) },
+    ]);
+    expect(chat.last()?.text).toContain('Это не JPEG');
+
+    // «🗑 Удалить все фото» asks first.
+    await chat.press(`pr:x:${shop?.id ?? ''}`);
+    await chat.press(chat.buttons().find((data) => data.startsWith('pr:y:')) ?? '');
+    expect(chat.last()?.text).toBe('🗑 Удалено фото: 1. Новые — кнопкой «📷 Фото» в /properties.');
   });
 
   it('shows the object in the library next to what the system filed', async () => {

@@ -1,6 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import {
   createProperty,
+  MAX_PROPERTY_PHOTO_BYTES,
+  MAX_PROPERTY_PHOTO_SIDE,
+  MAX_PROPERTY_PHOTOS,
+  PUBLIC_PROPERTY_STATUSES,
   libraryPath,
   newLibraryNodes,
   newPropertySchema,
@@ -31,6 +35,7 @@ import {
   type CallbackContext,
   type CommandContext,
   type InlineKeyboardButton,
+  type PhotoContext,
 } from '@roi-dealer/telegram';
 import { CONFIRMATION_TTL_MS } from './kill-switch.js';
 import { formatTime, shorten } from './texts.js';
@@ -476,6 +481,10 @@ export async function propertiesView(
             ),
           ];
     });
+    // Photos for drafts and public objects (ADR-0016 §9).
+    if (property.status === 'draft' || PUBLIC_PROPERTY_STATUSES.includes(property.status)) {
+      buttons.push(callbackButton(`📷 Фото ${number}`, `${PROPERTY_PREFIX}:p:${property.id}`));
+    }
     if (buttons.length > 0) keyboard.push(buttons);
   });
   lines.push('', 'Добавить объект — /property. Сделку и снятие отменить нельзя.');
@@ -492,7 +501,15 @@ export interface PropertyFlow {
   readonly property: (context: CommandContext) => Promise<void>;
   readonly properties: (context: CommandContext) => Promise<void>;
   readonly handleButton: (context: CallbackContext) => Promise<void>;
+  /** A photo the owner sent after «📷 Фото» of an object. */
+  readonly handlePhoto: (context: PhotoContext) => Promise<void>;
 }
+
+/** How long the bot takes photos for an object after «📷 Фото» (and after each photo). */
+const PHOTO_WINDOW_MS = 10 * 60_000;
+/** JPEG files start with FF D8 FF. */
+const isJpeg = (bytes: Uint8Array): boolean =>
+  bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
 
 type Pending =
   | { readonly kind: 'add'; readonly data: Omit<NewProperty, 'slug'>; readonly expiresAtMs: number }
@@ -508,7 +525,8 @@ type Pending =
       readonly leadId: number;
       readonly step: PropertyFunnelStep;
       readonly expiresAtMs: number;
-    };
+    }
+  | { readonly kind: 'photos'; readonly propertyId: string; readonly expiresAtMs: number };
 
 const STALE = '⌛ Подтверждение устарело. Повторите /properties.';
 
@@ -516,6 +534,8 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
   const { database } = deps;
   const pending = new Map<string, Pending>();
   const nowMs = (): number => timestampMs(deps.now());
+  /** The object the owner's next photos go to. */
+  let photoTarget: { propertyId: string; title: string; expiresAtMs: number } | undefined;
 
   function remember(item: Pending): string {
     const current = nowMs();
@@ -537,7 +557,61 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
     ],
   ];
 
+  async function handlePhoto(context: PhotoContext): Promise<void> {
+    const target = photoTarget;
+    if (target === undefined || target.expiresAtMs <= nowMs()) {
+      await context.reply(
+        '📷 Чтобы добавить фото объекта, откройте /properties и нажмите «📷 Фото».',
+      );
+      return;
+    }
+    // Telegram's ready size up to 1280 px (ADR-0016 §9): the largest that fits.
+    const size = [...context.sizes]
+      .reverse()
+      .find(
+        (item) =>
+          Math.max(item.width, item.height) <= MAX_PROPERTY_PHOTO_SIDE &&
+          (item.file_size ?? 0) <= MAX_PROPERTY_PHOTO_BYTES,
+      );
+    if (size === undefined) {
+      await context.reply(
+        '⛔ Фото не подходит: нет размера до 1280 px и 400 КБ. Пришлите как фото, не файлом.',
+      );
+      return;
+    }
+    const bytes = await context.download(size.file_id, MAX_PROPERTY_PHOTO_BYTES);
+    if (!isJpeg(bytes)) {
+      await context.reply('⛔ Это не JPEG. Пришлите как фото, не файлом.');
+      return;
+    }
+    const actor = deps.owner(context.userId);
+    const correlationId = `tg-update-${String(context.updateId)}`;
+    const { result } = await database.command(
+      {
+        name: 'property.photo',
+        idempotencyKey: `tg-photo-${String(context.updateId)}`,
+        correlationId,
+      },
+      async (scope) => ({
+        position:
+          (await scope.properties.addPhoto(
+            propertyIdSchema.parse(target.propertyId),
+            { content: bytes, width: size.width, height: size.height },
+            actor,
+          )) ?? 0,
+      }),
+    );
+    photoTarget = { ...target, expiresAtMs: nowMs() + PHOTO_WINDOW_MS };
+    await context.reply(
+      result.position === 0
+        ? `⛔ У «${shorten(target.title, 100)}» уже ${String(MAX_PROPERTY_PHOTOS)} фото — больше не помещается.`
+        : `📷 Фото ${String(result.position)}/${String(MAX_PROPERTY_PHOTOS)} добавлено к «${shorten(target.title, 100)}».`,
+    );
+  }
+
   return {
+    handlePhoto,
+
     async property(context) {
       if (context.args.trim() === '') {
         await context.reply(FORM_HELP);
@@ -602,6 +676,53 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
         await context.edit(
           `${target.question}: «${property.title}»? Подтверждение действует 10 минут.`,
           confirm(nonce, 'Да'),
+        );
+        return;
+      }
+
+      // Photos: the next photos the owner sends go to this object for 10 minutes.
+      if (action === 'p') {
+        const id = propertyIdSchema.safeParse(first);
+        const property = id.success
+          ? await database.repositories.properties.getById(id.data)
+          : undefined;
+        if (
+          property === undefined ||
+          property.status === 'closed' ||
+          property.status === 'withdrawn'
+        ) {
+          await context.answer('Объект не найден.');
+          return;
+        }
+        const photos = await database.properties.photos(property.id);
+        photoTarget = {
+          propertyId: property.id,
+          title: property.title,
+          expiresAtMs: nowMs() + PHOTO_WINDOW_MS,
+        };
+        await context.reply(
+          `📷 Пришлите фото «${shorten(property.title, 100)}» — каждое отдельно или альбомом, до ${String(MAX_PROPERTY_PHOTOS)}. ` +
+            `Сейчас: ${String(photos.length)}. Днём, все комнаты, вход, фасад. Приём открыт 10 минут.`,
+          photos.length === 0
+            ? undefined
+            : [[callbackButton('🗑 Удалить все фото', `${PROPERTY_PREFIX}:x:${property.id}`)]],
+        );
+        return;
+      }
+      if (action === 'x') {
+        const id = propertyIdSchema.safeParse(first);
+        if (!id.success) {
+          await context.answer('Объект не найден.');
+          return;
+        }
+        const nonce = remember({
+          kind: 'photos',
+          propertyId: id.data,
+          expiresAtMs: nowMs() + CONFIRMATION_TTL_MS,
+        });
+        await context.edit(
+          '🗑 Удалить все фото объекта? Страница останется без фото, пока вы не пришлёте новые. Подтверждение действует 10 минут.',
+          confirm(nonce, 'Да, удалить'),
         );
         return;
       }
@@ -714,6 +835,23 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
               : `Библиотека: ${result.path}.`,
             'Выставить в продажу — /properties.',
           ].join('\n'),
+        );
+        return;
+      }
+
+      if (item.kind === 'photos') {
+        const { result } = await database.command(
+          { ...command, name: 'property.photos_removed' },
+          async (scope) => ({
+            removed: await scope.properties.removePhotos(
+              propertyIdSchema.parse(item.propertyId),
+              actor,
+            ),
+          }),
+        );
+        pending.delete(first);
+        await context.edit(
+          `🗑 Удалено фото: ${String(result.removed)}. Новые — кнопкой «📷 Фото» в /properties.`,
         );
         return;
       }

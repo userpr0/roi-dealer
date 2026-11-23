@@ -5,6 +5,7 @@ import {
   type InlineKeyboard,
   type TelegramCallbackQuery,
   type TelegramMessage,
+  type TelegramPhotoSize,
   type TelegramUpdate,
 } from './api-types.js';
 import type { TelegramClient } from './client.js';
@@ -66,6 +67,24 @@ export interface CallbackContext {
   answer(text: string): Promise<void>;
 }
 
+/** A photo the owner sent (phase 36): its sizes and a way to download one of them. */
+export interface PhotoContext {
+  readonly chatId: number;
+  readonly userId: number;
+  readonly updateId: number;
+  /** The sizes Telegram prepared, smallest first. */
+  readonly sizes: readonly TelegramPhotoSize[];
+  readonly logger: Logger;
+  reply(text: string, keyboard?: InlineKeyboard): Promise<void>;
+  /** Downloads one size of the photo; throws beyond `maxBytes`. */
+  download(fileId: string, maxBytes: number): Promise<Uint8Array>;
+}
+
+/** Where the owner's photos go; without it a photo gets the unknown-command reply. */
+export interface PhotoHandlerDefinition {
+  readonly handler: (context: PhotoContext) => Promise<void>;
+}
+
 /** Buttons with `callback_data` `<prefix>:<data>` go to this handler. */
 export interface CallbackHandlerDefinition {
   /** 1–8 lowercase letters. */
@@ -89,7 +108,10 @@ export interface OwnerCommandRouterOptions {
   readonly commands: readonly BotCommandDefinition[];
   /** Inline button handlers; the poller must receive `callback_query` updates. */
   readonly callbacks?: readonly CallbackHandlerDefinition[];
-  readonly client: Pick<TelegramClient, 'sendMessage' | 'editMessageText' | 'answerCallbackQuery'>;
+  readonly client: Pick<TelegramClient, 'sendMessage' | 'editMessageText' | 'answerCallbackQuery'> &
+    Partial<Pick<TelegramClient, 'getFile' | 'downloadFile'>>;
+  /** The owner's photos (phase 36); the client must download files then. */
+  readonly photo?: PhotoHandlerDefinition | undefined;
   readonly logger: Logger;
   readonly botUsername?: string;
   /** Reply for plain text and unknown commands. */
@@ -279,11 +301,56 @@ export function createOwnerCommandRouter(
     }
   }
 
+  async function handlePhoto(
+    updateId: number,
+    message: TelegramMessage & { photo: readonly TelegramPhotoSize[] },
+    logger: Logger,
+  ): Promise<void> {
+    const userId = message.from?.id;
+    const reason = refusal(message, userId, ownerUserId, logger, 'message');
+    if (reason !== undefined) {
+      await rejected({ updateId, kind: 'message', userId, reason }, logger);
+      return;
+    }
+    const chatId = message.chat.id;
+    const reply = (text: string, keyboard?: InlineKeyboard): Promise<void> =>
+      client.sendMessage({ chatId, text, keyboard });
+    const photo = options.photo;
+    if (photo === undefined || client.getFile === undefined || client.downloadFile === undefined) {
+      await reply(options.unknownCommandReply);
+      return;
+    }
+    const { getFile, downloadFile } = client;
+    try {
+      await photo.handler({
+        chatId,
+        userId: ownerUserId,
+        updateId,
+        sizes: [...message.photo].sort((a, b) => a.width * a.height - b.width * b.height),
+        logger,
+        reply,
+        download: async (fileId, maxBytes) => {
+          const file = await getFile({ fileId });
+          if ((file.fileSize ?? 0) > maxBytes) throw new Error('file too large');
+          return downloadFile({ filePath: file.filePath, maxBytes });
+        },
+      });
+      logger.info('telegram photo handled');
+    } catch (error) {
+      logger.error('telegram photo failed', { error });
+      await reply(options.failureReply);
+    }
+  }
+
   return async (update) => {
     const logger = options.logger.child({ correlation_id: `tg-update-${update.update_id}` });
     const { message, callback_query: query } = update;
     if (query !== undefined) {
       await handleCallback(update.update_id, query, logger);
+      return;
+    }
+    if (message?.photo !== undefined && message.photo.length > 0) {
+      await handlePhoto(update.update_id, { ...message, photo: message.photo }, logger);
       return;
     }
     if (message?.text === undefined) {

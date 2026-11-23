@@ -7,6 +7,7 @@ import type {
   CallbackHandlerDefinition,
   CommandContext,
   InlineKeyboard,
+  PhotoHandlerDefinition,
 } from '@roi-dealer/telegram';
 import type { Permission } from '@roi-dealer/policies';
 import {
@@ -116,6 +117,8 @@ export interface CommandCenter {
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
+  /** Photos of own objects the owner sends (phase 36); absent without a database. */
+  readonly photo?: PhotoHandlerDefinition | undefined;
   /**
    * Lines for /status: the kill switch, or that the database is not connected.
    * With the request, the view is recorded in the access log.
@@ -367,6 +370,15 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         });
 
   return {
+    photo: {
+      handler: async (context) => {
+        if (await audit.allow(context.userId, context.updateId, 'property.manage')) {
+          await propertyFlow.handlePhoto(context);
+        } else {
+          await context.reply(NO_PERMISSION_TEXT);
+        }
+      },
+    },
     commands: [
       command('decisions', 'decisions.read', async (context) => {
         const reply = (text: string, keyboard?: InlineKeyboard) => context.reply(text, keyboard);
