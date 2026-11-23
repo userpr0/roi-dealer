@@ -47,6 +47,7 @@ import { AUTO_PAUSE_PREFIX } from '@roi-dealer/economics';
 import { activeExperimentViews } from './experiments.js';
 import { hypothesesReadyText } from './hypotheses.js';
 import { newLeadText } from './leads.js';
+import { propertyLeadKeyboard, propertyLeadText } from './properties.js';
 import { sendPaymentNotices } from './payments.js';
 import { landingCardContext, landingCardText, landingKeyboard } from './media.js';
 import { shorten } from './texts.js';
@@ -546,6 +547,27 @@ export function createDecisionCardNotifier(
           await options.deliver(
             newLeadText(lead, { number: view?.number, title: view?.opportunity.title ?? 'тест' }),
           );
+          return { sentAt: toTimestamp(new Date(now())) };
+        },
+      );
+      if (outcome === 'executed') sent += 1;
+    }
+    // Phase 36: one notice per lead of an object page; the phone stays behind its button.
+    const propertyLeads = await database.properties.pendingNotices(QUEUE_LIMIT);
+    const objects =
+      propertyLeads.length === 0
+        ? []
+        : await database.repositories.properties.getByIds([
+            ...new Set(propertyLeads.map((lead) => lead.propertyId)),
+          ]);
+    for (const lead of propertyLeads) {
+      const property = objects.find((item) => item.id === lead.propertyId);
+      if (property === undefined) continue;
+      const key = `property-lead-notice-${String(lead.id)}`;
+      const { outcome } = await database.command(
+        { name: 'property.lead_notice', idempotencyKey: key, correlationId: key },
+        async () => {
+          await options.deliver(propertyLeadText(lead, property), propertyLeadKeyboard(lead));
           return { sentAt: toTimestamp(new Date(now())) };
         },
       );

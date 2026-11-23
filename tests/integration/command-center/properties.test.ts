@@ -1,14 +1,27 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createCommandCenter, type CommandCenter } from '@roi-dealer/command-center';
+import { capturePropertyLead, purgeExpiredContacts } from '@roi-dealer/crm';
+import {
+  createCommandCenter,
+  createDecisionCardNotifier,
+  type CommandCenter,
+} from '@roi-dealer/command-center';
 import type { Database } from '@roi-dealer/database';
-import { createTestDatabase, type TestDatabase } from '../../support/database.js';
+import { toTimestamp, type Actor } from '@roi-dealer/domain';
+import type { InlineKeyboard } from '@roi-dealer/telegram';
+import {
+  createTestDatabase,
+  registerPrincipal,
+  type TestDatabase,
+} from '../../support/database.js';
 import { createCapturingLogger } from '../../support/logger.js';
 import { ownerRouter, ROUTER_OWNER_ID } from '../../support/owner-router.js';
 
 let test: TestDatabase;
 let db: Database;
 let center: CommandCenter;
-const { logger } = createCapturingLogger('bot');
+const { logger, records } = createCapturingLogger('bot');
+const SITE: Actor = { type: 'integration', id: 'site' };
+const now = () => toTimestamp(new Date());
 
 const FORM = [
   '/property',
@@ -27,6 +40,7 @@ beforeAll(async () => {
   test = await createTestDatabase();
   db = test.database;
   center = createCommandCenter({ database: db, logger, deliverDigest: () => Promise.resolve() });
+  await registerPrincipal(db, SITE);
 });
 
 afterAll(async () => {
@@ -112,5 +126,125 @@ describe('own objects through the bot (phase 36)', () => {
     const chat = ownerRouter({ logger, commands: center.commands, callbacks: center.callbacks });
     await chat.send('/library');
     expect(chat.last()?.text).toContain('📁 Недвижимость — тем 1, разложено 1');
+  });
+});
+
+describe('leads of an object page in the bot (phase 36, ADR-0016 §12)', () => {
+  const sent: { text: string; keyboard?: InlineKeyboard | undefined }[] = [];
+  const notifier = () =>
+    createDecisionCardNotifier({
+      database: db,
+      logger,
+      deliver: (text, keyboard) => {
+        sent.push({ text, keyboard });
+        return Promise.resolve();
+      },
+    });
+  let leadId: number;
+
+  it('tells the owner about a lead once, without the phone', async () => {
+    const [shop] = await db.repositories.properties.listByStatuses(['listed']);
+    if (shop === undefined) throw new Error('no listed object');
+    await capturePropertyLead(
+      db,
+      {
+        propertyId: shop.id,
+        phone: '+380671234567',
+        name: 'Олена',
+        way: 'viber',
+        channel: 'olx',
+        material: 'tet01-obh-01',
+        at: now(),
+      },
+      SITE,
+    );
+    await notifier().runOnce();
+    await notifier().runOnce();
+    expect(sent).toHaveLength(1);
+    const [notice] = sent;
+    expect(notice?.text).toContain('📥 Заявка на «Тетіїв, Соборна, 42 м², оренда»');
+    expect(notice?.text).toContain('Канал: OLX · материал tet01-obh-01 · удобно: Viber');
+    expect(notice?.text).not.toContain('123');
+    const buttons = (notice?.keyboard ?? []).flat().map((button) => button.callback_data);
+    expect(buttons[0]).toMatch(/^pr:c:\d+$/);
+    leadId = Number(buttons[0]?.split(':')[2]);
+    expect(buttons.slice(1)).toEqual([
+      `pr:f:${String(leadId)}:c`,
+      `pr:f:${String(leadId)}:s`,
+      `pr:f:${String(leadId)}:d`,
+    ]);
+  });
+
+  it('shows the phone only on the owner’s press and never logs it', async () => {
+    const chat = ownerRouter({ logger, commands: center.commands, callbacks: center.callbacks });
+    await chat.press(`pr:c:${String(leadId)}`);
+    expect(chat.last()?.text).toBe('📱 +380671234567 · Олена · удобно: Viber');
+    expect(JSON.stringify(records)).not.toContain('380671234567');
+  });
+
+  it('records a showing after the lead with confirmation, with its channel and material', async () => {
+    const chat = ownerRouter({ logger, commands: center.commands, callbacks: center.callbacks });
+    await chat.press(`pr:f:${String(leadId)}:s`);
+    expect(chat.last()?.text).toContain(
+      'Записать показ: «Тетіїв, Соборна, 42 м², оренда» · OLX · материал tet01-obh-01?',
+    );
+    await chat.press(chat.buttons().find((data) => data.startsWith('pr:y:')) ?? '');
+    expect(chat.last()?.text).toBe('✅ Записано. Цифры объекта — /properties.');
+    const [showing] = await db.sql<
+      { step: string; channel: string; material: string; lead_id: string }[]
+    >`
+      select step, channel, material, lead_id::text as lead_id from property_funnel where step = 'showing'
+    `;
+    expect(showing).toEqual({
+      step: 'showing',
+      channel: 'olx',
+      material: 'tet01-obh-01',
+      lead_id: String(leadId),
+    });
+
+    await chat.send('/properties');
+    expect(chat.last()?.text).toContain('👁 0 · 📥 1 · 📞 0 · 👀 1 · 🤝 0 · заявки: OLX 1');
+  });
+
+  it('deletes a phone on the person’s request with /forget', async () => {
+    const [shop] = await db.repositories.properties.listByStatuses(['listed']);
+    if (shop === undefined) throw new Error('no listed object');
+    await capturePropertyLead(
+      db,
+      { propertyId: shop.id, phone: '+380501112233', way: 'call', channel: 'tg', at: now() },
+      SITE,
+    );
+    const chat = ownerRouter({ logger, commands: center.commands, callbacks: center.callbacks });
+    await chat.send('/forget 050 111 22 33');
+    expect(chat.last()?.text).toContain('❓ Удалить +380501112233 из заявок: 1?');
+    await chat.press(chat.buttons().find((data) => data.startsWith('fg:y:')) ?? '');
+    expect(chat.last()?.text).toBe('🗑 Удалено: телефон из заявок — 1.');
+    expect(
+      await db.sql`select 1 from property_contacts where phone = '+380501112233'`,
+    ).toHaveLength(0);
+  });
+
+  it('deletes the phones of a closed object and those past 180 days', async () => {
+    const chat = ownerRouter({ logger, commands: center.commands, callbacks: center.callbacks });
+    await chat.send('/properties');
+    await chat.press(chat.buttons().find((data) => data.endsWith(':c')) ?? '');
+    expect(chat.last()?.text).toContain('телефоны заявок удалятся');
+    await chat.press(chat.buttons().find((data) => data.startsWith('pr:y:')) ?? '');
+    expect(chat.last()?.text).toContain('Телефонов заявок удалено: 1.');
+    expect(await db.sql`select 1 from property_contacts`).toHaveLength(0);
+    // The lead stays in the numbers; its notice no longer offers the phone.
+    await chat.press(`pr:c:${String(leadId)}`);
+    expect(chat.last()?.text).not.toContain('+380');
+
+    // The retention period removes what is older than 180 days, as the system.
+    const [another] = await db.repositories.properties.listByStatuses(['closed']);
+    expect(another).toBeDefined();
+    await expect(
+      purgeExpiredContacts({
+        database: db,
+        logger,
+        now: () => Date.now() + 181 * 86_400_000,
+      }),
+    ).resolves.toEqual({ erased: 0 });
   });
 });

@@ -311,6 +311,8 @@ export {
   parsePropertyForm,
   propertiesView,
   propertyCard,
+  propertyLeadKeyboard,
+  propertyLeadText,
   PROPERTY_FORM,
   PROPERTY_PREFIX,
   PROPERTY_VERTICAL,

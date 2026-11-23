@@ -16,6 +16,14 @@ export interface RoutedMessage {
 export const ROUTER_OWNER_ID = 4_242;
 
 /**
+ * Update and button-press ids are unique across every harness of a test file, as in Telegram:
+ * the command center keys its commands by them (`tg-callback-<id>`), so a repeated id would be
+ * a repeated press.
+ */
+let updateId = 10_000;
+let pressId = 0;
+
+/**
  * The owner's chat through the real router of the bot (`createOwnerCommandRouter`): commands
  * and button presses reach the handlers exactly as from Telegram — the handler gets the button
  * data after its `<prefix>:`. Tests that call handlers directly cannot see how the router splits
@@ -27,8 +35,6 @@ export function ownerRouter(options: {
   readonly callbacks?: readonly CallbackHandlerDefinition[];
 }) {
   const messages: RoutedMessage[] = [];
-  let updateId = 10_000;
-  let pressId = 0;
   const route = createOwnerCommandRouter({
     ownerUserId: ROUTER_OWNER_ID,
     commands: options.commands ?? [],

@@ -106,6 +106,8 @@ export interface PropertyQueries {
   contact(leadId: number, actor: Actor): Promise<PropertyContact | undefined>;
   /** Deletes the phones of an object's leads (closed or withdrawn). `property.manage`. */
   eraseContacts(propertyId: PropertyId, actor: Actor): Promise<number>;
+  /** How many leads still hold this phone (the /forget question). `lead.manage`. */
+  phoneLeads(phone: string, actor: Actor): Promise<number>;
   /** Deletes every lead's phone that matches (a person's request). `lead.manage`. */
   forgetPhone(phone: string, actor: Actor): Promise<number>;
   /** Deletes the phones left before `before` (retention). `lead.manage`. */
@@ -320,6 +322,15 @@ export function createPropertyQueries(executor: Executor): PropertyQueries {
           delete from property_contacts where property_id = ${propertyId} returning lead_id
         `;
         return rows.length;
+      }),
+
+    phoneLeads: (phone, actor) =>
+      translated(async () => {
+        await authorize(executor, actor, 'lead.manage');
+        const rows = await executor<{ count: string }[]>`
+          select count(*)::text as count from property_contacts where phone = ${phone}
+        `;
+        return Number(rows[0]?.count ?? 0);
       }),
 
     forgetPhone: (phone, actor) =>

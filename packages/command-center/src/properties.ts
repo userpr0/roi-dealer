@@ -12,12 +12,19 @@ import {
   withLibraryNodes,
   type Actor,
   type NewProperty,
+  type PropertyChannel,
+  type PropertyFunnelStep,
   type Property,
   type PropertyKind,
   type PropertyStatus,
   type Timestamp,
 } from '@roi-dealer/domain';
-import { storeLibraryNodes, type Database } from '@roi-dealer/database';
+import {
+  storeLibraryNodes,
+  type Database,
+  type PropertyFunnelCount,
+  type PropertyLead,
+} from '@roi-dealer/database';
 import { uuidv7 } from '@roi-dealer/shared';
 import {
   callbackButton,
@@ -26,7 +33,7 @@ import {
   type InlineKeyboardButton,
 } from '@roi-dealer/telegram';
 import { CONFIRMATION_TTL_MS } from './kill-switch.js';
-import { shorten } from './texts.js';
+import { formatTime, shorten } from './texts.js';
 
 /*
  * /property and /properties (phase 36, ADR-0016 part 2): the owner adds an own object with a
@@ -111,8 +118,16 @@ const ACTIONS: Readonly<
 > = {
   l: { status: 'listed', label: '📢 В продажу', question: 'Выставить в продажу' },
   u: { status: 'under_offer', label: '🤝 Торг', question: 'Отметить торг или задаток' },
-  c: { status: 'closed', label: '✅ Сделка', question: 'Отметить сделку — объект закрыт' },
-  w: { status: 'withdrawn', label: '🗑 Снять', question: 'Снять объект' },
+  c: {
+    status: 'closed',
+    label: '✅ Сделка',
+    question: 'Отметить сделку — объект закрыт, страница уйдёт, телефоны заявок удалятся',
+  },
+  w: {
+    status: 'withdrawn',
+    label: '🗑 Снять',
+    question: 'Снять объект — страница уйдёт, телефоны заявок удалятся',
+  },
 };
 const ACTION_OF: Readonly<Record<PropertyStatus, keyof typeof ACTIONS | undefined>> = {
   draft: undefined,
@@ -355,7 +370,74 @@ export function propertyCard(
   ].join('\n');
 }
 
-type PropertyStore = Pick<Database, 'repositories'>;
+const WAY_LABELS = { call: 'звонок', telegram: 'Telegram', viber: 'Viber' } as const;
+const CHANNEL_LABELS: Readonly<Record<PropertyChannel, string>> = {
+  olx: 'OLX',
+  domria: 'DOM.RIA',
+  fb: 'Facebook',
+  tg: 'Telegram',
+  viber: 'Viber',
+  ig: 'Instagram',
+  tt: 'TikTok',
+  other: 'другое',
+};
+/** The owner's steps after a lead: a call, a showing, a deal. */
+const OWNER_STEPS: Readonly<
+  Record<'c' | 's' | 'd', { step: PropertyFunnelStep; label: string; question: string }>
+> = {
+  c: { step: 'call', label: '📞 Созвонились', question: 'Записать звонок' },
+  s: { step: 'showing', label: '👀 Показ', question: 'Записать показ' },
+  d: { step: 'deal', label: '🤝 Сделка', question: 'Записать сделку по этой заявке' },
+};
+
+const tagText = (lead: Pick<PropertyLead, 'channel' | 'material'>): string =>
+  `${CHANNEL_LABELS[lead.channel]}${lead.material === undefined ? '' : ` · материал ${lead.material}`}`;
+
+/** The notice of a new lead of an object page: no phone — it is behind a button (ADR-0016 §12). */
+export function propertyLeadText(lead: PropertyLead, property: Pick<Property, 'title'>): string {
+  return [
+    `📥 Заявка на «${shorten(property.title, 100)}» · ${formatTime(lead.occurredAt)}`,
+    `Канал: ${tagText(lead)}${lead.preferred === undefined ? '' : ` · удобно: ${WAY_LABELS[lead.preferred]}`}`,
+    lead.preferred === undefined ? 'Телефон уже удалён.' : 'Телефон — по кнопке, только вам.',
+  ].join('\n');
+}
+
+export function propertyLeadKeyboard(lead: Pick<PropertyLead, 'id' | 'preferred'>): Keyboard {
+  const id = String(lead.id);
+  return [
+    ...(lead.preferred === undefined
+      ? []
+      : [[callbackButton('📱 Показать контакт', `${PROPERTY_PREFIX}:c:${id}`)]]),
+    (Object.keys(OWNER_STEPS) as (keyof typeof OWNER_STEPS)[]).map((code) =>
+      callbackButton(OWNER_STEPS[code].label, `${PROPERTY_PREFIX}:f:${id}:${code}`),
+    ),
+  ];
+}
+
+/** «👁 12 · 📥 3 · 📞 1 · 👀 0 · 🤝 0» and the channels that brought leads. */
+function countsLine(counts: readonly PropertyFunnelCount[]): string | undefined {
+  if (counts.length === 0) return undefined;
+  const total = (step: PropertyFunnelStep) =>
+    counts.filter((item) => item.step === step).reduce((sum, item) => sum + item.count, 0);
+  const leads = new Map<string, number>();
+  for (const item of counts.filter((entry) => entry.step === 'lead')) {
+    leads.set(
+      CHANNEL_LABELS[item.channel],
+      (leads.get(CHANNEL_LABELS[item.channel]) ?? 0) + item.count,
+    );
+  }
+  const byChannel = [...leads.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([channel, count]) => `${channel} ${String(count)}`)
+    .join(', ');
+  return (
+    `   👁 ${String(total('view'))} · 📥 ${String(total('lead'))} · 📞 ${String(total('call'))} · ` +
+    `👀 ${String(total('showing'))} · 🤝 ${String(total('deal'))}` +
+    (byChannel === '' ? '' : ` · заявки: ${byChannel}`)
+  );
+}
+
+type PropertyStore = Pick<Database, 'repositories' | 'properties'>;
 
 /** /properties: the objects, newest change first, with the next steps of each as buttons. */
 export async function propertiesView(
@@ -371,6 +453,7 @@ export async function propertiesView(
   if (objects.length === 0) {
     return { text: `🏠 Объектов пока нет. Добавить — /property` };
   }
+  const counts = await database.properties.counts(objects.map((item) => item.id));
   const lines = ['🏠 Свои объекты', ''];
   const keyboard: Keyboard = [];
   objects.forEach((property, index) => {
@@ -378,6 +461,8 @@ export async function propertiesView(
     lines.push(
       `${number}. ${property.title} — ${STATUS_LABELS[property.status]} · ${dollars(property.priceCents)}${property.deal === 'rent' ? '/мес' : ''}`,
     );
+    const line = countsLine(counts.filter((item) => item.propertyId === property.id));
+    if (line !== undefined) lines.push(line);
     if (index >= SHOWN_PROPERTIES) return;
     const next = propertyLifecycle.nextStates(property.status);
     const buttons = next.flatMap((status) => {
@@ -416,6 +501,12 @@ type Pending =
       readonly propertyId: string;
       readonly version: number;
       readonly status: PropertyStatus;
+      readonly expiresAtMs: number;
+    }
+  | {
+      readonly kind: 'step';
+      readonly leadId: number;
+      readonly step: PropertyFunnelStep;
       readonly expiresAtMs: number;
     };
 
@@ -515,6 +606,49 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
         return;
       }
 
+      // The phone of a lead: only in the owner's chat, never in a log (ADR-0016 §12).
+      if (action === 'c') {
+        const contact = await database.properties.contact(
+          Number(first),
+          deps.owner(context.userId),
+        );
+        if (contact === undefined) {
+          await context.answer('Телефон уже удалён.');
+          return;
+        }
+        await context.reply(
+          `📱 ${contact.phone}${contact.name === undefined ? '' : ` · ${contact.name}`} · удобно: ${WAY_LABELS[contact.preferred]}`,
+        );
+        await context.answer('Контакт отправлен');
+        return;
+      }
+      // A call, a showing or a deal after a lead: confirmation first.
+      if (action === 'f') {
+        const target = OWNER_STEPS[second as keyof typeof OWNER_STEPS] as
+          (typeof OWNER_STEPS)[keyof typeof OWNER_STEPS] | undefined;
+        const lead =
+          target === undefined ? undefined : await database.properties.lead(Number(first));
+        const property =
+          lead === undefined
+            ? undefined
+            : await database.repositories.properties.getById(lead.propertyId);
+        if (target === undefined || lead === undefined || property === undefined) {
+          await context.answer('Заявка не найдена.');
+          return;
+        }
+        const nonce = remember({
+          kind: 'step',
+          leadId: lead.id,
+          step: target.step,
+          expiresAtMs: nowMs() + CONFIRMATION_TTL_MS,
+        });
+        await context.reply(
+          `${target.question}: «${shorten(property.title, 100)}» · ${tagText(lead)}? Подтверждение действует 10 минут.`,
+          confirm(nonce, 'Да'),
+        );
+        return;
+      }
+
       if (action === 'n' && first !== undefined) {
         pending.delete(first);
         await context.edit('Отменено. Ничего не записано.');
@@ -584,25 +718,56 @@ export function createPropertyFlow(deps: PropertyFlowDeps): PropertyFlow {
         return;
       }
 
+      if (item.kind === 'step') {
+        await database.command({ ...command, name: 'property.funnel' }, async (scope) => {
+          const lead = await scope.properties.lead(item.leadId);
+          if (lead === undefined) return { recorded: false };
+          await scope.properties.track(
+            {
+              propertyId: lead.propertyId,
+              step: item.step,
+              channel: lead.channel,
+              material: lead.material,
+              leadId: lead.id,
+              correlationId,
+            },
+            actor,
+          );
+          return { recorded: true };
+        });
+        pending.delete(first);
+        await context.edit(`✅ Записано. Цифры объекта — /properties.`);
+        return;
+      }
+
       const { result } = await database.command(
         { ...command, name: 'property.status' },
         async (scope) => {
           const property = await scope.repositories.properties.getById(
             propertyIdSchema.parse(item.propertyId),
           );
-          if (property?.version !== item.version) return { title: '' };
+          if (property?.version !== item.version) return { title: '', erased: 0 };
           await scope.repositories.properties.update(
             setPropertyStatus(property, item.status, { actor, at: deps.now() }),
             actor,
           );
-          return { title: property.title };
+          // A closed or withdrawn object keeps no phones (ADR-0016 §12).
+          const erased =
+            item.status === 'closed' || item.status === 'withdrawn'
+              ? await scope.properties.eraseContacts(property.id, actor)
+              : 0;
+          return { title: property.title, erased };
         },
       );
       pending.delete(first);
       await context.edit(
         result.title === ''
           ? 'Карточка устарела: объект уже изменился. Повторите /properties.'
-          : `${STATUS_LABELS[item.status]}: «${result.title}». Список — /properties.`,
+          : `${STATUS_LABELS[item.status]}: «${result.title}».` +
+              ((result.erased ?? 0) > 0
+                ? ` Телефонов заявок удалено: ${String(result.erased)}.`
+                : '') +
+              ' Список — /properties.',
       );
     },
   };
