@@ -22,5 +22,14 @@ export {
   type SignUp,
   type SignUpOutcome,
 } from './leads.js';
+export {
+  capturePropertyLead,
+  MAX_LEAD_NAME,
+  parsePropertyLeadForm,
+  PROPERTY_FORM_FIELDS,
+  PROPERTY_LEAD_REPEAT_MS,
+  type PropertyLead,
+  type PropertyLeadForm,
+} from './property-leads.js';
 
 export const PACKAGE_NAME = '@roi-dealer/crm';

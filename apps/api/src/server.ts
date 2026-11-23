@@ -92,6 +92,20 @@ function send(
     res.end();
     return;
   }
+  if (response.bytes !== undefined) {
+    // A photo of a public page (phase 36): cached by browsers for a day.
+    res.writeHead(response.status, {
+      ...response.headers,
+      'content-type': response.contentType ?? 'application/octet-stream',
+      'content-length': response.bytes.byteLength,
+      'cache-control': 'public, max-age=86400',
+      'x-content-type-options': 'nosniff',
+      'cross-origin-resource-policy': 'same-origin',
+      [CORRELATION_ID_HEADER]: correlationId,
+    });
+    res.end(method === 'HEAD' ? undefined : response.bytes);
+    return;
+  }
   if (response.html !== undefined) {
     res.writeHead(response.status, {
       ...response.headers,
