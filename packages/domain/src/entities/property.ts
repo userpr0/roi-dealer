@@ -246,3 +246,74 @@ const LETTERS: Readonly<Record<string, string>> = {
 function transliterate(text: string): string {
   return [...text.toLowerCase()].map((letter) => LETTERS[letter] ?? letter).join('');
 }
+
+// The page of an object (phase 36, ADR-0016 §9–12): photos, the funnel and the phone of a lead.
+
+export const MAX_PROPERTY_PHOTOS = 15;
+export const MAX_PROPERTY_PHOTO_BYTES = 400 * 1024;
+/** Telegram's ready size: the longest side at most this (ADR-0016 §9). */
+export const MAX_PROPERTY_PHOTO_SIDE = 1280;
+
+/** The channel tag `?c=` of the page (ADR-0016 §11); any other value counts as `other`. */
+export const PROPERTY_CHANNELS = [
+  'olx',
+  'domria',
+  'fb',
+  'tg',
+  'viber',
+  'ig',
+  'tt',
+  'other',
+] as const;
+export type PropertyChannel = (typeof PROPERTY_CHANNELS)[number];
+
+export function propertyChannelOf(value: string | undefined): PropertyChannel {
+  const channel = value?.trim().toLowerCase();
+  return (PROPERTY_CHANNELS as readonly string[]).includes(channel ?? '')
+    ? (channel as PropertyChannel)
+    : 'other';
+}
+
+/** The material tag `?m=`: the short code of a video, post or listing (D-042, ADR-0018). */
+export const propertyMaterialSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .max(40);
+
+/** The funnel of an object: the page writes views and leads, the owner the rest. */
+export const PROPERTY_FUNNEL_STEPS = ['view', 'lead', 'call', 'showing', 'deal'] as const;
+export type PropertyFunnelStep = (typeof PROPERTY_FUNNEL_STEPS)[number];
+export const PROPERTY_SITE_STEPS = [
+  'view',
+  'lead',
+] as const satisfies readonly PropertyFunnelStep[];
+export const PROPERTY_OWNER_STEPS = [
+  'call',
+  'showing',
+  'deal',
+] as const satisfies readonly PropertyFunnelStep[];
+
+/** How the person wants to be contacted (ADR-0016 §12). */
+export const PROPERTY_CONTACT_WAYS = ['call', 'telegram', 'viber'] as const;
+export type PropertyContactWay = (typeof PROPERTY_CONTACT_WAYS)[number];
+
+/** Phones of leads are deleted this long after the lead at the latest (ADR-0016 §12). */
+export const PROPERTY_CONTACT_RETENTION_DAYS = 180;
+
+/**
+ * A phone number as `+<digits>`: Ukrainian `067 123 45 67`, `0671234567`, `380671234567`,
+ * `+380 (67) 123-45-67`, or any international number with `+`; undefined when it is not one.
+ */
+export function normalizePhone(text: string): string | undefined {
+  const trimmed = text.trim();
+  if (!/^\+?[\d\s().-]{9,25}$/.test(trimmed)) return undefined;
+  const digits = trimmed.replace(/\D/g, '');
+  if (trimmed.startsWith('+')) {
+    return digits.length >= 10 && digits.length <= 15 ? `+${digits}` : undefined;
+  }
+  if (digits.length === 12 && digits.startsWith('380')) return `+${digits}`;
+  if (digits.length === 10 && digits.startsWith('0')) return `+38${digits}`;
+  return undefined;
+}

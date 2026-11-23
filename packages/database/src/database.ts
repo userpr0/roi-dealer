@@ -20,6 +20,7 @@ import { createModelQueries, type ModelQueries } from './models.js';
 import { createWatchlistQueries, type WatchlistQueries } from './watchlist.js';
 import { createSeekQueries, type SeekQueries } from './seek.js';
 import { createLibraryQueries, type LibraryQueries } from './library.js';
+import { createPropertyQueries, type PropertyQueries } from './properties.js';
 import { createServiceWatch, type ServiceWatch } from './services.js';
 import { createFunnelLog, type FunnelLog } from './experiments.js';
 import { createStatsQueries, type StatsQueries } from './stats.js';
@@ -84,6 +85,8 @@ export interface TransactionScope {
   readonly seek: SeekQueries;
   /** The library's filing journal, written with the nodes it creates (phase 35). */
   readonly library: LibraryQueries;
+  /** Photos, funnel and lead phones of own objects (phase 36). */
+  readonly properties: PropertyQueries;
 }
 
 export interface TransactionOptions {
@@ -153,6 +156,8 @@ export interface Database {
   readonly seek: SeekQueries;
   /** The library: the tree and what is filed where (phase 35). */
   readonly library: LibraryQueries;
+  /** Photos, funnel and lead phones of own objects (phase 36). */
+  readonly properties: PropertyQueries;
   /** Runs `work` in one transaction; it commits when `work` resolves and rolls back when it throws. */
   transaction<T>(
     work: (scope: TransactionScope) => Promise<T>,
@@ -208,6 +213,7 @@ function scopeOf(tx: TransactionSql, context: WriteContext): TransactionScope {
     watchlist: createWatchlistQueries(tx),
     seek: createSeekQueries(tx),
     library: createLibraryQueries(tx),
+    properties: createPropertyQueries(tx),
   };
 }
 
@@ -281,6 +287,7 @@ export function createDatabase(options: DatabaseOptions): Database {
     watchlist: createWatchlistQueries(sql),
     seek: createSeekQueries(sql),
     library: createLibraryQueries(sql),
+    properties: createPropertyQueries(sql),
 
     transaction: (work, transactionOptions = {}) =>
       recordingDenials(transactionOptions, (context) =>

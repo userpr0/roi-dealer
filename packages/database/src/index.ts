@@ -111,6 +111,7 @@ export {
   type Repositories,
   type SourceRepository,
   type CheckoutRepository,
+  type PropertyRepository,
   type LeadRepository,
   type MediaAssetRepository,
 } from './repositories.js';
@@ -226,3 +227,12 @@ export {
   type LibraryObjectType,
   type LibraryQueries,
 } from './library.js';
+export {
+  createPropertyQueries,
+  type PropertyContact,
+  type PropertyFunnelCount,
+  type PropertyFunnelEntry,
+  type PropertyLead,
+  type PropertyPhotoInfo,
+  type PropertyQueries,
+} from './properties.js';
