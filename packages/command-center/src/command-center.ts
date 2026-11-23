@@ -38,6 +38,7 @@ import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
 import { createModelsFlow, MODELS_PREFIX } from './models.js';
 import { createWatchlistFlow, WATCHLIST_PREFIX } from './watchlist.js';
 import { createSeekFlow, SEEK_PREFIX } from './seek.js';
+import { createLibraryFlow, LIBRARY_PREFIX } from './library.js';
 import { audienceText } from './audience.js';
 import { sourcesText } from './sources.js';
 import {
@@ -169,6 +170,7 @@ const DESCRIPTIONS = {
   models: 'Модели AI: паспорт, допуск, претенденты по эталонам',
   watchlist: 'Лист наблюдения: отсечённое, которое снова растёт',
   seek: 'Тема поиска для агента исследований',
+  library: 'Библиотека: вертикаль → проект → тема',
   audience: 'Своя аудитория: подписчики по темам',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
@@ -204,6 +206,7 @@ function withoutDatabase(): Pick<
       MODELS_PREFIX,
       WATCHLIST_PREFIX,
       SEEK_PREFIX,
+      LIBRARY_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -257,6 +260,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const modelFlow = createModelsFlow(deps);
   const watch = createWatchlistFlow(deps);
   const seeker = createSeekFlow(deps);
+  const libraryFlow = createLibraryFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -443,6 +447,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('models', 'status.read', modelFlow.models),
       command('watchlist', 'research.read', watch.watchlist),
       command('seek', 'research.read', seeker.seek),
+      command('library', 'research.read', libraryFlow.library),
       command('audience', 'lead.manage', async (context) =>
         context.reply(await audienceText(database, ownerActor(context.userId))),
       ),
@@ -471,6 +476,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(MODELS_PREFIX, 'decision.record', modelFlow.handleButton),
       button(WATCHLIST_PREFIX, 'decision.record', watch.handleButton),
       button(SEEK_PREFIX, 'research.write', seeker.handleButton),
+      button(LIBRARY_PREFIX, 'research.write', libraryFlow.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),

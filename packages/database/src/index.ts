@@ -217,3 +217,12 @@ export {
   type WatchlistQueries,
 } from './watchlist.js';
 export { createSeekQueries, type SeekQueries, type SeekTopic } from './seek.js';
+export {
+  createLibraryQueries,
+  LIBRARY_OBJECT_TYPES,
+  storeLibraryNodes,
+  type LibraryFiling,
+  type LibraryFilingEntry,
+  type LibraryObjectType,
+  type LibraryQueries,
+} from './library.js';

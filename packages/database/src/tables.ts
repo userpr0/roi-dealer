@@ -10,6 +10,9 @@ import {
   knowledgeAssetSchema,
   checkoutSchema,
   leadSchema,
+  libraryProjectSchema,
+  libraryTopicSchema,
+  libraryVerticalSchema,
   mediaAssetSchema,
   opportunitySchema,
   painSchema,
@@ -30,6 +33,9 @@ import {
   type KnowledgeAsset,
   type Checkout,
   type Lead,
+  type LibraryProject,
+  type LibraryTopic,
+  type LibraryVertical,
   type MediaAsset,
   type Metric,
   type Opportunity,
@@ -863,4 +869,67 @@ export const checkoutsTable: TableSpec<Checkout> = {
       testedAt: instant(row['tested_at']),
       ...readMutableMeta(row),
     }),
+};
+
+// The library (phase 35, ADR-0016): vertical → project → topic.
+
+export const libraryVerticalsTable: TableSpec<LibraryVertical> = {
+  entity: 'library_vertical',
+  table: 'library_verticals',
+  schema: libraryVerticalSchema,
+  links: {},
+  toColumns: (vertical) => ({
+    id: vertical.id,
+    name: vertical.name,
+    status: vertical.status,
+    ...mutableMetaColumns(vertical),
+  }),
+  fromRow: (row) => ({
+    id: row['id'],
+    name: row['name'],
+    status: row['status'],
+    ...readMutableMeta(row),
+  }),
+};
+
+export const libraryProjectsTable: TableSpec<LibraryProject> = {
+  entity: 'library_project',
+  table: 'library_projects',
+  schema: libraryProjectSchema,
+  links: {},
+  toColumns: (project) => ({
+    id: project.id,
+    vertical_id: project.verticalId,
+    name: project.name,
+    status: project.status,
+    ...mutableMetaColumns(project),
+  }),
+  fromRow: (row) => ({
+    id: row['id'],
+    verticalId: row['vertical_id'],
+    name: row['name'],
+    status: row['status'],
+    ...readMutableMeta(row),
+  }),
+};
+
+export const libraryTopicsTable: TableSpec<LibraryTopic> = {
+  entity: 'library_topic',
+  table: 'library_topics',
+  schema: libraryTopicSchema,
+  links: {},
+  toColumns: (topic) => ({
+    id: topic.id,
+    project_id: topic.projectId,
+    name: topic.name,
+    status: topic.status,
+    ...mutableMetaColumns(topic),
+  }),
+  fromRow: (row) => ({
+    id: row['id'],
+    projectId: row['project_id'],
+    name: row['name'],
+    status: row['status'],
+    ...readMutableMeta(row),
+  }),
 };

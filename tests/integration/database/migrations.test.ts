@@ -63,6 +63,7 @@ const PROJECT_MIGRATIONS = [
   '0025_watchlist',
   '0026_seek_topics',
   '0027_audience',
+  '0028_library',
 ];
 
 describe('runMigrations with the project migrations', () => {
