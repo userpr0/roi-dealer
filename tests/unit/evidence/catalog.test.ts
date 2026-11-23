@@ -75,6 +75,9 @@ describe('source catalog (D-014 п.5)', () => {
       openfda: 'allowed',
       'nhtsa-complaints': 'needs_review',
       'uk-petitions': 'allowed',
+      'dom-ria-prices': 'allowed',
+      'telegram-channels': 'rejected',
+      'ticketmaster-discovery': 'needs_agreement',
     });
   });
 
