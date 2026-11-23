@@ -187,7 +187,8 @@ export function createWatchlistFlow(deps: WatchlistFlowDeps): WatchlistFlow {
     },
 
     async handleButton(context) {
-      const [, action, first] = context.data.split(':');
+      // The router passes the data after `wl:`.
+      const [action, first] = context.data.split(':');
       if ((action === 'r' || action === 'k') && first !== undefined) {
         // The similar pain and the growth are computed again: the card may be old.
         const item = (await watchItems(deps.database)).find(

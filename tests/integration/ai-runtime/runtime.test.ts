@@ -14,7 +14,12 @@ import {
   type AiRuntime,
   type ModelSpec,
 } from '@roi-dealer/ai-runtime';
-import { createModelsFlow, ensureAccessRequest, modelsView } from '@roi-dealer/command-center';
+import {
+  createModelsFlow,
+  ensureAccessRequest,
+  MODELS_PREFIX,
+  modelsView,
+} from '@roi-dealer/command-center';
 import type { Database } from '@roi-dealer/database';
 import {
   approvePrincipal,
@@ -42,6 +47,7 @@ import { OWNER } from '../../support/domain.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 import { promptText, startFakeAi, type FakeAi, type FakeAiRequest } from '../../support/fake-ai.js';
 import { createCapturingLogger } from '../../support/logger.js';
+import { ownerRouter } from '../../support/owner-router.js';
 
 const USD = 1_000_000;
 const KEYS = {
@@ -274,7 +280,8 @@ describe('evals (D-014 п.7)', () => {
 
 describe('model changes by tests (09b, ADR-0014)', () => {
   it('evaluates a candidate but routes real calls to it only after the owner admits it', async () => {
-    const candidate: ModelSpec = { ...HAIKU, id: 'claude-haiku-cand', admission: 'candidate' };
+    // A dot in the id, like real model ids: button data may not hold dots.
+    const candidate: ModelSpec = { ...HAIKU, id: 'claude-haiku-9.1-cand', admission: 'candidate' };
     claude.answer(oracle);
     const ai = runtime({ models: [candidate, GPT_MINI] });
     await expect(ai.evaluate(redactNamesTask, candidate.id)).resolves.toMatchObject({
@@ -296,24 +303,18 @@ describe('model changes by tests (09b, ADR-0014)', () => {
       owner: () => OWNER,
       models: [candidate, GPT_MINI],
     });
-    const edits: { text: string; keyboard?: unknown }[] = [];
-    const press = (data: string, id: string) =>
-      flow.handleButton({
-        data,
-        userId: 1,
-        updateId: 7,
-        callbackQueryId: id,
-        edit: (text: string, keyboard?: unknown) => {
-          edits.push({ text, keyboard });
-          return Promise.resolve();
-        },
-        answer: () => Promise.resolve(),
-      } as never);
-    await press(`md:a:${candidate.id}`, 'q-ask');
-    expect(edits.at(-1)?.text).toContain(`✅ Допустить ${candidate.id} к реальным задачам?`);
-    const yes = JSON.stringify(edits.at(-1)?.keyboard).match(/md:y:[0-9a-f]+/)?.[0];
-    await press(yes ?? expect.unreachable(), 'q-yes');
-    expect(edits.at(-1)?.text).toContain(`✅ ${candidate.id} допущен.`);
+    // The buttons are pressed through the real router of the bot, as from Telegram.
+    const chat = ownerRouter({
+      logger,
+      callbacks: [{ prefix: MODELS_PREFIX, handler: flow.handleButton }],
+    });
+    const [admit] = (view.keyboard ?? []).flat().map((button) => button.callback_data);
+    expect(admit).toMatch(/^md:a:[0-9a-f]{16}$/);
+    await chat.press(admit ?? expect.unreachable());
+    expect(chat.last()?.text).toContain(`✅ Допустить ${candidate.id} к реальным задачам?`);
+    const yes = chat.buttons().find((data) => data.startsWith('md:y:'));
+    await chat.press(yes ?? expect.unreachable());
+    expect(chat.last()?.text).toContain(`✅ ${candidate.id} допущен.`);
     expect((await db.models.decisions()).get(candidate.id)).toBe('admitted');
 
     const fresh = runtime({ models: [candidate, GPT_MINI] });

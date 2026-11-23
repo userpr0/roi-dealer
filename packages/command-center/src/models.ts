@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   compareCandidate,
   isAdmitted,
@@ -61,6 +61,13 @@ function passportLine(model: ModelSpec): string {
   );
 }
 
+/**
+ * A candidate's key on its buttons. Model ids hold dots and can be long, button data may hold
+ * neither (`CALLBACK_DATA_PATTERN`); a hash keeps two long ids with one prefix apart.
+ */
+const buttonKey = (modelId: string): string =>
+  createHash('sha256').update(modelId).digest('hex').slice(0, 16);
+
 const percent = (value: number) => `${String(Math.round(value * 100))}%`;
 const dollars = (micro: number) => `$${(micro / 1_000_000).toFixed(4)}`;
 
@@ -112,8 +119,11 @@ export async function modelsView(
         : '  Рекомендация кода: пока нет — не лучше на эталонах или они не прогнаны.',
     );
     keyboard.push([
-      callbackButton(`✅ Допустить ${candidate.id}`, `${MODELS_PREFIX}:a:${candidate.id}`),
-      callbackButton('✖️ Отклонить', `${MODELS_PREFIX}:r:${candidate.id}`),
+      callbackButton(
+        `✅ Допустить ${candidate.id}`,
+        `${MODELS_PREFIX}:a:${buttonKey(candidate.id)}`,
+      ),
+      callbackButton('✖️ Отклонить', `${MODELS_PREFIX}:r:${buttonKey(candidate.id)}`),
     ]);
   }
   const retiring = retiringModels(models, nowMs);
@@ -188,9 +198,12 @@ export function createModelsFlow(deps: ModelsFlowDeps): ModelsFlow {
     },
 
     async handleButton(context) {
-      const [, action, value] = context.data.split(':');
+      // The router passes the data after `md:`.
+      const [action, value] = context.data.split(':');
       if (action === 'a' || action === 'r') {
-        const model = registry.find((item) => item.id === value && item.admission === 'candidate');
+        const model = registry.find(
+          (item) => buttonKey(item.id) === value && item.admission === 'candidate',
+        );
         if (model === undefined) {
           await context.edit('Претендент не найден.');
           return;
