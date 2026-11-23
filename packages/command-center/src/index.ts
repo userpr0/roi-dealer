@@ -307,6 +307,18 @@ export {
   type LibraryView,
 } from './library.js';
 export {
+  createPropertyFlow,
+  parsePropertyForm,
+  propertiesView,
+  propertyCard,
+  PROPERTY_FORM,
+  PROPERTY_PREFIX,
+  PROPERTY_VERTICAL,
+  type PropertyFlow,
+  type PropertyFlowDeps,
+  type PropertyForm,
+} from './properties.js';
+export {
   createWatchlistFlow,
   WATCHLIST_PREFIX,
   watchItems,

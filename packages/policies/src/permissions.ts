@@ -47,6 +47,8 @@ export const PERMISSIONS = [
   // CRM (PHASE 20): a sign-up from a page; reading, moving and erasing leads and contacts.
   'lead.capture',
   'lead.manage',
+  /** The owner's own real estate (phase 36, ADR-0016): only the owner adds and changes it. */
+  'property.manage',
   // Controls.
   'system.control',
   'access.propose',
@@ -141,6 +143,8 @@ export const ENTITY_WRITE_PERMISSIONS: Readonly<
   library_vertical: { create: 'research.write', update: 'research.write' },
   library_project: { create: 'research.write', update: 'research.write' },
   library_topic: { create: 'research.write', update: 'research.write' },
+  // Only the owner adds an own object and changes it (domain, phase 36).
+  property: { create: 'property.manage', update: 'property.manage' },
 };
 
 export function writePermission(entity: EntityType, operation: WriteOperation): Permission {

@@ -64,6 +64,7 @@ const PROJECT_MIGRATIONS = [
   '0026_seek_topics',
   '0027_audience',
   '0028_library',
+  '0029_properties',
 ];
 
 describe('runMigrations with the project migrations', () => {

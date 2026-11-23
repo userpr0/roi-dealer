@@ -14,6 +14,7 @@ import type {
   LibraryTopic,
   LibraryVertical,
   MediaAsset,
+  Property,
   Opportunity,
   OpportunityId,
   Pain,
@@ -53,6 +54,7 @@ import {
   libraryTopicsTable,
   libraryVerticalsTable,
   mediaAssetsTable,
+  propertiesTable,
   opportunitiesTable,
   painsTable,
   principalsTable,
@@ -94,6 +96,14 @@ export interface Repositories {
   readonly libraryVerticals: VersionedRepository<LibraryVertical>;
   readonly libraryProjects: VersionedRepository<LibraryProject>;
   readonly libraryTopics: VersionedRepository<LibraryTopic>;
+  /** The owner's own real estate (phase 36). */
+  readonly properties: PropertyRepository;
+}
+
+export interface PropertyRepository extends VersionedRepository<Property> {
+  /** Objects by status, newest change first; at most 100. */
+  listByStatuses(statuses: readonly Property['status'][]): Promise<Property[]>;
+  getBySlug(slug: string): Promise<Property | undefined>;
 }
 
 export interface CheckoutRepository extends VersionedRepository<Checkout> {
@@ -225,6 +235,22 @@ export function createRepositories(executor: Executor, context: WriteContext = {
     libraryVerticals: createVersionedRepository(executor, libraryVerticalsTable, context),
     libraryProjects: createVersionedRepository(executor, libraryProjectsTable, context),
     libraryTopics: createVersionedRepository(executor, libraryTopicsTable, context),
+    properties: {
+      ...createVersionedRepository(executor, propertiesTable, context),
+      listByStatuses: (statuses) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`
+            select * from properties where status in ${executor([...statuses])}
+            order by updated_at desc, id limit 100
+          `;
+          return readRows(executor, propertiesTable, rows);
+        }),
+      getBySlug: (slug) =>
+        translated(async () => {
+          const rows = await executor<Row[]>`select * from properties where slug = ${slug}`;
+          return (await readRows(executor, propertiesTable, rows))[0];
+        }),
+    },
     checkouts: {
       ...createVersionedRepository(executor, checkoutsTable, context),
       listActiveByExperiments: (ids) =>

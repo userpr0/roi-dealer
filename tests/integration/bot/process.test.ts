@@ -98,6 +98,8 @@ describe('owner bot process', () => {
           'watchlist',
           'seek',
           'library',
+          'property',
+          'properties',
           'audience',
           'rewards',
           'contribution',

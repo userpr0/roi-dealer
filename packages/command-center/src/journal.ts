@@ -41,6 +41,7 @@ export function isHistoryEvent(event: StoredEvent): boolean {
     case 'reward':
     case 'system_control':
     case 'principal':
+    case 'property': // The owner's own objects (phase 36): added, listed, sold, withdrawn.
     case 'checkout':
       return true;
     case 'experiment': {

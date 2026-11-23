@@ -39,6 +39,7 @@ import { createModelsFlow, MODELS_PREFIX } from './models.js';
 import { createWatchlistFlow, WATCHLIST_PREFIX } from './watchlist.js';
 import { createSeekFlow, SEEK_PREFIX } from './seek.js';
 import { createLibraryFlow, LIBRARY_PREFIX } from './library.js';
+import { createPropertyFlow, PROPERTY_PREFIX } from './properties.js';
 import { audienceText } from './audience.js';
 import { sourcesText } from './sources.js';
 import {
@@ -171,6 +172,8 @@ const DESCRIPTIONS = {
   watchlist: 'Лист наблюдения: отсечённое, которое снова растёт',
   seek: 'Тема поиска для агента исследований',
   library: 'Библиотека: вертикаль → проект → тема',
+  property: 'Добавить свой объект недвижимости (анкета)',
+  properties: 'Свои объекты: продажа, торг, сделка, снятие',
   audience: 'Своя аудитория: подписчики по темам',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
@@ -207,6 +210,7 @@ function withoutDatabase(): Pick<
       WATCHLIST_PREFIX,
       SEEK_PREFIX,
       LIBRARY_PREFIX,
+      PROPERTY_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -261,6 +265,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const watch = createWatchlistFlow(deps);
   const seeker = createSeekFlow(deps);
   const libraryFlow = createLibraryFlow(deps);
+  const propertyFlow = createPropertyFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -448,6 +453,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('watchlist', 'research.read', watch.watchlist),
       command('seek', 'research.read', seeker.seek),
       command('library', 'research.read', libraryFlow.library),
+      command('property', 'property.manage', propertyFlow.property),
+      command('properties', 'property.manage', propertyFlow.properties),
       command('audience', 'lead.manage', async (context) =>
         context.reply(await audienceText(database, ownerActor(context.userId))),
       ),
@@ -477,6 +484,7 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(WATCHLIST_PREFIX, 'decision.record', watch.handleButton),
       button(SEEK_PREFIX, 'research.write', seeker.handleButton),
       button(LIBRARY_PREFIX, 'research.write', libraryFlow.handleButton),
+      button(PROPERTY_PREFIX, 'property.manage', propertyFlow.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),

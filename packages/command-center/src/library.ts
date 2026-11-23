@@ -14,6 +14,7 @@ import {
   type LibraryVertical,
   type OpportunityId,
   type PainId,
+  type PropertyId,
   type Timestamp,
 } from '@roi-dealer/domain';
 import {
@@ -49,13 +50,18 @@ const SHOWN_OBJECTS = 8;
 const MAX_PENDING = 20;
 const DAY_MS = 24 * 3_600_000;
 
-const OBJECT_CODES: Readonly<Record<LibraryObjectType, string>> = { pain: 'p', opportunity: 'o' };
+const OBJECT_CODES: Readonly<Record<LibraryObjectType, string>> = {
+  pain: 'p',
+  opportunity: 'o',
+  property: 'r',
+};
 const OBJECT_LABELS: Readonly<Record<LibraryObjectType, string>> = {
   pain: 'Боль',
   opportunity: 'Возможность',
+  property: 'Объект',
 };
 const objectTypeOf = (code: string | undefined): LibraryObjectType | undefined =>
-  code === 'p' ? 'pain' : code === 'o' ? 'opportunity' : undefined;
+  code === 'p' ? 'pain' : code === 'o' ? 'opportunity' : code === 'r' ? 'property' : undefined;
 
 const REJECTIONS = {
   invalid_name: 'Название — 2–60 знаков: буквы, цифры и простые знаки, без «/» внутри названия.',
@@ -153,11 +159,14 @@ async function titlesOf(
 ): Promise<Map<string, string>> {
   const ids = (type: LibraryObjectType) =>
     filings.filter((filing) => filing.objectType === type).map((filing) => filing.objectId);
-  const [pains, opportunities] = await Promise.all([
+  const [pains, opportunities, properties] = await Promise.all([
     database.repositories.pains.getByIds(ids('pain') as PainId[]),
     database.repositories.opportunities.getByIds(ids('opportunity') as OpportunityId[]),
+    database.repositories.properties.getByIds(ids('property') as PropertyId[]),
   ]);
-  return new Map([...pains, ...opportunities].map((item) => [item.id as string, item.title]));
+  return new Map(
+    [...pains, ...opportunities, ...properties].map((item) => [item.id as string, item.title]),
+  );
 }
 
 /** One topic: what is filed there, with a «Переложить» button for each of the first objects. */

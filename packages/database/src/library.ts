@@ -23,7 +23,7 @@ import {
  * filed under. Append-only: the latest row of an object counts, a move is a new row.
  */
 
-export const LIBRARY_OBJECT_TYPES = ['pain', 'opportunity'] as const;
+export const LIBRARY_OBJECT_TYPES = ['pain', 'opportunity', 'property'] as const;
 export type LibraryObjectType = (typeof LIBRARY_OBJECT_TYPES)[number];
 
 export interface LibraryFilingEntry {

@@ -24,6 +24,7 @@ export const ENTITY_TYPES = [
   'library_vertical',
   'library_project',
   'library_topic',
+  'property',
 ] as const;
 export const entityTypeSchema = z.enum(ENTITY_TYPES);
 export type EntityType = z.infer<typeof entityTypeSchema>;
@@ -75,6 +76,8 @@ export const libraryProjectIdSchema = z.uuid().brand<'LibraryProjectId'>();
 export type LibraryProjectId = z.infer<typeof libraryProjectIdSchema>;
 export const libraryTopicIdSchema = z.uuid().brand<'LibraryTopicId'>();
 export type LibraryTopicId = z.infer<typeof libraryTopicIdSchema>;
+export const propertyIdSchema = z.uuid().brand<'PropertyId'>();
+export type PropertyId = z.infer<typeof propertyIdSchema>;
 
 /** ISO-8601 instant in UTC (`…Z`). Offsets are rejected so all stored times are UTC. */
 export const timestampSchema = z.iso.datetime().brand<'Timestamp'>();

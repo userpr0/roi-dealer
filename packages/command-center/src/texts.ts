@@ -44,6 +44,7 @@ export const ENTITY_LABELS: Readonly<Record<EntityType, string>> = {
   library_vertical: 'Вертикаль библиотеки',
   library_project: 'Проект библиотеки',
   library_topic: 'Тема библиотеки',
+  property: 'Объект недвижимости',
 };
 
 export const APPROVAL_KIND_LABELS: Readonly<Record<ApprovalKind, string>> = {
