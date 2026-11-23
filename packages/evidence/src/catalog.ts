@@ -765,9 +765,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'Developer Hub и developer-guidelines открыты (16.11), но лицензии данных реестра там нет; gov.uk называет снимок данных «free monthly snapshot» без лицензии. Нужен официальный текст о повторном использовании данных. Перепроверить при следующем запуске.',
+        'Developer Hub и developer-guidelines открыты (23.11, снова), лицензии данных реестра там нет; gov.uk называет снимок данных «free monthly snapshot» без лицензии. Нужен официальный текст о повторном использовании данных.',
     },
   },
   {
@@ -978,7 +978,7 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
   },
   {
     key: 'youtube',
-    name: 'YouTube: комментарии',
+    name: 'YouTube: комментарии и статистика чужих видео',
     siteUrl: 'https://www.youtube.com',
     sourceKind: 'social',
     access: {
@@ -992,8 +992,11 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
         'https://developers.google.com/youtube/terms/developer-policies',
       ],
       summary:
-        'YouTube Data API: комментарии под видео. Developer Policies запрещают агрегировать данные API и строить из них производные данные.',
-      conditions: ['Не подключать: извлечение болей из комментариев — производные данные'],
+        'YouTube Data API: комментарии и статистика чужих видео (просмотры, лайки) — для болей и радара трендов. Developer Policies запрещают агрегировать данные API и строить из них производные метрики.',
+      conditions: [
+        'Не подключать: боли из комментариев и тренды по просмотрам чужих видео — агрегация и производные метрики',
+        'Можно отдельно: статистика своих каналов владельца — данные одного владельца',
+      ],
     },
     cost: 'Бесплатно в пределах дневной квоты проекта Google Cloud',
     limits: {
@@ -1001,7 +1004,10 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       minIntervalMinutes: 360,
       maxItemsPerRun: 30,
     },
-    dataFields: { provided: ['видео', 'комментарии', 'имена каналов авторов'], stored: [] },
+    dataFields: {
+      provided: ['видео', 'просмотры и лайки', 'комментарии', 'имена каналов авторов'],
+      stored: [],
+    },
     personalData: { risk: 'high', notes: 'Имена и каналы авторов комментариев.' },
     markets: ['US', 'GB', 'CA', 'AU'],
     languages: ['en'],
@@ -1009,9 +1015,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'rejected',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-10-20',
+      checkedOn: '2026-11-23',
       notes:
-        'Developer Policies: «Do not aggregate API Data»; «Your API Clients must not… access or use API Data to create new or derived data or metrics»; данные без авторизации — не дольше 30 дней. Извлечение болей из комментариев — производные данные.',
+        'Перепроверено 23.11 для радара трендов: «Do not aggregate API Data except … channels that are under the same content owner»; «must not … access or use API Data to create new or derived data or metrics»; данные без авторизации — не дольше 30 дней. Доп. метрики — только аудированным разработчикам по заявке (с 01.06.2026). Свои каналы владельца — можно.',
     },
   },
   {
@@ -1369,9 +1375,8 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
-      notes:
-        'quora.com/about/tos отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+      checkedOn: '2026-11-23',
+      notes: 'quora.com/about/tos отвечает 403 программам (23.11, снова). Условия не прочитаны.',
     },
   },
   {
@@ -1399,9 +1404,8 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
-      notes:
-        'indiehackers.com/terms отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+      checkedOn: '2026-11-23',
+      notes: 'indiehackers.com/terms отвечает 403 программам (23.11, снова). Условия не прочитаны.',
     },
   },
   {
@@ -1676,9 +1680,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'fred.stlouisfed.org закрыт сетью среды (16.11, снова). Условия API не прочитаны. По выдаче поиска: ключ бесплатный, часть рядов принадлежит третьим лицам с их ограничениями. Перепроверить, когда домен откроют.',
+        'fred.stlouisfed.org закрыт сетью среды (23.11, снова). Условия API не прочитаны. По выдаче поиска: ключ бесплатный, часть рядов принадлежит третьим лицам с их ограничениями.',
     },
   },
   {
@@ -1942,9 +1946,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'FAQ отдаёт 200 (16.11), но текст собирается скриптом — условий в ответе нет; страница набора BigQuery требует входа в Cloud Console. Перепроверить при следующем запуске.',
+        'FAQ собирается скриптом — условий в ответе нет; набор BigQuery — только после входа в Cloud Console (23.11, без изменений).',
     },
   },
   {
@@ -2104,9 +2108,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'canada.ca закрыт сетью среды (16.11, снова). Open Government Licence – Canada прочитана 9.11 («including for commercial purposes»), но набора федеральных праздников на open.canada.ca нет, условия canada.ca не прочитаны.',
+        'canada.ca закрыт сетью среды (23.11, снова). OGL – Canada прочитана 9.11 («including for commercial purposes»), но набора федеральных праздников на open.canada.ca нет, условия canada.ca не прочитаны.',
     },
   },
   {
@@ -2134,9 +2138,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'oecd.org/en/about/terms-conditions.html отвечает 403 программам (16.11, снова). Условия не прочитаны. Перепроверить при следующем запуске.',
+        'oecd.org/en/about/terms-conditions.html отвечает 403 программам (23.11, снова). Условия не прочитаны.',
     },
   },
   {
@@ -2240,9 +2244,9 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
     review: {
       verdict: 'needs_review',
       checkedBy: 'Claude (source scout, D-026)',
-      checkedOn: '2026-11-16',
+      checkedOn: '2026-11-23',
       notes:
-        'www.nhtsa.gov и transportation.gov отвечают 403 (16.11). Официальный каталог Минтранса США datahub.transportation.gov (набор 8qbs-9p4c «ODI Complaints») отмечает «Rights: public», но лицензии не указывает; тексты жалоб пишут граждане, а не правительство — §105 их не покрывает. Нужен официальный текст условий.',
+        'nhtsa.gov и transportation.gov отвечают 403 (23.11, снова). Каталог Минтранса США (набор 8qbs-9p4c) отмечает «Rights: public», лицензии нет; тексты жалоб пишут граждане — §105 их не покрывает. Нужен официальный текст условий.',
     },
   },
   {
@@ -2296,6 +2300,132 @@ export const SOURCE_CATALOG: readonly CatalogEntry[] = [
       checkedOn: '2026-11-16',
       notes:
         'Подвал сайта: «All content is available under the Open Government Licence v3.0, except where otherwise stated». На странице каждой петиции — ссылка «Get petition data in JSON format»; список — petitions.json. OGL v3.0 разрешает коммерческое использование с указанием источника.',
+    },
+  },
+  {
+    key: 'dom-ria-prices',
+    name: 'DIM.RIA: средние цены недвижимости',
+    siteUrl: 'https://dom.ria.com',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://developers.ria.com/dom/average_price',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: [
+        'https://docs-developers.ria.com/en/dim_ria/average_price_dim',
+        'https://docs-developers.ria.com/en/dim_ria/how_to_work_with_api',
+        'https://www.ria.com/uk/offert/',
+      ],
+      summary:
+        'Средняя цена недвижимости DIM.RIA по области, городу, району, типу, площади и комнатам — для честной цены своих объектов (D-040).',
+      conditions: [
+        'Ссылка на DIM.RIA с гиперссылкой — на публичной странице, открытой для индексации (страница объекта или «Источники данных»)',
+        'Только средние цены и справочники: без объявлений, телефонов и данных людей (оферта RIA.com, п. 1.21.1)',
+        'Цены приходят в гривнах — владельцу показывать в $ по курсу НБУ на дату',
+      ],
+    },
+    cost: 'Фримиум: бесплатный пакет с лимитом запросов, сверх — платные пакеты; ключ после регистрации на developers.ria.com',
+    limits: {
+      provider: 'Лимит запросов пакета; платный пакет — 30 дней или до исчерпания лимита',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 20,
+    },
+    dataFields: {
+      provided: ['число объявлений', 'средняя цена', 'распределение цен', 'параметры выборки'],
+      stored: ['средняя цена', 'число объявлений', 'параметры выборки', 'период'],
+    },
+    personalData: {
+      risk: 'low',
+      notes: 'Только сводные цены и счётчики; объявления и контакты не запрашиваются.',
+    },
+    markets: ['UA'],
+    languages: ['uk'],
+    evidenceMarket: 'UA',
+    defaultTrust: 'high',
+    review: {
+      verdict: 'allowed',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-23',
+      notes:
+        "Документация: «Єдиною обов'язковою вимогою для використання сервісів є наяність посилання на використовуваний сервіс проекту … з гіперпосиланням на сторінку проекту … не закритої для індексації пошуковими системами»; метод средней цены прямо разрешает «розміщувати отриману інформацію на вашому сайті». Оферта (п. 1.21.1) запрещает автоматический сбор телефонов — мы их не берём.",
+    },
+  },
+  {
+    key: 'telegram-channels',
+    name: 'Telegram: публичные каналы',
+    siteUrl: 'https://telegram.org',
+    sourceKind: 'social',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://core.telegram.org/api',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://core.telegram.org/api/terms', 'https://telegram.org/tos/content-licensing'],
+      summary:
+        'Посты публичных каналов — боли и спрос, важно для Украины. Условия запрещают использовать данные платформы для работы AI.',
+      conditions: [
+        'Не подключать: разбор чужих постов AI запрещён',
+        'Посты из Telegram, пересланные в бот, AI не разбирает: согласия авторов нет',
+      ],
+    },
+    cost: 'Бесплатно; api_id после регистрации приложения',
+    limits: {
+      provider: 'Не изучались: источник запрещён условиями',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 1,
+    },
+    dataFields: { provided: ['посты каналов', 'названия каналов', 'просмотры'], stored: [] },
+    personalData: {
+      risk: 'medium',
+      notes: 'Авторы постов и имена в тексте; согласия авторов на анализ нет.',
+    },
+    markets: ['UA'],
+    languages: ['uk', 'ru'],
+    defaultTrust: 'low',
+    review: {
+      verdict: 'rejected',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-23',
+      notes:
+        'Terms of Service for Content Licensing: «Access to user-generated content for any purpose other than ordinary, legitimate, and intended use of the Telegram platform as its user is prohibited»; «prohibits the scraping, indexing, harvesting, aggregation or use of data obtained from its platform to … engage in the … deployment of artificial intelligence». Исключение — явное согласие каждого автора.',
+    },
+  },
+  {
+    key: 'ticketmaster-discovery',
+    name: 'Ticketmaster: события',
+    siteUrl: 'https://developer.ticketmaster.com',
+    sourceKind: 'dataset',
+    access: {
+      method: 'official_api',
+      endpoint: 'https://app.ticketmaster.com/discovery/v2',
+      authentication: 'api_key',
+    },
+    terms: {
+      urls: ['https://developer.ticketmaster.com/support/terms-of-use/'],
+      summary:
+        'Discovery API: концерты, спорт, шоу по городам — спрос на впечатления. Доход от использования API — только по партнёрским условиям.',
+      conditions: ['Не подключать без письменного разрешения Ticketmaster на фоновую аналитику'],
+    },
+    cost: 'Бесплатно с ключом',
+    limits: {
+      provider: 'Ticketmaster вправе ограничить или закрыть фоновые массовые вызовы',
+      minIntervalMinutes: 1_440,
+      maxItemsPerRun: 20,
+    },
+    dataFields: { provided: ['события', 'площадки', 'даты', 'цены билетов'], stored: [] },
+    personalData: { risk: 'low', notes: 'Данные о событиях; людей нет.' },
+    markets: ['US', 'GB', 'CA', 'AU'],
+    languages: ['en'],
+    defaultTrust: 'medium',
+    review: {
+      verdict: 'needs_agreement',
+      checkedBy: 'Claude (source scout, D-026)',
+      checkedOn: '2026-11-23',
+      notes:
+        'Terms of Use: нельзя «derive revenues from the use or provision of the Ticketmaster API, whether for direct commercial or monetary gain or otherwise, except as set forth below» — дальше только партнёрские условия; «we reserve the right to rate limit or block applications that make a large number of calls to the API that are not primarily in response to direct user actions». Для фоновой аналитики нужно письменное разрешение.',
     },
   },
 ];
