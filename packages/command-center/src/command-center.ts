@@ -7,6 +7,7 @@ import type {
   CallbackHandlerDefinition,
   CommandContext,
   InlineKeyboard,
+  PhotoHandlerDefinition,
 } from '@roi-dealer/telegram';
 import type { Permission } from '@roi-dealer/policies';
 import {
@@ -38,6 +39,8 @@ import { ALLOCATE_PREFIX, createAllocateFlow } from './allocate.js';
 import { createModelsFlow, MODELS_PREFIX } from './models.js';
 import { createWatchlistFlow, WATCHLIST_PREFIX } from './watchlist.js';
 import { createSeekFlow, SEEK_PREFIX } from './seek.js';
+import { createLibraryFlow, LIBRARY_PREFIX } from './library.js';
+import { createPropertyFlow, PROPERTY_PREFIX } from './properties.js';
 import { audienceText } from './audience.js';
 import { sourcesText } from './sources.js';
 import {
@@ -114,6 +117,8 @@ export interface CommandCenter {
    */
   readonly commands: readonly BotCommandDefinition[];
   readonly callbacks: readonly CallbackHandlerDefinition[];
+  /** Photos of own objects the owner sends (phase 36); absent without a database. */
+  readonly photo?: PhotoHandlerDefinition | undefined;
   /**
    * Lines for /status: the kill switch, or that the database is not connected.
    * With the request, the view is recorded in the access log.
@@ -169,6 +174,9 @@ const DESCRIPTIONS = {
   models: 'Модели AI: паспорт, допуск, претенденты по эталонам',
   watchlist: 'Лист наблюдения: отсечённое, которое снова растёт',
   seek: 'Тема поиска для агента исследований',
+  library: 'Библиотека: вертикаль → проект → тема',
+  property: 'Добавить свой объект недвижимости (анкета)',
+  properties: 'Свои объекты: продажа, торг, сделка, снятие',
   audience: 'Своя аудитория: подписчики по темам',
   rewards: 'Вклады и вознаграждения',
   contribution: 'Записать вклад участника',
@@ -204,6 +212,8 @@ function withoutDatabase(): Pick<
       MODELS_PREFIX,
       WATCHLIST_PREFIX,
       SEEK_PREFIX,
+      LIBRARY_PREFIX,
+      PROPERTY_PREFIX,
       PORTFOLIO_PREFIX,
       PAIN_PREFIX,
       MEDIA_PREFIX,
@@ -257,6 +267,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
   const modelFlow = createModelsFlow(deps);
   const watch = createWatchlistFlow(deps);
   const seeker = createSeekFlow(deps);
+  const libraryFlow = createLibraryFlow(deps);
+  const propertyFlow = createPropertyFlow(deps);
   const rewards = createRewardFlow(deps);
   const forget = createForgetFlow(deps);
   const checkouts = createCheckoutFlow(deps);
@@ -358,6 +370,15 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
         });
 
   return {
+    photo: {
+      handler: async (context) => {
+        if (await audit.allow(context.userId, context.updateId, 'property.manage')) {
+          await propertyFlow.handlePhoto(context);
+        } else {
+          await context.reply(NO_PERMISSION_TEXT);
+        }
+      },
+    },
     commands: [
       command('decisions', 'decisions.read', async (context) => {
         const reply = (text: string, keyboard?: InlineKeyboard) => context.reply(text, keyboard);
@@ -443,6 +464,9 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       command('models', 'status.read', modelFlow.models),
       command('watchlist', 'research.read', watch.watchlist),
       command('seek', 'research.read', seeker.seek),
+      command('library', 'research.read', libraryFlow.library),
+      command('property', 'property.manage', propertyFlow.property),
+      command('properties', 'property.manage', propertyFlow.properties),
       command('audience', 'lead.manage', async (context) =>
         context.reply(await audienceText(database, ownerActor(context.userId))),
       ),
@@ -471,6 +495,8 @@ export function createCommandCenter(options: CommandCenterOptions): CommandCente
       button(MODELS_PREFIX, 'decision.record', modelFlow.handleButton),
       button(WATCHLIST_PREFIX, 'decision.record', watch.handleButton),
       button(SEEK_PREFIX, 'research.write', seeker.handleButton),
+      button(LIBRARY_PREFIX, 'research.write', libraryFlow.handleButton),
+      button(PROPERTY_PREFIX, 'property.manage', propertyFlow.handleButton),
       button(PORTFOLIO_PREFIX, 'decision.record', (context) =>
         handlePortfolioButton(deps, context),
       ),

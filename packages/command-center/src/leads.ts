@@ -4,6 +4,7 @@ import { ConcurrencyError, type Database, type TransactionScope } from '@roi-dea
 import {
   changeLeadStatus,
   leadIdSchema,
+  normalizePhone,
   recordCustomerOutcome,
   timestampMs,
   type Actor,
@@ -332,7 +333,9 @@ export async function handleLeadButton(
 }
 
 interface PendingForget {
-  readonly email: string;
+  /** An email of test leads (PHASE 20) or a phone of object leads (phase 36). */
+  readonly email?: string | undefined;
+  readonly phone?: string | undefined;
   readonly expiresAtMs: number;
 }
 
@@ -342,8 +345,9 @@ export interface ForgetFlow {
 }
 
 export const FORGET_USAGE =
-  '🗑 Удалить почту человека по его просьбе: /forget anna@example.com — из всех тестов, ' +
-  'с подтверждением. Заявки останутся в цифрах без почты.';
+  '🗑 Удалить данные человека по его просьбе: /forget anna@example.com — почта из всех тестов; ' +
+  '/forget 067 123 45 67 — телефон из заявок объектов. С подтверждением; заявки останутся в ' +
+  'цифрах без контакта.';
 
 /**
  * /forget <email>: a person's deletion request (GDPR, UK GDPR). The email waits in memory for
@@ -356,14 +360,22 @@ export function createForgetFlow(deps: LeadFlowDeps): ForgetFlow {
   return {
     async forget(context) {
       const email = normalizeEmail(context.args);
-      if (email === undefined) {
+      const phone = email === undefined ? normalizePhone(context.args) : undefined;
+      if (email === undefined && phone === undefined) {
         await context.reply(FORGET_USAGE);
         return;
       }
       const actor = deps.owner(context.userId);
-      const leads = await deps.database.leadContacts.leadsByEmail(email, actor);
-      if (leads.length === 0) {
-        await context.reply('Такой почты нет — удалять нечего.');
+      const count =
+        email === undefined
+          ? await deps.database.properties.phoneLeads(phone ?? '', actor)
+          : (await deps.database.leadContacts.leadsByEmail(email, actor)).length;
+      if (count === 0) {
+        await context.reply(
+          email === undefined
+            ? 'Такого телефона нет — удалять нечего.'
+            : 'Такой почты нет — удалять нечего.',
+        );
         return;
       }
       const current = nowMs();
@@ -376,9 +388,9 @@ export function createForgetFlow(deps: LeadFlowDeps): ForgetFlow {
         pending.delete(oldest);
       }
       const nonce = randomBytes(8).toString('hex');
-      pending.set(nonce, { email, expiresAtMs: current + CONFIRMATION_TTL_MS });
+      pending.set(nonce, { email, phone, expiresAtMs: current + CONFIRMATION_TTL_MS });
       await context.reply(
-        `❓ Удалить ${email} из заявок: ${String(leads.length)}? Вернуть будет нельзя. ` +
+        `❓ Удалить ${email ?? phone ?? ''} из заявок: ${String(count)}? Вернуть будет нельзя. ` +
           'Подтверждение действует 10 минут.',
         [
           [
@@ -409,12 +421,17 @@ export function createForgetFlow(deps: LeadFlowDeps): ForgetFlow {
           correlationId: `tg-update-${String(context.updateId)}`,
         },
         async (scope) => ({
-          erased: await forgetEmail(scope, confirmation.email, actor, deps.now()),
+          erased:
+            confirmation.email === undefined
+              ? await scope.properties.forgetPhone(confirmation.phone ?? '', actor)
+              : await forgetEmail(scope, confirmation.email, actor, deps.now()),
         }),
       );
       if (nonce !== undefined) pending.delete(nonce);
       context.logger.info('lead contacts erased on request', { erased: result.erased });
-      await context.edit(`🗑 Удалено: почта из заявок — ${String(result.erased)}.`);
+      await context.edit(
+        `🗑 Удалено: ${confirmation.email === undefined ? 'телефон' : 'почта'} из заявок — ${String(result.erased)}.`,
+      );
       await context.answer('Удалено');
     },
   };

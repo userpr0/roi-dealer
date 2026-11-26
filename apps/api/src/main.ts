@@ -15,11 +15,15 @@ import {
   serviceVersion,
 } from '@roi-dealer/shared';
 import {
+  createPropertyViewCounter,
   createSiteTracker,
   createSubmissionLimiter,
   landingPage,
   previewPage,
   privacyPage,
+  propertyPage,
+  propertyPhoto,
+  propertyPrivacyPage,
   SITE_ACCESS,
 } from '@roi-dealer/site';
 import { loadApiConfig } from './config.js';
@@ -91,10 +95,18 @@ async function main(): Promise<void> {
       contactEmail,
       limiter: createSubmissionLimiter(),
     };
+    // Pages of own objects (phase 36): views and leads as the same page counter `site`.
+    const properties = {
+      ...pages,
+      views: createPropertyViewCounter({ database, tracker, logger }),
+    };
     site = {
       preview: (token) => previewPage(database, token, { contactEmail }),
       landing: (slug, step, visit, form) => landingPage(pages, slug, step, visit, form),
       privacy: () => privacyPage(contactEmail),
+      property: (slug, step, visit, form) => propertyPage(properties, slug, step, visit, form),
+      propertyPhoto: (slug, position) => propertyPhoto(properties, slug, position),
+      propertyPrivacy: () => propertyPrivacyPage(contactEmail),
     };
     logger.info('sign-up form', { enabled: contactEmail !== undefined });
     // Payments through the merchant of record (PHASE 20b, ADR-0009): only with the secret.

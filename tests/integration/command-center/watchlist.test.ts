@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createWatchlistFlow,
+  WATCHLIST_PREFIX,
   watchlistDigestLine,
   watchlistView,
 } from '@roi-dealer/command-center';
@@ -20,6 +21,8 @@ import {
 } from '@roi-dealer/domain';
 import { uuidv7 } from '@roi-dealer/shared';
 import { OWNER, SYSTEM, sourceData } from '../../support/domain.js';
+import { createCapturingLogger } from '../../support/logger.js';
+import { ownerRouter } from '../../support/owner-router.js';
 import { createTestDatabase, type TestDatabase } from '../../support/database.js';
 
 let test: TestDatabase;
@@ -102,25 +105,19 @@ describe('the watchlist (phase 27)', () => {
     expect(await watchlistDigestLine(db)).toBe('👀 Отсечённое снова растёт: 1 → /watchlist');
 
     const flow = createWatchlistFlow({ database: db, now, owner: () => OWNER });
-    const edits: { text: string; keyboard?: unknown }[] = [];
-    const press = (data: string, id: string) =>
-      flow.handleButton({
-        data,
-        userId: 1,
-        updateId: 9,
-        callbackQueryId: id,
-        edit: (text: string, keyboard?: unknown) => {
-          edits.push({ text, keyboard });
-          return Promise.resolve();
-        },
-        answer: () => Promise.resolve(),
-      } as never);
-    const back = JSON.stringify(view.keyboard).match(/wl:r:[^"]+/)?.[0];
-    await press(back ?? expect.unreachable(), 'w-ask');
-    expect(edits.at(-1)?.text).toContain('↩️ Вернуть на рассмотрение');
-    const yes = JSON.stringify(edits.at(-1)?.keyboard).match(/wl:y:[0-9a-f]+/)?.[0];
-    await press(yes ?? expect.unreachable(), 'w-yes');
-    expect(edits.at(-1)?.text).toContain('↩️ Возвращено');
+    // The buttons are pressed through the real router of the bot, as from Telegram.
+    const chat = ownerRouter({
+      logger: createCapturingLogger('bot').logger,
+      callbacks: [{ prefix: WATCHLIST_PREFIX, handler: flow.handleButton }],
+    });
+    const back = (view.keyboard ?? [])
+      .flat()
+      .find((button) => button.callback_data.startsWith('wl:r:'));
+    await chat.press(back?.callback_data ?? expect.unreachable());
+    expect(chat.last()?.text).toContain('↩️ Вернуть на рассмотрение');
+    const yes = chat.buttons().find((data) => data.startsWith('wl:y:'));
+    await chat.press(yes ?? expect.unreachable());
+    expect(chat.last()?.text).toContain('↩️ Возвращено');
     expect((await db.watchlist.decisions()).get(cut.id)).toMatchObject({
       decision: 'returned',
       echoPainId: echo.id,

@@ -89,6 +89,16 @@ export interface TelegramClient {
     readonly chatId: number;
     readonly menuButton: MenuButton;
   }): Promise<void>;
+  /** Where a file the owner sent can be downloaded (phase 36: photos of an object). */
+  getFile(params: { readonly fileId: string }): Promise<{
+    readonly filePath: string;
+    readonly fileSize?: number | undefined;
+  }>;
+  /** Downloads a file by its `filePath`; throws beyond `maxBytes`. The token is never logged. */
+  downloadFile(params: {
+    readonly filePath: string;
+    readonly maxBytes: number;
+  }): Promise<Uint8Array>;
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
@@ -228,6 +238,53 @@ export function createTelegramClient(options: TelegramClientOptions): TelegramCl
 
     async setChatMenuButton({ chatId, menuButton }) {
       await call('setChatMenuButton', { chat_id: chatId, menu_button: menuButton });
+    },
+
+    async getFile({ fileId }) {
+      const file = parseResult(
+        'getFile',
+        z.object({
+          file_path: z.string().regex(/^[A-Za-z0-9_./-]{1,200}$/),
+          file_size: z.number().int().nonnegative().optional(),
+        }),
+        await call('getFile', { file_id: fileId }),
+      );
+      return { filePath: file.file_path, fileSize: file.file_size };
+    },
+
+    async downloadFile({ filePath, maxBytes }) {
+      if (!/^[A-Za-z0-9_./-]{1,200}$/.test(filePath) || filePath.includes('..')) {
+        throw new TelegramRequestError('downloadFile', 'invalid file path');
+      }
+      let response: Response;
+      try {
+        response = await fetchImpl(`${baseUrl}/file/bot${token}/${filePath}`, {
+          signal: AbortSignal.timeout(requestTimeoutMs),
+        });
+      } catch (error) {
+        throw new TelegramRequestError('downloadFile', redactSecret(describeFailure(error), token));
+      }
+      if (!response.ok || response.body === null) {
+        throw new TelegramRequestError('downloadFile', `HTTP ${String(response.status)}`);
+      }
+      if (Number(response.headers.get('content-length') ?? '0') > maxBytes) {
+        await response.body.cancel();
+        throw new TelegramRequestError('downloadFile', 'file too large');
+      }
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
+        size += chunk.byteLength;
+        if (size > maxBytes) throw new TelegramRequestError('downloadFile', 'file too large');
+        chunks.push(chunk);
+      }
+      const bytes = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return bytes;
     },
   };
 }

@@ -138,6 +138,8 @@ async function main(): Promise<void> {
       ownerUserId,
       commands,
       callbacks: commandCenter.callbacks,
+      // Photos of own objects (phase 36).
+      photo: commandCenter.photo,
       client,
       logger,
       ...(me.username === undefined ? {} : { botUsername: me.username }),

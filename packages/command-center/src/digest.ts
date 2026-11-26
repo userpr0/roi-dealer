@@ -17,6 +17,7 @@ import { pulseDigestLine } from './pulse.js';
 import { roiDigestLine } from './roi.js';
 import { modelsDigestLine } from './models.js';
 import { watchlistDigestLine } from './watchlist.js';
+import { libraryDigestLine } from './library.js';
 import { rewardsDigestLine } from './rewards.js';
 import { formatKyivDate, kyivDate, kyivTimeToday, nextKyivTime } from './kyiv-time.js';
 import { formatTime } from './texts.js';
@@ -41,6 +42,7 @@ export async function buildDigest(
     | 'pulse'
     | 'models'
     | 'watchlist'
+    | 'library'
   >,
   nowMs: number,
 ): Promise<string> {
@@ -66,6 +68,7 @@ export async function buildDigest(
   const pulse = await pulseDigestLine(database, nowMs);
   const newModels = await modelsDigestLine(database, nowMs);
   const watched = await watchlistDigestLine(database);
+  const filed = await libraryDigestLine(database, nowMs);
   const requests = await decidableRequests(database.repositories, now);
   const review = await reviewCount(database.repositories);
   const nearest = requests[0];
@@ -114,6 +117,7 @@ export async function buildDigest(
     ...(pulse === undefined ? [] : [pulse]),
     ...(newModels === undefined ? [] : [newModels]),
     ...(watched === undefined ? [] : [watched]),
+    ...(filed === undefined ? [] : [filed]),
     ...(roiDigestLine(nowMs) === undefined ? [] : [roiDigestLine(nowMs) ?? '']),
     ...(agentFailures === 0
       ? []

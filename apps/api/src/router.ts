@@ -1,5 +1,5 @@
 import type { HealthRegistry } from '@roi-dealer/observability';
-import type { LandingStep, SiteVisit } from '@roi-dealer/site';
+import type { LandingStep, PropertyStep, SiteVisit } from '@roi-dealer/site';
 
 export interface ApiRequest {
   readonly method: string;
@@ -35,6 +35,9 @@ export interface ApiResponse {
   readonly html?: string | undefined;
   /** A same-site address for a 303 redirect (PHASE 21). */
   readonly redirect?: string | undefined;
+  /** A file instead of JSON or HTML (phase 36: a photo of an object's page). */
+  readonly bytes?: Uint8Array | undefined;
+  readonly contentType?: string | undefined;
   readonly headers?: Readonly<Record<string, string>>;
 }
 
@@ -59,6 +62,20 @@ export interface SiteRoutes {
   landing(slug: string, step: LandingStep, visit: SiteVisit, form?: string): Promise<SiteResponse>;
   /** The privacy notice (PHASE 20). */
   privacy(): SiteResponse;
+  /** An own object's page, its lead form and thanks (phase 36); `form` is a posted lead. */
+  property?(
+    slug: string,
+    step: PropertyStep,
+    visit: SiteVisit,
+    form?: string,
+  ): Promise<SiteResponse>;
+  /** A photo of an own object's page (phase 36). */
+  propertyPhoto?(
+    slug: string,
+    position: number,
+  ): Promise<{ readonly status: number; readonly bytes?: Uint8Array | undefined }>;
+  /** The Ukrainian privacy notice of the object pages (phase 36). */
+  propertyPrivacy?(): SiteResponse;
 }
 
 /** The payment provider's webhook (PHASE 20b): present when its secret is configured. */
@@ -84,6 +101,9 @@ export const PANEL_PATH = '/api/panel';
 export const LEMONSQUEEZY_WEBHOOK_PATH = '/webhooks/lemonsqueezy';
 const PREVIEW_PATH = /^\/p\/([^/]{1,100})$/;
 const LANDING_PATH = /^\/l\/([^/]{1,100})(?:\/(go|join|joined|thanks))?$/;
+const PROPERTY_PRIVACY_PATH = '/o/privacy';
+const PROPERTY_PATH = /^\/o\/([^/]{1,100})(?:\/(lead|thanks))?$/;
+const PROPERTY_PHOTO_PATH = /^\/o\/([^/]{1,100})\/photo\/(\d{1,2})\.jpg$/;
 
 const PAGE_METHOD_NOT_ALLOWED: ApiResponse = {
   status: 405,
@@ -158,6 +178,10 @@ export function createRouter(deps: RouterDeps): Router {
       );
       return { status: page.status, body: undefined, html: page.html, redirect: page.redirect };
     }
+    if (deps.site?.property !== undefined && request.path.startsWith('/o/')) {
+      const routed = await propertyRoute(deps.site, request);
+      if (routed !== undefined) return routed;
+    }
     if (request.path === LEMONSQUEEZY_WEBHOOK_PATH && deps.payments !== undefined) {
       if (request.method !== 'POST') {
         return { status: 405, body: { error: 'method_not_allowed' }, headers: { allow: 'POST' } };
@@ -213,4 +237,47 @@ async function panel(deps: RouterDeps, request: ApiRequest): Promise<ApiResponse
   }
   const response = await deps.panel.read(request.headers?.authorization, request.correlationId);
   return { ...response, headers: { ...response.headers, ...cors } };
+}
+
+/** The pages of own objects (phase 36): privacy, a photo, the page, its lead form and thanks. */
+async function propertyRoute(
+  site: SiteRoutes,
+  request: ApiRequest,
+): Promise<ApiResponse | undefined> {
+  const readOnly = request.method === 'GET' || request.method === 'HEAD';
+  if (request.path === PROPERTY_PRIVACY_PATH) {
+    if (!readOnly) return PAGE_METHOD_NOT_ALLOWED;
+    if (site.propertyPrivacy === undefined) return undefined;
+    const page = site.propertyPrivacy();
+    return { status: page.status, body: undefined, html: page.html };
+  }
+  const photo = PROPERTY_PHOTO_PATH.exec(request.path);
+  if (photo !== null) {
+    if (!readOnly) return PAGE_METHOD_NOT_ALLOWED;
+    if (site.propertyPhoto === undefined) return undefined;
+    const result = await site.propertyPhoto(photo[1] ?? '', Number(photo[2]));
+    return result.bytes === undefined
+      ? { status: result.status, body: { error: 'not_found' } }
+      : { status: 200, body: undefined, bytes: result.bytes, contentType: 'image/jpeg' };
+  }
+  const page = PROPERTY_PATH.exec(request.path);
+  if (page === null || site.property === undefined) return undefined;
+  const step = (page[2] ?? 'page') as PropertyStep;
+  // Only the lead form is posted.
+  const posted = step === 'lead' && request.method === 'POST';
+  if (!readOnly && !posted) {
+    return step === 'lead' ? JOIN_METHOD_NOT_ALLOWED : PAGE_METHOD_NOT_ALLOWED;
+  }
+  const response = await site.property(
+    page[1] ?? '',
+    step,
+    visitOf(request),
+    posted ? (request.body ?? '') : undefined,
+  );
+  return {
+    status: response.status,
+    body: undefined,
+    html: response.html,
+    redirect: response.redirect,
+  };
 }

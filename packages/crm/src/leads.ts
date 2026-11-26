@@ -12,6 +12,7 @@ import {
   eraseLeadContact,
   LEAD_RETENTION_DAYS,
   leadIdSchema,
+  PROPERTY_CONTACT_RETENTION_DAYS,
   toTimestamp,
   type Actor,
   type Experiment,
@@ -163,7 +164,7 @@ const DAY_MS = 86_400_000;
  * `LEAD_RETENTION_DAYS` after their test ended. The kill switch comes first.
  */
 export async function purgeExpiredContacts(options: {
-  readonly database: Pick<Database, 'repositories' | 'leadContacts' | 'transaction'>;
+  readonly database: Pick<Database, 'repositories' | 'leadContacts' | 'properties' | 'transaction'>;
   readonly logger: Logger;
   readonly now: () => number;
 }): Promise<{ readonly erased: number }> {
@@ -179,6 +180,12 @@ export async function purgeExpiredContacts(options: {
     LEAD_RETENTION,
   );
   if (unconfirmed > 0) logger.info('unconfirmed subscriptions erased', { erased: unconfirmed });
+  // Phase 36: phones of object leads go after their own period (ADR-0016 §12).
+  const phones = await database.properties.purgeContacts(
+    toTimestamp(new Date(nowMs - PROPERTY_CONTACT_RETENTION_DAYS * DAY_MS)),
+    LEAD_RETENTION,
+  );
+  if (phones > 0) logger.info('object lead phones erased', { erased: phones });
   const expired = await database.leadContacts.expired(cutoff, LEAD_RETENTION);
   if (expired.length === 0) return { erased: 0 };
   const at = toTimestamp(new Date(nowMs));
@@ -199,7 +206,7 @@ export interface LeadRetention {
 
 /** The retention period on a schedule (PHASE 20): every 6 hours by default. */
 export function createLeadRetention(options: {
-  readonly database: Pick<Database, 'repositories' | 'leadContacts' | 'transaction'>;
+  readonly database: Pick<Database, 'repositories' | 'leadContacts' | 'properties' | 'transaction'>;
   readonly logger: Logger;
   readonly intervalMs?: number;
   readonly now?: () => number;

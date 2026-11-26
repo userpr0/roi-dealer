@@ -294,6 +294,33 @@ export {
   type SeekFlowDeps,
 } from './seek.js';
 export {
+  createLibraryFlow,
+  LIBRARY_PREFIX,
+  LIBRARY_USAGE,
+  libraryDigestLine,
+  libraryPlaceOf,
+  libraryTopicView,
+  libraryVerticalView,
+  libraryView,
+  type LibraryFlow,
+  type LibraryFlowDeps,
+  type LibraryView,
+} from './library.js';
+export {
+  createPropertyFlow,
+  parsePropertyForm,
+  propertiesView,
+  propertyCard,
+  propertyLeadKeyboard,
+  propertyLeadText,
+  PROPERTY_FORM,
+  PROPERTY_PREFIX,
+  PROPERTY_VERTICAL,
+  type PropertyFlow,
+  type PropertyFlowDeps,
+  type PropertyForm,
+} from './properties.js';
+export {
   createWatchlistFlow,
   WATCHLIST_PREFIX,
   watchItems,

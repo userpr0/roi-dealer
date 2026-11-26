@@ -21,12 +21,23 @@ export const telegramChatSchema = z.object({
 });
 export type TelegramChat = z.infer<typeof telegramChatSchema>;
 
+/** One size of a photo Telegram prepared (phase 36). */
+export const telegramPhotoSizeSchema = z.object({
+  file_id: z.string().min(1).max(256),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  file_size: z.number().int().nonnegative().optional(),
+});
+export type TelegramPhotoSize = z.infer<typeof telegramPhotoSizeSchema>;
+
 export const telegramMessageSchema = z.object({
   message_id: z.number().int(),
   date: z.number().int(),
   chat: telegramChatSchema,
   from: telegramUserSchema.optional(),
   text: z.string().optional(),
+  /** The sizes of a sent photo, smallest first (phase 36). The caption is never read. */
+  photo: z.array(telegramPhotoSizeSchema).max(10).optional().catch(undefined),
 });
 export type TelegramMessage = z.infer<typeof telegramMessageSchema>;
 

@@ -4,6 +4,7 @@ import {
   createAgentScheduler,
   hypothesisDesignerAgent,
   landingWriterAgent,
+  librarianAgent,
   marketAnalystAgent,
   opportunityAnalystAgent,
   painAnalystAgent,
@@ -173,7 +174,7 @@ function main(): void {
     ensureAccess: ensureAccessRequest,
     intervalMs: config.PULSE_COLLECT_INTERVAL_MS,
   });
-  // The agents (PHASE 06, 07, 10, 11, 14) need AI: without a provider they do not even ask for access.
+  // The agents (PHASE 06, 07, 10, 11, 14, 35) need AI: without a provider they do not even ask for access.
   const agents = createAgentScheduler({
     database,
     logger,
@@ -198,6 +199,7 @@ function main(): void {
             { agent: judgesAgent(), intervalMs: config.JUDGES_INTERVAL_MS },
             { agent: hypothesisDesignerAgent(), intervalMs: config.HYPOTHESES_INTERVAL_MS },
             { agent: landingWriterAgent(), intervalMs: config.LANDING_INTERVAL_MS },
+            { agent: librarianAgent(), intervalMs: config.LIBRARY_INTERVAL_MS },
           ],
   });
   // The spend guard (PHASE 16) pauses automation when it spends twice its usual (D-014 п.10).

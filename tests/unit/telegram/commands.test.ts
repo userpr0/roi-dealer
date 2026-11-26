@@ -10,6 +10,7 @@ import {
   type CallbackHandlerDefinition,
   type RejectedAttempt,
   type TelegramUpdate,
+  type PhotoContext,
 } from '@roi-dealer/telegram';
 import { createCapturingLogger } from '../../support/logger.js';
 
@@ -380,5 +381,71 @@ describe('createOwnerNotifier', () => {
     expect(records).toContainEqual(
       expect.objectContaining({ message: 'owner notification failed' }),
     );
+  });
+});
+
+describe('photos of the owner (phase 36)', () => {
+  function photoRouter(withHandler: boolean) {
+    const { logger } = createCapturingLogger('bot');
+    const sendMessage = vi.fn<(params: { chatId: number; text: string }) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    const handler = vi.fn(async (context: PhotoContext) => {
+      const [, largest] = context.sizes;
+      const bytes = await context.download(largest?.file_id ?? '', 100);
+      await context.reply(`got ${String(bytes.length)} bytes of ${String(largest?.width)} px`);
+    });
+    const onRejected = vi.fn<(attempt: RejectedAttempt) => Promise<void>>(() => Promise.resolve());
+    const router = createOwnerCommandRouter({
+      ownerUserId: OWNER,
+      commands: [],
+      client: {
+        sendMessage,
+        editMessageText: () => Promise.resolve(),
+        answerCallbackQuery: () => Promise.resolve(),
+        getFile: ({ fileId }) => Promise.resolve({ filePath: `photos/${fileId}.jpg`, fileSize: 3 }),
+        downloadFile: () => Promise.resolve(new Uint8Array([0xff, 0xd8, 0xff])),
+      },
+      photo: withHandler ? { handler } : undefined,
+      logger,
+      unknownCommandReply: 'unknown',
+      failureReply: 'failed',
+      onRejected,
+    });
+    const send = (fromId: number, chatType = 'private') =>
+      router({
+        update_id: 77,
+        message: {
+          message_id: 1,
+          date: 0,
+          chat: { id: fromId, type: chatType },
+          from: { id: fromId, is_bot: false, first_name: 'X' },
+          // Telegram lists sizes in no promised order: the router sorts them, smallest first.
+          photo: [
+            { file_id: 'big', width: 1280, height: 960 },
+            { file_id: 'small', width: 320, height: 240 },
+          ],
+        },
+      });
+    return { send, sendMessage, handler, onRejected };
+  }
+
+  it('gives the owner’s photo to its handler with the sizes sorted and a download', async () => {
+    const { send, sendMessage, handler } = photoRouter(true);
+    await send(OWNER);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(sendMessage).toHaveBeenCalledWith({ chatId: OWNER, text: 'got 3 bytes of 1280 px' });
+  });
+
+  it('refuses a stranger’s photo and answers the owner without a handler', async () => {
+    const strangers = photoRouter(true);
+    await strangers.send(555);
+    expect(strangers.handler).not.toHaveBeenCalled();
+    expect(strangers.onRejected).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'message', reason: 'not_owner' }),
+    );
+    const plain = photoRouter(false);
+    await plain.send(OWNER);
+    expect(plain.sendMessage).toHaveBeenCalledWith({ chatId: OWNER, text: 'unknown' });
   });
 });

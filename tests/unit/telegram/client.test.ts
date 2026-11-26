@@ -238,6 +238,51 @@ describe('createTelegramClient', () => {
   });
 });
 
+describe('files the owner sends (phase 36)', () => {
+  it('finds a file and downloads it with a size limit, never logging the token', async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]);
+    const fetchMock = vi.fn<typeof fetch>((url) =>
+      Promise.resolve(
+        (url as string).endsWith('/getFile')
+          ? new Response(
+              JSON.stringify({
+                ok: true,
+                result: { file_id: 'f1', file_path: 'photos/file_1.jpg', file_size: 6 },
+              }),
+              { headers: { 'content-type': 'application/json' } },
+            )
+          : new Response(jpeg, { headers: { 'content-length': '6' } }),
+      ),
+    );
+    const client = createTelegramClient({ token: TOKEN, fetch: fetchMock });
+    await expect(client.getFile({ fileId: 'f1' })).resolves.toEqual({
+      filePath: 'photos/file_1.jpg',
+      fileSize: 6,
+    });
+    await expect(
+      client.downloadFile({ filePath: 'photos/file_1.jpg', maxBytes: 100 }),
+    ).resolves.toEqual(jpeg);
+    expect(fetchMock.mock.calls[1]?.[0] as string).toBe(
+      `https://api.telegram.org/file/bot${TOKEN}/photos/file_1.jpg`,
+    );
+    // Beyond the limit, or a strange path: refused, and the token is not in the error.
+    const tooLarge = client.downloadFile({ filePath: 'photos/file_1.jpg', maxBytes: 5 });
+    await expect(tooLarge).rejects.toThrow('file too large');
+    await expect(client.downloadFile({ filePath: '../etc/passwd', maxBytes: 5 })).rejects.toThrow(
+      'invalid file path',
+    );
+    const failing = createTelegramClient({
+      token: TOKEN,
+      fetch: () => Promise.reject(new Error(`connect failed for ${TOKEN}`)),
+    });
+    const error = await failing
+      .downloadFile({ filePath: 'photos/a.jpg', maxBytes: 5 })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(TelegramRequestError);
+    expect(String(error)).not.toContain(TOKEN);
+  });
+});
+
 describe('telegram config schemas', () => {
   it('accepts BotFather tokens and rejects anything else', () => {
     expect(telegramBotTokenSchema.safeParse(TOKEN).success).toBe(true);
